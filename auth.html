@@ -4,56 +4,120 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#07111f" />
-  <title>Login • Sistema Thiago</title>
-  <link rel="icon" type="image/png" href="favicon.png" />\n  <link rel="stylesheet" href="styles.css" />
+  <title>Conta • Sistema Thiago</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
       <a class="back-link" href="index.html" aria-label="Voltar à página inicial">←</a>
-      <div><p class="eyebrow">Sistema Thiago</p><h1>Login verdadeiro</h1></div>
+      <div><p class="eyebrow">Sistema Thiago</p><h1>Conta e acesso</h1></div>
     </div>
+    <a class="home-top-link" href="index.html">Página inicial</a>
   </header>
+
   <main class="auth-main">
     <section id="authSetupNotice" class="security-warning info-warning">
-      <strong>AUTENTICAÇÃO REAL EM TESTE.</strong>
-      E-mail e senha já usam o projeto Supabase gratuito do Sistema Thiago. O login Google depende da configuração OAuth do Google e pode permanecer indisponível até esse cadastro ser concluído.
+      <strong>SEGURANÇA EM CAMADAS.</strong>
+      O cadastro por e-mail exige confirmação antes de acessar dados compartilhados. Ter uma conta não concede acesso automático a leilões de outras pessoas.
     </section>
 
-    <section class="auth-card">
-      <div class="auth-heading">
-        <p class="eyebrow dark">Acesso</p>
-        <h2>Entrar no Sistema Thiago</h2>
-        <p class="muted">E-mail e senha já usam autenticação real. Novas contas podem exigir confirmação do endereço de e-mail.</p>
+    <div id="authStatus" class="auth-status auth-status-box" aria-live="polite"></div>
+
+    <section id="signedInBox" class="auth-card signed-in-panel" hidden>
+      <div class="profile-summary">
+        <div id="profileAvatar" class="profile-avatar" aria-hidden="true"><span>?</span></div>
+        <div>
+          <p class="eyebrow dark">Conta conectada</p>
+          <h2 id="signedInName">Usuário</h2>
+          <p id="signedInEmail" class="muted"></p>
+          <div class="profile-badges">
+            <span id="emailStatusBadge" class="source-badge user-source">E-mail</span>
+            <span id="accessSummary" class="source-badge user-source">Acesso</span>
+          </div>
+        </div>
       </div>
 
-      <button id="googleLoginBtn" class="primary-btn" type="button">Entrar com Google</button>
-
-      <div class="auth-divider"><span>ou</span></div>
-
-      <form id="emailLoginForm" class="auth-form">
-        <label class="field-wrap"><span>E-mail</span><input name="email" type="email" autocomplete="email" required /></label>
-        <label class="field-wrap"><span>Senha</span><input name="password" type="password" autocomplete="current-password" minlength="6" required /></label>
-        <button id="emailLoginBtn" class="primary-btn" type="submit">Entrar com e-mail e senha</button>
-        <button id="emailCreateBtn" class="secondary-btn" type="button">Criar conta</button>
-        <button id="resetPasswordBtn" class="text-btn" type="button">Esqueci minha senha</button>
+      <form id="profileForm" class="auth-form">
+        <h3>Meu perfil</h3>
+        <label class="field-wrap">
+          <span>Nome de exibição</span>
+          <input name="displayName" autocomplete="name" maxlength="80" required />
+        </label>
+        <label class="field-wrap">
+          <span>Foto de perfil <small>opcional • privada • até 2 MB</small></span>
+          <input name="avatar" type="file" accept="image/jpeg,image/png,image/webp" />
+        </label>
+        <p class="form-help">A foto fica em armazenamento privado e é exibida por endereço temporário. Login Google poderá fornecer a própria foto da conta.</p>
+        <button id="saveProfileBtn" class="primary-btn" type="submit">Salvar perfil</button>
       </form>
 
-      <div id="authStatus" class="auth-status" aria-live="polite"></div>
-
-      <div id="signedInBox" class="signed-in-box" hidden>
-        <span id="accessSummary" class="muted"></span>
-        <strong id="signedInName"></strong>
-        <span id="signedInEmail"></span>
+      <div class="card-actions">
+        <a class="secondary-link" href="index.html">Ir para o sistema</a>
         <button id="logoutBtn" class="secondary-btn" type="button">Sair</button>
       </div>
     </section>
 
+    <section id="authForms" class="auth-layout">
+      <section class="auth-card">
+        <div class="auth-heading">
+          <p class="eyebrow dark">Já tenho conta</p>
+          <h2>Entrar</h2>
+          <p class="muted">Use e-mail e senha. O Google ficará disponível quando o OAuth institucional for ligado a este projeto.</p>
+        </div>
+
+        <button id="googleLoginBtn" class="primary-btn" type="button">Entrar com Google</button>
+
+        <div class="auth-divider"><span>ou</span></div>
+
+        <form id="emailLoginForm" class="auth-form">
+          <label class="field-wrap"><span>E-mail</span><input name="email" type="email" autocomplete="email" required /></label>
+          <label class="field-wrap"><span>Senha</span><input name="password" type="password" autocomplete="current-password" required /></label>
+          <button id="emailLoginBtn" class="primary-btn" type="submit">Entrar com e-mail e senha</button>
+          <button id="resetPasswordBtn" class="text-btn" type="button">Esqueci minha senha</button>
+        </form>
+      </section>
+
+      <section class="auth-card">
+        <div class="auth-heading">
+          <p class="eyebrow dark">Primeiro acesso</p>
+          <h2>Criar conta</h2>
+          <p class="muted">Depois do cadastro, confirme seu e-mail. Só então a conta poderá acessar recursos protegidos.</p>
+        </div>
+
+        <form id="signupForm" class="auth-form">
+          <label class="field-wrap"><span>Seu nome</span><input name="displayName" type="text" autocomplete="name" maxlength="80" required /></label>
+          <label class="field-wrap"><span>E-mail</span><input name="email" type="email" autocomplete="email" required /></label>
+          <label class="field-wrap"><span>Crie uma senha</span><input name="password" type="password" autocomplete="new-password" minlength="12" required /></label>
+          <label class="field-wrap"><span>Confirme a senha</span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" required /></label>
+
+          <div class="password-policy" id="passwordPolicy">
+            <strong>A senha precisa ter:</strong>
+            <ul>
+              <li data-password-rule="length">12 ou mais caracteres</li>
+              <li data-password-rule="lower">uma letra minúscula</li>
+              <li data-password-rule="upper">uma letra maiúscula</li>
+              <li data-password-rule="number">um número</li>
+              <li data-password-rule="symbol">um símbolo, como ! @ # $ %</li>
+              <li data-password-rule="match">confirmação idêntica</li>
+            </ul>
+            <p>Evite nome, datas pessoais e senhas reutilizadas. Prefira um gerenciador de senhas.</p>
+          </div>
+
+          <button id="emailCreateBtn" class="primary-btn" type="submit">Criar conta e enviar confirmação</button>
+          <button id="resendConfirmationBtn" class="secondary-btn" type="button">Reenviar confirmação por e-mail</button>
+        </form>
+      </section>
+    </section>
+
     <section class="research-card">
-      <h3>Regra de acesso</h3>
-      <p>Ter uma conta não dá acesso automático aos leilões anteriores. O banco compartilhado só entrega leilões dos quais o usuário é proprietário ou participante autorizado. Usuário novo sem convite começa com uma área de dados compartilhados vazia.</p>
+      <h3>Como funciona o acesso</h3>
+      <p><strong>Conta criada ≠ acesso aos leilões.</strong> O e-mail precisa estar confirmado e o banco aplica regras por usuário e por leilão. Usuário novo sem convite não recebe os dados compartilhados de terceiros.</p>
+      <p><strong>Atenção:</strong> enquanto a migração do MVP não terminar, parte dos dados de leilão ainda permanece em <code>localStorage</code> do navegador. Esses dados locais não devem ser considerados protegidos pelo login.</p>
     </section>
   </main>
+
   <script src="auth-config.js"></script>
   <script type="module" src="auth.js"></script>
 </body>
