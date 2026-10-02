@@ -80,6 +80,11 @@
         </div>
       </div>
 
+      <section id="officialNoLotsNotice" class="research-mode-notice" hidden>
+        <strong>Cadastro oficial importado.</strong>
+        Os dados gerais do leilão foram salvos, mas os lotes do edital ainda não foram extraídos. Use a fonte oficial para conferir o edital enquanto o importador de lotes é concluído.
+      </section>
+
       <section class="next-card" aria-live="polite">
         <div>
           <div class="next-heading-row">
@@ -133,6 +138,7 @@
   <template id="lotCardTemplate">
     <article class="lot-card">
       <div class="card-main">
+        <img class="lot-photo" alt="" hidden />
         <div class="lot-copy">
           <div class="lot-line">
             <h3 class="lot-number"></h3>
@@ -148,6 +154,10 @@
       </div>
 
       <div class="financial-grid">
+        <label class="field-wrap">
+          <span>Valor FIPE <small>opcional</small></span>
+          <input class="fipe-value-input" type="text" inputmode="decimal" placeholder="Ex.: 82.450" />
+        </label>
         <label class="field-wrap">
           <span>Lance mínimo <small>opcional</small></span>
           <input class="minimum-bid-input" type="text" inputmode="decimal" placeholder="Ex.: 25.000" />
@@ -183,6 +193,8 @@
 
       <div class="card-actions utility-actions">
         <a class="vehicle-data-link secondary-link compact" href="fipe.html">Ver veículo / FIPE</a>
+        <button class="save-lot-btn secondary-btn compact-action" type="button">Salvar</button>
+        <button class="delete-lot-btn danger-btn compact-action" type="button">Apagar</button>
       </div>
 
       <div class="sold-details" hidden>
@@ -285,7 +297,9 @@
         <label class="field-wrap"><span>Ano</span><input name="year" placeholder="Ex.: 2019/2020" /></label>
         <label class="field-wrap"><span>Cor</span><input name="color" placeholder="Ex.: Branca" /></label>
         <label class="field-wrap"><span>Combustível</span><input name="fuel" placeholder="Ex.: Diesel" /></label>
+        <label class="field-wrap"><span>Valor FIPE</span><input name="fipeValue" inputmode="decimal" placeholder="Ex.: 82.450" /></label>
         <label class="field-wrap"><span>Lance mínimo</span><input name="minimumBid" inputmode="decimal" placeholder="Ex.: 25.000" /></label>
+        <label class="field-wrap form-span-2"><span>Imagem do lote / veículo <small>opcional</small></span><input name="photo" type="file" accept="image/*" /></label>
         <label class="field-wrap"><span>Fonte</span>
           <select name="sourceType">
             <option value="user">Dados inseridos pelo usuário</option>
@@ -311,9 +325,10 @@
       <p id="liveVehicle" class="live-vehicle"></p>
       <p id="livePreference" class="live-preference" hidden></p>
       <p id="liveMaxBid" class="live-max-bid" hidden></p>
-      <div class="live-actions-grid">
+      <div class="live-actions-grid live-actions-three">
+        <button id="liveBackBtn" class="live-utility-btn" type="button">← Voltar</button>
         <button id="livePreferenceBtn" class="live-utility-btn" type="button">★ Preferência</button>
-        <button id="liveSkipBtn" class="live-utility-btn" type="button">→ Pular</button>
+        <button id="liveSkipBtn" class="live-utility-btn" type="button">→ Próximo</button>
       </div>
       <button id="liveSoldBtn" class="live-sold-btn" type="button">LEILOADO</button>
       <a id="liveVehicleLink" class="live-detail-link" href="fipe.html">Ver dados do veículo / FIPE</a>
