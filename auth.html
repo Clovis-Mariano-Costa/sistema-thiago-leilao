@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#07111f" />
+  <title>Login • Sistema Thiago</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a class="back-link" href="index.html">←</a>
+      <div><p class="eyebrow">Sistema Thiago</p><h1>Login verdadeiro</h1></div>
+    </div>
+  </header>
+  <main class="auth-main">
+    <section id="authSetupNotice" class="security-warning info-warning">
+      <strong>MÓDULO PREPARADO, AINDA NÃO ATIVADO.</strong>
+      Falta conectar este site a um projeto Firebase e habilitar os provedores Google e E-mail/Senha. Enquanto isso, o sistema continua no modo local com Thiago como usuário operacional.
+    </section>
+
+    <section class="auth-card">
+      <div class="auth-heading">
+        <p class="eyebrow dark">Acesso</p>
+        <h2>Entrar no Sistema Thiago</h2>
+        <p class="muted">Quando a configuração externa for concluída, estes dois métodos usarão autenticação real.</p>
+      </div>
+
+      <button id="googleLoginBtn" class="primary-btn" type="button" disabled>Entrar com Google</button>
+
+      <div class="auth-divider"><span>ou</span></div>
+
+      <form id="emailLoginForm" class="auth-form">
+        <label class="field-wrap"><span>E-mail</span><input name="email" type="email" autocomplete="email" required disabled /></label>
+        <label class="field-wrap"><span>Senha</span><input name="password" type="password" autocomplete="current-password" minlength="6" required disabled /></label>
+        <button id="emailLoginBtn" class="primary-btn" type="submit" disabled>Entrar com e-mail e senha</button>
+        <button id="emailCreateBtn" class="secondary-btn" type="button" disabled>Criar conta</button>
+        <button id="resetPasswordBtn" class="text-btn" type="button" disabled>Esqueci minha senha</button>
+      </form>
+
+      <div id="authStatus" class="auth-status" aria-live="polite"></div>
+
+      <div id="signedInBox" class="signed-in-box" hidden>
+        <strong id="signedInName"></strong>
+        <span id="signedInEmail"></span>
+        <button id="logoutBtn" class="secondary-btn" type="button">Sair</button>
+      </div>
+    </section>
+
+    <section class="research-card">
+      <h3>Regra de acesso planejada</h3>
+      <p>Ter uma conta não dará acesso automático aos leilões anteriores. O banco compartilhado só entregará leilões dos quais o usuário participa ou para os quais foi convidado. Quem não tiver acesso abrirá um sistema em branco.</p>
+    </section>
+  </main>
+  <script src="auth-config.js"></script>
+  <script type="module" src="auth.js"></script>
+</body>
+</html>
