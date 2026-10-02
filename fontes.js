@@ -35,6 +35,35 @@ function saveState(state){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
 }
 
+function normalizeImportedLot(lot,index,item){
+  const n=Number(lot?.n ?? lot?.lot ?? lot?.numero ?? index+1);
+  return {
+    n,
+    vehicle:lot?.vehicle || lot?.item || lot?.description || lot?.descricao || lot?.brandModel || lot?.marcaModelo || '',
+    type:lot?.type || lot?.tipo || '',
+    plate:String(lot?.plate || lot?.placa || '').toUpperCase(),
+    brandModel:lot?.brandModel || lot?.marcaModelo || lot?.['marca/modelo'] || '',
+    chassis:lot?.chassis || lot?.chassi || '',
+    engine:lot?.engine || lot?.motor || '',
+    year:lot?.year || lot?.ano || '',
+    color:lot?.color || lot?.cor || '',
+    fuel:lot?.fuel || lot?.combustivel || '',
+    fipeValue:lot?.fipeValue || lot?.valorFipe || '',
+    minimumBid:lot?.minimumBid || lot?.lanceMinimo || lot?.valorMinimo || '',
+    maxBid:'',
+    finalValue:'',
+    preferenceLevel:0,
+    sold:false,
+    result:'',
+    note:lot?.note || lot?.observacao || '',
+    sourceType:'official',
+    sourceLabel:'Fonte oficial',
+    officialUrl:item.officialUrl || '',
+    photoDataUrl:'',
+    extraFields:lot?.extraFields || {}
+  };
+}
+
 function fullText(obj){
   const values=[];
   const walk=v=>{
@@ -109,7 +138,7 @@ function importAuction(item){
       lastVerified:item.lastChecked||''
     },
     extraFields,
-    lots:[]
+    lots:Array.isArray(item.lots) ? item.lots.map((lot,index)=>normalizeImportedLot(lot,index,item)).filter(lot=>lot.n>0) : []
   });
 
   state.currentAuctionId=auctionId;
@@ -140,7 +169,7 @@ function resultCard(item){
     </div>
     <div class="official-card-actions">
       <a class="secondary-link compact" href="${esc(item.officialUrl||'#')}" target="_blank" rel="noopener">Abrir origem oficial</a>
-      <button class="primary-btn import-official-btn" data-id="${esc(item.id)}" type="button">Importar cadastro oficial</button>
+      <button class="primary-btn import-official-btn" data-id="${esc(item.id)}" type="button">${Array.isArray(item.lots) && item.lots.length ? 'Importar cadastro oficial' : 'Importar cadastro oficial • dados gerais'}</button>
     </div>
   </article>`;
 }
