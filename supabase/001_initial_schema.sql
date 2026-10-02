@@ -297,6 +297,8 @@ as $
   select coalesce(private.auction_role(p_auction_id)::text in ('owner','admin','participant'),false);
 $$;
 
+revoke all on schema private from public;
+grant usage on schema private to authenticated;
 grant execute on function private.auction_role(uuid) to authenticated;
 grant execute on function private.can_view_auction(uuid) to authenticated;
 grant execute on function private.can_manage_auction(uuid) to authenticated;
