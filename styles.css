@@ -72,3 +72,6 @@ textarea{font:inherit;resize:vertical}.top-actions{display:flex;align-items:cent
 .official-auction-details{margin:0 0 10px;background:#fff}
 .official-auction-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px}
 .official-auction-data div{padding:9px;border-radius:10px;background:#f7f9fb}.official-auction-data dt{font-size:.64rem;color:var(--muted);font-weight:850;text-transform:uppercase}.official-auction-data dd{margin:3px 0 0;font-size:.78rem;font-weight:700;word-break:break-word}
+
+.home-top-link{flex:0 0 auto;min-height:40px;display:flex;align-items:center;padding:0 12px;border:1px solid rgba(214,165,52,.4);border-radius:12px;color:#f0d889;text-decoration:none;font-size:.76rem;font-weight:850}
+@media(max-width:520px){.home-top-link{font-size:0;width:42px;padding:0;justify-content:center}.home-top-link::before{content:"⌂";font-size:1.15rem}}
