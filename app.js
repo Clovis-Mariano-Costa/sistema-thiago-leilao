@@ -107,6 +107,40 @@ function migrateLegacy() {
   return state;
 }
 
+const OFFICIAL_RESULTS = Array.isArray(window.SISTEMA_THIAGO_OFFICIAL_RESULTS) ? window.SISTEMA_THIAGO_OFFICIAL_RESULTS : [];
+
+function officialResultForAuction(auction) {
+  if (!auction || auction.sourceType !== 'official') return null;
+  const resultId = auction.sourceEvidence?.officialResultId;
+  return OFFICIAL_RESULTS.find(item =>
+    (resultId && item.id === resultId) ||
+    (auction.reference && item.reference === auction.reference && (!auction.date || item.date === auction.date)) ||
+    (auction.title && item.title === auction.title && (!auction.date || item.date === auction.date))
+  ) || null;
+}
+
+function officialLotsFromResult(result) {
+  if (!result || !Array.isArray(result.lots)) return [];
+  return result.lots.map((lot,index) => normalizeLot({
+    n: Number(lot.n ?? lot.lot ?? lot.numero ?? index + 1),
+    vehicle: lot.vehicle || lot.item || lot.description || lot.descricao || lot.brandModel || lot.marcaModelo || '',
+    type: lot.type || lot.tipo || '',
+    plate: lot.plate || lot.placa || '',
+    brandModel: lot.brandModel || lot.marcaModelo || lot['marca/modelo'] || '',
+    chassis: lot.chassis || lot.chassi || '',
+    engine: lot.engine || lot.motor || '',
+    year: lot.year || lot.ano || '',
+    color: lot.color || lot.cor || '',
+    fuel: lot.fuel || lot.combustivel || '',
+    minimumBid: lot.minimumBid || lot.lanceMinimo || lot.valorMinimo || '',
+    fipeValue: lot.fipeValue || lot.valorFipe || '',
+    sourceType: 'official',
+    sourceLabel: 'Fonte oficial',
+    officialUrl: result.officialUrl || '',
+    extraFields: lot.extraFields || {}
+  })).filter(lot => lot.n > 0);
+}
+
 function normalizeState(raw) {
   if (!raw || typeof raw !== 'object') return migrateLegacy();
   const base = defaultState();
@@ -118,27 +152,47 @@ function normalizeState(raw) {
     auctions: Array.isArray(raw.auctions) ? raw.auctions : base.auctions
   };
 
-  next.auctions = next.auctions.map(a => ({
-    ...(a || {}),
-    id: a.id || crypto.randomUUID(),
-    title: a.title || 'Leilão sem título',
-    date: a.date || '',
-    time: a.time || '',
-    reference: a.reference || 'Sem referência',
-    location: a.location || '',
-    sourceType: a.sourceType === 'official' ? 'official' : 'user',
-    sourceLabel: a.sourceType === 'official' ? 'Fonte oficial' : 'Dados inseridos pelo usuário',
-    officialUrl: a.officialUrl || '',
-    officialPayload: a.officialPayload || null,
-    sourceEvidence: a.sourceEvidence || null,
-    extraFields: a.extraFields && typeof a.extraFields === 'object' ? a.extraFields : {},
-    photoDataUrl: a.photoDataUrl || '',
-    notes: a.notes || '',
-    participants: Array.isArray(a.participants) ? a.participants : ['thiago'],
-    createdBy: a.createdBy || 'thiago',
-    createdAt: a.createdAt || new Date().toISOString(),
-    lots: Array.isArray(a.lots) ? a.lots.map(normalizeLot).sort((x,y)=>x.n-y.n) : []
-  }));
+  next.auctions = next.auctions.map(a => {
+    const original = a || {};
+    const official = original.sourceType === 'official' ? officialResultForAuction(original) : null;
+    const existingLots = Array.isArray(original.lots) ? original.lots.map(normalizeLot).sort((x,y)=>x.n-y.n) : [];
+    const importedLots = existingLots.length ? existingLots : officialLotsFromResult(official);
+    const evidence = original.sourceEvidence || (official ? {
+      officialResultId: official.id,
+      sourceId: official.sourceId || '',
+      sourceName: official.sourceName || '',
+      agency: official.agency || '',
+      foundAt: official.foundAt || '',
+      officialUrl: official.officialUrl || '',
+      queriedAt: new Date().toISOString(),
+      lastVerified: official.lastChecked || ''
+    } : null);
+
+    return {
+      ...original,
+      id: original.id || crypto.randomUUID(),
+      title: original.title || official?.title || 'Leilão sem título',
+      date: original.date || official?.date || '',
+      time: original.time || official?.time || '',
+      reference: original.reference || official?.reference || 'Sem referência',
+      location: original.location || official?.location || official?.scope || '',
+      sourceType: original.sourceType === 'official' ? 'official' : 'user',
+      sourceLabel: original.sourceType === 'official' ? 'Fonte oficial' : 'Dados inseridos pelo usuário',
+      officialUrl: original.officialUrl || official?.officialUrl || '',
+      officialPayload: original.officialPayload || official || null,
+      sourceEvidence: evidence,
+      extraFields: {
+        ...((official?.extraFields && typeof official.extraFields === 'object') ? official.extraFields : {}),
+        ...((original.extraFields && typeof original.extraFields === 'object') ? original.extraFields : {})
+      },
+      photoDataUrl: original.photoDataUrl || '',
+      notes: original.notes || official?.object || '',
+      participants: Array.isArray(original.participants) ? original.participants : ['thiago'],
+      createdBy: original.createdBy || 'thiago',
+      createdAt: original.createdAt || new Date().toISOString(),
+      lots: importedLots
+    };
+  });
 
   if (!next.auctions.some(a => a.id === next.currentAuctionId)) {
     next.currentAuctionId = next.auctions[0]?.id || '';
