@@ -898,6 +898,102 @@ function printSummary() {
   setTimeout(()=>{frame.contentWindow.focus();frame.contentWindow.print();setTimeout(()=>frame.remove(),1000)},150);
 }
 
+const FIPE_USER_KEY = 'sistema-thiago-fipe-user-v1';
+
+function buildBackupPayload() {
+  let fipeUserRefs = [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(FIPE_USER_KEY) || '[]');
+    if (Array.isArray(parsed)) fipeUserRefs = parsed;
+  } catch {}
+  return {
+    format: 'sistema-thiago-backup',
+    backupVersion: 1,
+    generatedAt: new Date().toISOString(),
+    origin: location.origin,
+    state: JSON.parse(JSON.stringify(state)),
+    fipeUserRefs
+  };
+}
+
+function downloadJsonPayload(payload, prefix='sistema-thiago-backup') {
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+  a.href = url;
+  a.download = `${prefix}-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportBackupJson() {
+  saveState();
+  downloadJsonPayload(buildBackupPayload());
+}
+
+async function restoreBackupJson(file) {
+  if (!file) return;
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch {
+    alert('O arquivo selecionado não é um JSON válido.');
+    return;
+  }
+
+  const incomingState = parsed?.format === 'sistema-thiago-backup' ? parsed.state : parsed;
+  if (!incomingState || typeof incomingState !== 'object' || !Array.isArray(incomingState.auctions)) {
+    alert('Este arquivo não parece ser um backup válido do Sistema Thiago.');
+    return;
+  }
+
+  const auctions = incomingState.auctions.length;
+  const lots = incomingState.auctions.reduce((sum,a)=>sum + (Array.isArray(a?.lots) ? a.lots.length : 0),0);
+  if (!confirm(`Restaurar este backup com ${auctions} leilão(ões) e ${lots} lote(s)? O estado atual será substituído. Antes disso, o sistema baixará um backup do estado atual.`)) return;
+
+  try { downloadJsonPayload(buildBackupPayload(),'sistema-thiago-antes-restaurar'); } catch {}
+
+  try {
+    state = normalizeState(incomingState);
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    if (parsed?.format === 'sistema-thiago-backup' && Array.isArray(parsed.fipeUserRefs)) {
+      localStorage.setItem(FIPE_USER_KEY,JSON.stringify(parsed.fipeUserRefs));
+    }
+    liveCursorByAuction.clear();
+    alert('Backup restaurado com sucesso.');
+    location.href='index.html';
+  } catch (error) {
+    alert('Não foi possível restaurar o backup neste navegador. ' + (error?.message || error));
+  }
+}
+
+function showImportFeedback() {
+  const box = $('#importFeedback');
+  if (!box) return;
+  const params = new URLSearchParams(location.search);
+  const importedId = params.get('imported');
+  if (!importedId) return;
+
+  const auction = state.auctions.find(a=>a.sourceEvidence?.officialResultId === importedId) || activeAuction();
+  const fieldCount = Number(params.get('fields') || 0);
+  const lotCount = auction?.lots?.length || Number(params.get('lots') || 0);
+
+  box.innerHTML = `<strong>Cadastro oficial importado.</strong>
+    ${auction ? escapeHtml(auction.title) + ' • ' : ''}
+    ${fieldCount ? fieldCount + ' campo(s) de origem processados • ' : ''}
+    ${lotCount} lote(s) disponível(is).
+    ${lotCount ? 'Os lotes disponíveis foram carregados.' : 'Esta fonte ainda possui apenas dados gerais no catálogo; os campos oficiais importados aparecem logo abaixo.'}`;
+  box.hidden = false;
+
+  const details = $('#officialAuctionDetails');
+  if (details && auction?.sourceType === 'official') details.open = true;
+
+  try { history.replaceState({},'',location.pathname + location.hash); } catch {}
+}
+
 function escapeHtml(value) {
   return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
 }
@@ -987,6 +1083,13 @@ $('#liveAuctionSelect').addEventListener('change',e=>{
 });
 $('#exportCsvBtn').addEventListener('click',exportCsv);
 $('#printBtn').addEventListener('click',printSummary);
+$('#backupJsonBtn').addEventListener('click',exportBackupJson);
+$('#restoreJsonBtn').addEventListener('click',()=>$('#restoreJsonInput').click());
+$('#restoreJsonInput').addEventListener('change',async e=>{
+  const file=e.target.files?.[0];
+  await restoreBackupJson(file);
+  e.target.value='';
+});
 
 $('#resetBtn').addEventListener('click',()=>{
   if (!confirm('Reiniciar todos os dados locais do Sistema Thiago neste navegador? Esta ação remove leilões cadastrados, lotes, resultados e preferências locais.')) return;
@@ -998,3 +1101,4 @@ $('#resetBtn').addEventListener('click',()=>{
 });
 
 renderAll();
+showImportFeedback();
