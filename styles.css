@@ -68,3 +68,7 @@ textarea{font:inherit;resize:vertical}.top-actions{display:flex;align-items:cent
 .fipe-mode-chips{margin:2px 0 10px}.fipe-entry-panel{display:grid;gap:10px}
 .check-field{display:flex;align-items:flex-start;gap:9px;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:11px;background:#fafbfc;color:#4e596b;font-size:.77rem;line-height:1.4}.check-field input{margin-top:2px}
 .bulk-help{box-shadow:none;background:#f8fafc}.bulk-help p+p{margin-top:7px}
+
+.official-auction-details{margin:0 0 10px;background:#fff}
+.official-auction-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px}
+.official-auction-data div{padding:9px;border-radius:10px;background:#f7f9fb}.official-auction-data dt{font-size:.64rem;color:var(--muted);font-weight:850;text-transform:uppercase}.official-auction-data dd{margin:3px 0 0;font-size:.78rem;font-weight:700;word-break:break-word}
