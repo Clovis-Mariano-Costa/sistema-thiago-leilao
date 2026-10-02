@@ -63,3 +63,8 @@ textarea{font:inherit;resize:vertical}.top-actions{display:flex;align-items:cent
   .agenda-actions .secondary-btn,.agenda-actions .danger-btn{min-width:100px}
   .utility-actions{grid-template-columns:1fr 1fr 1fr}.utility-actions .vehicle-data-link{grid-column:auto}
 }
+
+/* Entrada de dados FIPE */
+.fipe-mode-chips{margin:2px 0 10px}.fipe-entry-panel{display:grid;gap:10px}
+.check-field{display:flex;align-items:flex-start;gap:9px;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:11px;background:#fafbfc;color:#4e596b;font-size:.77rem;line-height:1.4}.check-field input{margin-top:2px}
+.bulk-help{box-shadow:none;background:#f8fafc}.bulk-help p+p{margin-top:7px}
