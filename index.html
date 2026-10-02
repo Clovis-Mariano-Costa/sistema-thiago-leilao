@@ -71,6 +71,7 @@
           <p id="auctionLocation" class="muted"></p>
           <div class="auction-header-actions">
             <button id="switchAuctionBtn" class="secondary-btn" type="button">Trocar leilão</button>
+            <button id="newLotBtn" class="secondary-btn" type="button">+ Cadastrar lote</button>
             <button id="liveModeBtn" class="secondary-btn" type="button">Modo ao vivo</button>
             <a id="officialSourceLink" class="secondary-link compact" href="#" target="_blank" rel="noopener" hidden>Fonte oficial</a>
           </div>
@@ -249,6 +250,43 @@
       <div class="dialog-actions">
         <button class="secondary-btn" data-close-dialog="newAuctionDialog" type="button">Cancelar</button>
         <button class="primary-btn" type="submit">Salvar leilão</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="newLotDialog" class="sheet-dialog">
+    <form id="newLotForm" class="dialog-shell">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow dark">Novo lote</p>
+          <h2>Cadastrar lote</h2>
+          <p class="muted">O lote será incluído no leilão atualmente selecionado.</p>
+        </div>
+        <button class="dialog-close" data-close-dialog="newLotDialog" type="button">×</button>
+      </div>
+      <div class="form-grid">
+        <label class="field-wrap"><span>Número do lote *</span><input name="lotNumber" type="number" min="1" required /></label>
+        <label class="field-wrap"><span>Veículo / item *</span><input name="vehicle" required placeholder="Ex.: Ford Ranger" /></label>
+        <label class="field-wrap"><span>Tipo</span><input name="type" placeholder="Ex.: Conservado" /></label>
+        <label class="field-wrap"><span>Placa</span><input name="plate" placeholder="Ex.: ABC1D23" /></label>
+        <label class="field-wrap"><span>Marca / modelo</span><input name="brandModel" placeholder="Ex.: Ford/Ranger XLS" /></label>
+        <label class="field-wrap"><span>Chassi</span><input name="chassis" placeholder="Completo ou parcial" /></label>
+        <label class="field-wrap"><span>Motor</span><input name="engine" placeholder="Número ou identificação" /></label>
+        <label class="field-wrap"><span>Ano</span><input name="year" placeholder="Ex.: 2019/2020" /></label>
+        <label class="field-wrap"><span>Cor</span><input name="color" placeholder="Ex.: Branca" /></label>
+        <label class="field-wrap"><span>Combustível</span><input name="fuel" placeholder="Ex.: Diesel" /></label>
+        <label class="field-wrap"><span>Lance mínimo</span><input name="minimumBid" inputmode="decimal" placeholder="Ex.: 25.000" /></label>
+        <label class="field-wrap"><span>Fonte</span>
+          <select name="sourceType">
+            <option value="user">Dados inseridos pelo usuário</option>
+            <option value="official">Fonte oficial</option>
+          </select>
+        </label>
+        <label class="field-wrap form-span-2"><span>Link da fonte oficial <small>opcional</small></span><input name="officialUrl" type="url" placeholder="https://..." /></label>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary-btn" data-close-dialog="newLotDialog" type="button">Cancelar</button>
+        <button class="primary-btn" type="submit">Salvar lote</button>
       </div>
     </form>
   </dialog>
