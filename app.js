@@ -339,6 +339,36 @@ function renderActiveAuctionHeader() {
   const officialNoLotsNotice = $('#officialNoLotsNotice');
   if (officialNoLotsNotice) officialNoLotsNotice.hidden = !(a.sourceType === 'official' && a.lots.length === 0);
 
+  const officialDetails = $('#officialAuctionDetails');
+  const officialData = $('#officialAuctionData');
+  if (officialDetails && officialData) {
+    if (a.sourceType === 'official') {
+      const p = a.officialPayload || {};
+      const evidence = a.sourceEvidence || {};
+      const rows = [
+        ['Órgão', p.agency || evidence.agency],
+        ['Processo', p.process],
+        ['Modalidade', p.modality],
+        ['Critério', p.criterion],
+        ['Objeto', p.object || a.notes],
+        ['Abrangência', p.scope],
+        ['Plataforma', p.platform],
+        ['Publicado em', p.publishedAt],
+        ['Encontrado em', p.foundAt || evidence.foundAt],
+        ['Última verificação', p.lastChecked || evidence.lastVerified]
+      ].filter(([,value]) => value);
+      Object.entries(a.extraFields || {}).forEach(([key,value]) => rows.push([key,value]));
+      officialData.innerHTML = rows.map(([key,value]) => {
+        const display = Array.isArray(value) ? value.join(', ') : (typeof value === 'object' ? JSON.stringify(value) : value);
+        return `<div><dt>${escapeHtml(key)}</dt><dd>${escapeHtml(display)}</dd></div>`;
+      }).join('');
+      officialDetails.hidden = rows.length === 0;
+    } else {
+      officialDetails.hidden = true;
+      officialData.innerHTML = '';
+    }
+  }
+
   $('#auctionTitle').textContent = a.title;
   $('#auctionDateRef').textContent = `${formatDate(a.date,a.time)} • Referência: ${a.reference}`;
   $('#auctionLocation').textContent = a.location || 'Local não informado';
