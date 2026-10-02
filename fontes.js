@@ -93,7 +93,86 @@ function matchesSearch(item){
   return !searchQuery || fullText(item).includes(searchQuery);
 }
 
-function importAuction(item){
+async function enrichFromPncp(item,button){
+  if(!item?.pncp) return {item,pncpAttempted:false,pncpError:'',pncpData:null};
+
+  const cfg=window.SUPABASE_CONFIG || {};
+  const token=cfg.legacyAnonKey || cfg.publishableKey || '';
+  if(!cfg.url || !token){
+    return {
+      item,
+      pncpAttempted:true,
+      pncpError:'Configuração do conector PNCP/Supabase não encontrada nesta publicação.',
+      pncpData:null
+    };
+  }
+
+  const previousLabel=button?.textContent || '';
+  if(button){
+    button.disabled=true;
+    button.textContent='Buscando lotes no edital oficial…';
+  }
+
+  try{
+    const response=await fetch(cfg.url+'/functions/v1/pncp-lots',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+token,
+        'apikey':cfg.publishableKey || token
+      },
+      body:JSON.stringify(item.pncp)
+    });
+
+    let data=null;
+    try{ data=await response.json(); }catch{}
+
+    if(!response.ok){
+      const message=data?.error || ('Conector respondeu HTTP '+response.status);
+      throw new Error(message);
+    }
+
+    const lots=Array.isArray(data?.lots)?data.lots:[];
+    const enriched={
+      ...item,
+      lots:lots.length ? lots : (Array.isArray(item.lots)?item.lots:[]),
+      extraFields:{
+        ...(item.extraFields||{}),
+        pncp_control:item.pncp.control || data?.pncpControl || '',
+        pncp_items:Array.isArray(data?.items)?data.items:[],
+        pncp_files:Array.isArray(data?.files)?data.files:[],
+        pncp_document_used:data?.documentUsed || null,
+        pncp_diagnostics:Array.isArray(data?.diagnostics)?data.diagnostics:[],
+        pncp_lots_extracted:lots.length,
+        pncp_imported_at:data?.importedAt || new Date().toISOString()
+      }
+    };
+
+    return {item:enriched,pncpAttempted:true,pncpError:'',pncpData:data};
+  }catch(error){
+    return {
+      item:{
+        ...item,
+        extraFields:{
+          ...(item.extraFields||{}),
+          pncp_control:item.pncp.control || '',
+          pncp_import_error:String(error?.message || error),
+          pncp_import_attempted_at:new Date().toISOString()
+        }
+      },
+      pncpAttempted:true,
+      pncpError:String(error?.message || error),
+      pncpData:null
+    };
+  }finally{
+    if(button){
+      button.disabled=false;
+      button.textContent=previousLabel;
+    }
+  }
+}
+
+async function importAuction(item,button){
   const state=loadState();
   state.auctions=Array.isArray(state.auctions)?state.auctions:[];
   const knownKeys=new Set(['id','title','date','time','reference','scope','location','sourceId','sourceName','agency','officialUrl','foundAt','lastChecked','object','extraFields','lots']);
@@ -170,18 +249,27 @@ function importAuction(item){
     fields:String(Object.keys(item||{}).length),
     lots:String(importedLots.length)
   });
+  if(item.__pncpAttempted) params.set('pncp','1');
+  if(item.__pncpError) params.set('pncp_error',item.__pncpError);
+  if(item.__pncpDocument) params.set('pncp_document',item.__pncpDocument);
   location.href='index.html?'+params.toString();
 }
 
 function resultCard(item){
   const extras=Object.entries(item.extraFields||{});
+  const statusText=item.status || '';
+  const statusClass=/suspens/i.test(statusText)?'status-badge sold':'status-badge waiting';
+  const importLabel=item.pncp
+    ? 'Importar cadastro + buscar lotes'
+    : (Array.isArray(item.lots) && item.lots.length ? 'Importar cadastro oficial' : 'Importar cadastro oficial • dados gerais');
   return `<article class="official-auction-card">
     <div class="source-row">
       <span class="source-badge official-source">Fonte oficial</span>
-      <span class="status-badge waiting">${esc(formatDate(item.date))}</span>
+      <span class="${statusClass}">${esc(statusText || formatDate(item.date))}</span>
     </div>
     <h3>${esc(item.title||item.reference||'Leilão oficial')}</h3>
     <p>${esc(item.object||'')}</p>
+    ${item.statusNote?`<div class="research-mode-notice"><strong>Situação:</strong> ${esc(item.statusNote)}</div>`:''}
     <dl class="official-data-grid">
       <div><dt>Órgão</dt><dd>${esc(item.agency||'—')}</dd></div>
       <div><dt>Referência</dt><dd>${esc(item.reference||'—')}</dd></div>
@@ -196,7 +284,7 @@ function resultCard(item){
     </div>
     <div class="official-card-actions">
       <a class="secondary-link compact" href="${esc(item.officialUrl||'#')}" target="_blank" rel="noopener">Abrir origem oficial</a>
-      <button class="primary-btn import-official-btn" data-id="${esc(item.id)}" type="button">${Array.isArray(item.lots) && item.lots.length ? 'Importar cadastro oficial' : 'Importar cadastro oficial • dados gerais'}</button>
+      <button class="primary-btn import-official-btn" data-id="${esc(item.id)}" type="button">${importLabel}</button>
     </div>
   </article>`;
 }
@@ -233,9 +321,18 @@ function render(){
   resultList.innerHTML=filteredResults.map(resultCard).join('');
   sourceList.innerHTML=filteredSources.map(sourceCard).join('');
 
-  resultList.querySelectorAll('.import-official-btn').forEach(btn=>btn.addEventListener('click',()=>{
-    const item=RESULTS.find(x=>x.id===btn.dataset.id);
-    if(item) importAuction(item);
+  resultList.querySelectorAll('.import-official-btn').forEach(btn=>btn.addEventListener('click',async()=>{
+    const base=RESULTS.find(x=>x.id===btn.dataset.id);
+    if(!base) return;
+
+    const enriched=await enrichFromPncp(base,btn);
+    const item={
+      ...enriched.item,
+      __pncpAttempted:enriched.pncpAttempted,
+      __pncpError:enriched.pncpError || '',
+      __pncpDocument:enriched.pncpData?.documentUsed?.name || ''
+    };
+    await importAuction(item,btn);
   }));
 }
 
