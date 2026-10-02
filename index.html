@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Sistema Thiago para acompanhamento e agenda de leilões." />
   <title>Sistema Thiago • Leilões</title>
-  <link rel="icon" type="image/png" href="favicon.png" />\n  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="topbar">
@@ -18,16 +19,15 @@
       </div>
     </div>
     <div class="top-actions">
-      <a class="user-pill" href="auth.html">Thiago • login</a>
+      <a id="userPill" class="user-pill" href="auth.html"><span id="userPillAvatar" class="user-pill-avatar"><span>?</span></span><span id="userPillLabel">Entrar / criar conta</span></a>
       <button id="resetBtn" class="icon-btn" type="button" aria-label="Reiniciar dados locais" title="Reiniciar dados locais">↺</button>
     </div>
   </header>
 
   <main>\n    <section id="importFeedback" class="research-mode-notice import-feedback" hidden></section>
     <section class="security-warning" role="note">
-      <strong>⚠ MVP EM VALIDAÇÃO.</strong>
-      Os dados desta etapa ainda ficam no navegador. O login verdadeiro e as regras de acesso compartilhado estão no cronograma e exigem a configuração do serviço de autenticação/banco.
-      Não use senhas, documentos sigilosos ou dados sensíveis neste MVP.
+      <strong>⚠ SEGURANÇA EM TRANSIÇÃO.</strong>
+      O login e as regras RLS do banco já estão ativos, mas os leilões deste MVP ainda são gravados principalmente no navegador. O login não protege o conteúdo que permanece em <code>localStorage</code>. Até a migração para o banco compartilhado, não armazene material sigiloso.
     </section>
 
     <section class="dashboard-card">
@@ -345,6 +345,9 @@
     </div>
   </dialog>
 
-  <script src="official-sources.js"></script>\n  <script src="app.js"></script>
+  <script src="auth-config.js"></script>
+  <script src="official-sources.js"></script>
+  <script src="app.js"></script>
+  <script type="module" src="session-ui.js"></script>
 </body>
 </html>
