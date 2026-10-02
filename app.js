@@ -981,12 +981,22 @@ function showImportFeedback() {
   const auction = state.auctions.find(a=>a.sourceEvidence?.officialResultId === importedId) || activeAuction();
   const fieldCount = Number(params.get('fields') || 0);
   const lotCount = auction?.lots?.length || Number(params.get('lots') || 0);
+  const pncpAttempted = params.get('pncp') === '1';
+  const pncpError = params.get('pncp_error') || '';
+  const pncpDocument = params.get('pncp_document') || '';
+
+  const detail = pncpError
+    ? `A busca automática dos lotes no PNCP foi tentada, mas não concluiu: ${escapeHtml(pncpError)}`
+    : lotCount
+      ? `Os lotes disponíveis foram carregados${pncpDocument ? ' a partir de ' + escapeHtml(pncpDocument) : ''}.`
+      : pncpAttempted
+        ? 'O sistema consultou o PNCP e os documentos do edital, mas não conseguiu extrair lotes individualizados nesta tentativa. Os diagnósticos da pesquisa foram preservados nos dados oficiais.'
+        : 'Esta fonte ainda possui apenas dados gerais no catálogo; os campos oficiais importados aparecem logo abaixo.';
 
   box.innerHTML = `<strong>Cadastro oficial importado.</strong>
     ${auction ? escapeHtml(auction.title) + ' • ' : ''}
     ${fieldCount ? fieldCount + ' campo(s) de origem processados • ' : ''}
-    ${lotCount} lote(s) disponível(is).
-    ${lotCount ? 'Os lotes disponíveis foram carregados.' : 'Esta fonte ainda possui apenas dados gerais no catálogo; os campos oficiais importados aparecem logo abaixo.'}`;
+    ${lotCount} lote(s) disponível(is). ${detail}`;
   box.hidden = false;
 
   const details = $('#officialAuctionDetails');
