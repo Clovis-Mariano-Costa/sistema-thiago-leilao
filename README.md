@@ -58,6 +58,28 @@ Veja [CRONOGRAMA.md](CRONOGRAMA.md).
 
 ## Publicação
 
+Endereço operacional informado:
+
+https://sistema.thiago.jus9verde.jus9tecnologia.com.br/
+
+Fallback / publicação GitHub Pages:
+
 https://clovis-mariano-costa.github.io/sistema-thiago-leilao/
 
-A publicação ocorre automaticamente pelo GitHub Pages a partir da branch `main`.
+O GitHub continua como fonte de código e histórico. Durante a transição, lembre que `localStorage` é separado por domínio/origem: os dados locais gravados no GitHub Pages não aparecem automaticamente no domínio próprio e vice-versa.
+
+## Persistência — arquitetura candidata
+
+A persistência atual em `localStorage` é apenas de MVP e não deve virar a fonte canônica multiusuário.
+
+Arquitetura em avaliação:
+
+- Cloudflare Workers: API/backend e autorização;
+- Cloudflare D1: usuários, leilões, membros, convites, lotes, FIPE, fontes e auditoria;
+- Cloudflare R2: imagens, capas e documentos;
+- Cron Triggers/Workflows: atualização periódica de fontes oficiais;
+- Queues: processamento assíncrono;
+- Browser Run: apenas para páginas oficiais que exijam navegador real e permitam automação;
+- Firebase Authentication: Google + e-mail/senha, com identidade validada pelo backend.
+
+Google Drive permanece adequado para continuidade, documentação e exportação, não como banco transacional principal do aplicativo.
