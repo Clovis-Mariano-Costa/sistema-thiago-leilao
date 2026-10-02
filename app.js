@@ -513,6 +513,8 @@ function renderLots() {
 
     const extras = [lot.plate && `Placa ${lot.plate}`, lot.year, lot.color].filter(Boolean);
     card.querySelector('.lot-extra').textContent = extras.join(' • ');
+    const reviewFlag = card.querySelector('.lot-review');
+    if (reviewFlag) reviewFlag.hidden = !(lot.needsReview || lot.extraFields?.needsReview);
 
     const lotPhoto = card.querySelector('.lot-photo');
     if (lot.photoDataUrl) {
@@ -546,7 +548,7 @@ function renderLots() {
         lot.result = '';
         lot.finalValue = '';
       }
-      liveSkipped.delete(`${a.id}:${lot.n}`);
+      liveCursorByAuction.delete(a.id);
       saveState();
       renderAll();
     });
