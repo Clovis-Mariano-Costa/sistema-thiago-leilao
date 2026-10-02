@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07111f" />
+  <meta name="description" content="Painel mobile first para acompanhamento dos lotes de interesse do leilão." />
+  <title>Sistema Thiago • Controle de Leilão</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-label="Jus 9">✦</div>
+      <div>
+        <p class="eyebrow">Jus 9 • acompanhamento de leilão</p>
+        <h1>Sistema Thiago</h1>
+      </div>
+    </div>
+    <button id="resetBtn" class="icon-btn" type="button" aria-label="Reiniciar acompanhamento" title="Reiniciar acompanhamento">↺</button>
+  </header>
+
+  <main>
+    <section class="next-card" aria-live="polite">
+      <div>
+        <div class="next-heading-row">
+          <p class="eyebrow">Próximo lote acompanhado</p>
+          <span id="nextPreference" class="preference-tag" hidden>★ Preferência</span>
+        </div>
+        <h2 id="nextLot">—</h2>
+        <p id="nextVehicle" class="next-vehicle">Carregando lotes…</p>
+      </div>
+      <button id="markNextBtn" class="primary-btn" type="button">Marcar como leiloado</button>
+    </section>
+
+    <section class="stats" aria-label="Resumo do andamento">
+      <div class="stat"><strong id="totalCount">0</strong><span>Lotes</span></div>
+      <div class="stat"><strong id="waitingCount">0</strong><span>Aguardando</span></div>
+      <div class="stat"><strong id="preferenceCount">0</strong><span>Preferências</span></div>
+      <div class="stat"><strong id="soldCount">0</strong><span>Leiloados</span></div>
+    </section>
+
+    <section class="progress-wrap" aria-label="Progresso">
+      <div class="progress-label"><span>Andamento do leilão</span><strong id="progressText">0%</strong></div>
+      <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+    </section>
+
+    <section class="controls" aria-label="Busca e filtros">
+      <label class="search-box">
+        <span aria-hidden="true">⌕</span>
+        <input id="searchInput" type="search" placeholder="Buscar lote ou veículo" autocomplete="off" />
+      </label>
+      <div class="chips" role="group" aria-label="Filtrar lotes">
+        <button class="chip active" type="button" data-filter="all">Todos</button>
+        <button class="chip" type="button" data-filter="waiting">Aguardando</button>
+        <button class="chip" type="button" data-filter="preference">★ Preferências</button>
+        <button class="chip" type="button" data-filter="sold">Leiloados</button>
+      </div>
+    </section>
+
+    <section id="lotList" class="lot-list" aria-label="Lotes cadastrados"></section>
+    <p id="emptyState" class="empty-state" hidden>Nenhum lote corresponde ao filtro atual.</p>
+  </main>
+
+  <template id="lotCardTemplate">
+    <article class="lot-card">
+      <div class="card-main">
+        <div class="lot-copy">
+          <div class="lot-line">
+            <h3 class="lot-number"></h3>
+            <span class="status-badge"></span>
+          </div>
+          <p class="vehicle-name"></p>
+          <div class="result-chip" hidden></div>
+        </div>
+      </div>
+
+      <div class="card-actions primary-actions">
+        <button class="preference-btn" type="button" aria-pressed="false">☆ Preferência</button>
+        <button class="status-btn" type="button"></button>
+      </div>
+
+      <div class="sold-details" hidden>
+        <label class="field-wrap">
+          <span>Resultado <small>opcional</small></span>
+          <select class="result-select">
+            <option value="">Não informado</option>
+            <option value="Arrematado por nós">Arrematado por nós</option>
+            <option value="Arrematado por outro">Arrematado por outro</option>
+            <option value="Não vendido">Não vendido</option>
+            <option value="Desistimos">Desistimos</option>
+            <option value="Sem interesse">Sem interesse</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field-wrap note-wrap">
+        <span>Observação <small>opcional</small></span>
+        <input class="note-input" type="text" placeholder="Ex.: teto de lance, condição, lembrete…" />
+      </label>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
