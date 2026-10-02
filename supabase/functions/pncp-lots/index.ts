@@ -1,5 +1,6 @@
 import pdf from "npm:pdf-parse@1.1.1";
 import { Buffer } from "node:buffer";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const PNCP_BASE = "https://pncp.gov.br/pncp-api/v1";
 const allowedOrigins = new Set([
@@ -22,6 +23,24 @@ function json(req: Request, body: unknown, status=200) {
     status,
     headers: {...cors(req), "Content-Type":"application/json; charset=utf-8"}
   });
+}
+
+
+async function requireConfirmedUser(req: Request) {
+  const authHeader=req.headers.get("Authorization") || "";
+  const token=authHeader.replace(/^Bearer\s+/i,"").trim();
+  if(!token) return {response:json(req,{error:"Faça login para buscar lotes oficiais."},401),user:null};
+
+  const url=Deno.env.get("SUPABASE_URL");
+  const anon=Deno.env.get("SUPABASE_ANON_KEY");
+  if(!url || !anon) return {response:json(req,{error:"Configuração de autenticação indisponível."},500),user:null};
+
+  const client=createClient(url,anon,{global:{headers:{Authorization:`Bearer ${token}`}}});
+  const {data,error}=await client.auth.getUser(token);
+  const user=data?.user || null;
+  if(error || !user) return {response:json(req,{error:"Sessão inválida ou expirada."},401),user:null};
+  if(!user.email_confirmed_at) return {response:json(req,{error:"Confirme seu e-mail antes de usar a importação automática."},403),user:null};
+  return {response:null,user};
 }
 
 function digits(value: unknown) {
@@ -177,6 +196,9 @@ Deno.serve(async (req:Request)=>{
   if(req.method!=="POST") return json(req,{error:"Use POST."},405);
 
   try{
+    const auth=await requireConfirmedUser(req);
+    if(auth.response) return auth.response;
+
     const body=await req.json();
     const cnpj=digits(body?.cnpj);
     const year=safeYear(body?.year);
