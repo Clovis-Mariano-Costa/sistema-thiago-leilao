@@ -134,3 +134,10 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Sistema Thiago — configs locais / segredos
+supabase-config.local.js
+auth-config.local.js
+wrangler.local.toml
+.dev.vars
+.dev.vars.*
