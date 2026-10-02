@@ -1,24 +1,32 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const config = window.SUPABASE_CONFIG || {};
-const status = document.querySelector('#authStatus');
-const notice = document.querySelector('#authSetupNotice');
-const googleBtn = document.querySelector('#googleLoginBtn');
-const form = document.querySelector('#emailLoginForm');
-const emailInput = form.elements.email;
-const passwordInput = form.elements.password;
-const emailLoginBtn = document.querySelector('#emailLoginBtn');
-const emailCreateBtn = document.querySelector('#emailCreateBtn');
-const resetPasswordBtn = document.querySelector('#resetPasswordBtn');
-const signedInBox = document.querySelector('#signedInBox');
-const signedInName = document.querySelector('#signedInName');
-const signedInEmail = document.querySelector('#signedInEmail');
-const accessSummary = document.querySelector('#accessSummary');
-const logoutBtn = document.querySelector('#logoutBtn');
+const config=window.SUPABASE_CONFIG || {};
+const $=sel=>document.querySelector(sel);
+const status=$('#authStatus');
+const notice=$('#authSetupNotice');
+const authForms=$('#authForms');
+const signedInBox=$('#signedInBox');
+const loginForm=$('#emailLoginForm');
+const signupForm=$('#signupForm');
+const profileForm=$('#profileForm');
+const googleBtn=$('#googleLoginBtn');
+const resetPasswordBtn=$('#resetPasswordBtn');
+const resendConfirmationBtn=$('#resendConfirmationBtn');
+const logoutBtn=$('#logoutBtn');
+const signedInName=$('#signedInName');
+const signedInEmail=$('#signedInEmail');
+const emailStatusBadge=$('#emailStatusBadge');
+const accessSummary=$('#accessSummary');
+const profileAvatar=$('#profileAvatar');
+
+let supabase=null;
+let currentUser=null;
+let currentProfile=null;
+let lastSignupEmail='';
 
 function setStatus(message,type=''){
   status.textContent=message;
-  status.className='auth-status '+type;
+  status.className='auth-status auth-status-box '+type;
 }
 
 function friendlyError(error){
@@ -26,10 +34,37 @@ function friendlyError(error){
   if(/Invalid login credentials/i.test(message)) return 'E-mail ou senha incorretos, ou a conta ainda não foi confirmada.';
   if(/Email not confirmed/i.test(message)) return 'Confirme seu e-mail antes de entrar.';
   if(/User already registered/i.test(message)) return 'Já existe uma conta com este e-mail.';
-  if(/Password should be at least/i.test(message)) return 'A senha precisa ter pelo menos 6 caracteres.';
-  if(/Unsupported provider|provider is not enabled/i.test(message)) return 'O login Google ainda precisa ser habilitado no projeto Supabase.';
-  if(/redirect/i.test(message)) return 'O endereço de retorno da autenticação ainda precisa ser autorizado no Supabase.';
+  if(/Weak password|Password should be at least/i.test(message)) return 'A senha não atende à política mínima de segurança.';
+  if(/Unsupported provider|provider is not enabled/i.test(message)) return 'O login Google ainda precisa ser habilitado no Supabase.';
+  if(/redirect/i.test(message)) return 'O endereço de retorno ainda precisa ser autorizado na configuração de autenticação.';
+  if(/rate limit/i.test(message)) return 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.';
   return message || 'Ocorreu um erro de autenticação.';
+}
+
+function emailRedirectUrl(){
+  return new URL('auth.html?confirmed=1',location.href).href;
+}
+
+function passwordChecks(password,confirmPassword=''){
+  return {
+    length:password.length>=12,
+    lower:/[a-z]/.test(password),
+    upper:/[A-Z]/.test(password),
+    number:/\d/.test(password),
+    symbol:/[^A-Za-z0-9]/.test(password),
+    match:Boolean(password) && password===confirmPassword
+  };
+}
+
+function renderPasswordPolicy(){
+  const password=signupForm.elements.password.value || '';
+  const confirmPassword=signupForm.elements.confirmPassword.value || '';
+  const checks=passwordChecks(password,confirmPassword);
+  Object.entries(checks).forEach(([rule,ok])=>{
+    const el=document.querySelector(`[data-password-rule="${rule}"]`);
+    if(el) el.classList.toggle('ok',ok);
+  });
+  return Object.values(checks).every(Boolean);
 }
 
 function rememberSession(session){
@@ -42,85 +77,212 @@ function rememberSession(session){
   localStorage.setItem('sistema-thiago-auth-session',JSON.stringify({
     uid:user.id,
     email:user.email || '',
-    name:meta.full_name || meta.name || user.email || 'Usuário',
+    name:meta.display_name || meta.full_name || meta.name || user.email || 'Usuário',
     provider:user.app_metadata?.provider || 'email',
-    authenticated:true
+    authenticated:true,
+    emailConfirmed:Boolean(user.email_confirmed_at)
   }));
 }
 
-async function updateAccessSummary(client,user){
-  if(!user){
-    accessSummary.textContent='';
+function initials(name){
+  return String(name||'?').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase() || '?';
+}
+
+async function avatarUrl(user,profile){
+  if(profile?.avatar_path){
+    const {data,error}=await supabase.storage.from('profile-avatars').createSignedUrl(profile.avatar_path,3600);
+    if(!error && data?.signedUrl) return data.signedUrl;
+  }
+  const meta=user?.user_metadata || {};
+  return meta.avatar_url || meta.picture || '';
+}
+
+async function paintAvatar(user,profile){
+  const name=profile?.display_name || user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.email || 'Usuário';
+  const url=await avatarUrl(user,profile);
+  profileAvatar.innerHTML='';
+  if(url){
+    const img=document.createElement('img');
+    img.src=url;
+    img.alt='';
+    img.referrerPolicy='no-referrer';
+    profileAvatar.appendChild(img);
+  }else{
+    const span=document.createElement('span');
+    span.textContent=initials(name);
+    profileAvatar.appendChild(span);
+  }
+}
+
+async function loadProfile(user){
+  const {data,error}=await supabase.from('profiles')
+    .select('id,display_name,email,avatar_path,profile_completed_at')
+    .eq('id',user.id)
+    .maybeSingle();
+  if(error) return null;
+  return data || null;
+}
+
+async function updateAccessSummary(user){
+  if(!user?.email_confirmed_at){
+    accessSummary.textContent='Aguardando confirmação';
+    accessSummary.className='source-badge user-source';
     return;
   }
-  const { data,error }=await client.from('auctions').select('id,title',{count:'exact'});
+  const {data,error}=await supabase.from('auctions').select('id,title');
   if(error){
-    accessSummary.textContent='Conta autenticada. O acesso aos leilões compartilhados ainda está em validação.';
+    accessSummary.textContent='Acesso protegido';
+    accessSummary.className='source-badge user-source';
     return;
   }
   const total=Array.isArray(data)?data.length:0;
-  accessSummary.textContent=total
-    ? `Acesso autorizado a ${total} leilão(ões) compartilhado(s).`
-    : 'Conta ativa. Nenhum leilão compartilhado foi autorizado para este usuário.';
+  accessSummary.textContent=total ? `${total} leilão(ões) autorizado(s)` : 'Nenhum leilão compartilhado';
+  accessSummary.className='source-badge official-source';
+}
+
+async function renderUser(session){
+  rememberSession(session);
+  currentUser=session?.user || null;
+  if(!currentUser){
+    currentProfile=null;
+    signedInBox.hidden=true;
+    authForms.hidden=false;
+    notice.hidden=false;
+    return;
+  }
+
+  currentProfile=await loadProfile(currentUser);
+  const meta=currentUser.user_metadata || {};
+  const name=currentProfile?.display_name || meta.display_name || meta.full_name || meta.name || currentUser.email || 'Usuário';
+
+  signedInName.textContent=name;
+  signedInEmail.textContent=currentUser.email || '';
+  emailStatusBadge.textContent=currentUser.email_confirmed_at ? 'E-mail confirmado' : 'E-mail não confirmado';
+  emailStatusBadge.className='source-badge '+(currentUser.email_confirmed_at?'official-source':'user-source');
+
+  profileForm.elements.displayName.value=currentProfile?.display_name || meta.display_name || meta.full_name || meta.name || '';
+  await paintAvatar(currentUser,currentProfile);
+  await updateAccessSummary(currentUser);
+
+  signedInBox.hidden=false;
+  authForms.hidden=true;
+  notice.hidden=true;
+
+  if(currentUser.email_confirmed_at){
+    setStatus(currentProfile?.profile_completed_at ? 'Conta conectada e confirmada.' : 'E-mail confirmado. Complete seu perfil para finalizar o cadastro.','success');
+  }else{
+    setStatus('Conta conectada, mas o e-mail ainda precisa ser confirmado.','error');
+  }
+}
+
+async function uploadAvatar(user,file,previousPath=''){
+  if(!file || !file.size) return previousPath || '';
+  const allowed=['image/jpeg','image/png','image/webp'];
+  if(!allowed.includes(file.type)) throw new Error('Use foto JPG, PNG ou WebP.');
+  if(file.size>2*1024*1024) throw new Error('A foto deve ter no máximo 2 MB.');
+
+  const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
+  const path=`${user.id}/avatar.${ext}`;
+  const {error}=await supabase.storage.from('profile-avatars').upload(path,file,{
+    upsert:true,
+    contentType:file.type,
+    cacheControl:'3600'
+  });
+  if(error) throw error;
+
+  if(previousPath && previousPath!==path){
+    await supabase.storage.from('profile-avatars').remove([previousPath]);
+  }
+  return path;
 }
 
 if(!config.url || !config.publishableKey){
-  [googleBtn,emailInput,passwordInput,emailLoginBtn,emailCreateBtn,resetPasswordBtn].forEach(el=>el.disabled=true);
+  document.querySelectorAll('button,input').forEach(el=>el.disabled=true);
   setStatus('Configuração Supabase ausente.','error');
-} else {
-  const supabase=createClient(config.url,config.publishableKey,{
+}else{
+  supabase=createClient(config.url,config.publishableKey,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
   });
 
-  form.addEventListener('submit',async e=>{
-    e.preventDefault();
-    const email=emailInput.value.trim();
-    const password=passwordInput.value;
-    if(!email || !password) return setStatus('Informe e-mail e senha.','error');
-    try{
-      setStatus('Entrando…');
-      const { data,error }=await supabase.auth.signInWithPassword({email,password});
-      if(error) throw error;
-      rememberSession(data.session);
-      setStatus('Login realizado.','success');
-      await updateAccessSummary(supabase,data.user);
-    }catch(error){
-      setStatus('Não foi possível entrar: '+friendlyError(error),'error');
-    }
-  });
+  signupForm.elements.password.addEventListener('input',renderPasswordPolicy);
+  signupForm.elements.confirmPassword.addEventListener('input',renderPasswordPolicy);
 
-  emailCreateBtn.addEventListener('click',async ()=>{
-    const email=emailInput.value.trim();
-    const password=passwordInput.value;
-    if(!email || !password) return setStatus('Informe e-mail e senha para criar a conta.','error');
-    if(password.length<6) return setStatus('A senha precisa ter pelo menos 6 caracteres.','error');
+  signupForm.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const name=signupForm.elements.displayName.value.trim();
+    const email=signupForm.elements.email.value.trim();
+    const password=signupForm.elements.password.value;
+    const confirmPassword=signupForm.elements.confirmPassword.value;
+
+    if(name.length<2) return setStatus('Informe seu nome para criar o perfil.','error');
+    if(!renderPasswordPolicy()) return setStatus('A senha ainda não cumpre todos os requisitos indicados.','error');
+
+    lastSignupEmail=email;
     try{
-      setStatus('Criando conta…');
-      const { data,error }=await supabase.auth.signUp({
-        email,password,
-        options:{data:{display_name:email.split('@')[0]}}
+      setStatus('Criando conta e solicitando confirmação…');
+      const {data,error}=await supabase.auth.signUp({
+        email,
+        password,
+        options:{
+          emailRedirectTo:emailRedirectUrl(),
+          data:{display_name:name}
+        }
       });
       if(error) throw error;
+
       if(data.session){
-        rememberSession(data.session);
-        setStatus('Conta criada e login realizado.','success');
-        await updateAccessSummary(supabase,data.user);
+        setStatus('Conta criada e sessão aberta. Verificando confirmação…','success');
+        await renderUser(data.session);
       }else{
-        setStatus('Conta criada. Confira seu e-mail para confirmar o cadastro antes de entrar.','success');
+        setStatus('Conta criada. Enviamos um e-mail de confirmação. Abra o link recebido e depois volte para entrar.','success');
       }
+      signupForm.elements.password.value='';
+      signupForm.elements.confirmPassword.value='';
+      renderPasswordPolicy();
     }catch(error){
       setStatus('Não foi possível criar a conta: '+friendlyError(error),'error');
     }
   });
 
+  resendConfirmationBtn.addEventListener('click',async ()=>{
+    const email=(signupForm.elements.email.value || lastSignupEmail || loginForm.elements.email.value || '').trim();
+    if(!email) return setStatus('Informe o e-mail da conta para reenviar a confirmação.','error');
+    try{
+      setStatus('Reenviando confirmação…');
+      const {error}=await supabase.auth.resend({
+        type:'signup',
+        email,
+        options:{emailRedirectTo:emailRedirectUrl()}
+      });
+      if(error) throw error;
+      setStatus('Confirmação reenviada. Verifique também a pasta de spam/lixo eletrônico.','success');
+    }catch(error){
+      setStatus('Não foi possível reenviar: '+friendlyError(error),'error');
+    }
+  });
+
+  loginForm.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const email=loginForm.elements.email.value.trim();
+    const password=loginForm.elements.password.value;
+    try{
+      setStatus('Entrando…');
+      const {data,error}=await supabase.auth.signInWithPassword({email,password});
+      if(error) throw error;
+      await renderUser(data.session);
+    }catch(error){
+      setStatus('Não foi possível entrar: '+friendlyError(error),'error');
+    }
+  });
+
   resetPasswordBtn.addEventListener('click',async ()=>{
-    const email=emailInput.value.trim();
-    if(!email) return setStatus('Informe o e-mail para recuperar a senha.','error');
+    const email=loginForm.elements.email.value.trim() || signupForm.elements.email.value.trim();
+    if(!email) return setStatus('Informe o e-mail da conta para recuperar a senha.','error');
     try{
       setStatus('Solicitando recuperação…');
-      const { error }=await supabase.auth.resetPasswordForEmail(email);
+      const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:emailRedirectUrl()});
       if(error) throw error;
-      setStatus('Pedido enviado. Confira o e-mail informado.','success');
+      setStatus('Pedido de recuperação enviado. Confira o e-mail informado.','success');
     }catch(error){
       setStatus('Não foi possível solicitar a recuperação: '+friendlyError(error),'error');
     }
@@ -129,41 +291,62 @@ if(!config.url || !config.publishableKey){
   googleBtn.addEventListener('click',async ()=>{
     try{
       setStatus('Abrindo autenticação Google…');
-      const { error }=await supabase.auth.signInWithOAuth({
+      const {error}=await supabase.auth.signInWithOAuth({
         provider:'google',
-        options:{redirectTo:location.href.split('#')[0].split('?')[0]}
+        options:{redirectTo:emailRedirectUrl()}
       });
       if(error) throw error;
     }catch(error){
-      setStatus('Google ainda não está disponível: '+friendlyError(error),'error');
+      setStatus('Google ainda não está disponível neste projeto: '+friendlyError(error),'error');
+    }
+  });
+
+  profileForm.addEventListener('submit',async e=>{
+    e.preventDefault();
+    if(!currentUser) return setStatus('Faça login antes de editar o perfil.','error');
+    if(!currentUser.email_confirmed_at) return setStatus('Confirme o e-mail antes de concluir o perfil.','error');
+
+    const displayName=profileForm.elements.displayName.value.trim();
+    if(displayName.length<2) return setStatus('Informe um nome de exibição válido.','error');
+
+    try{
+      setStatus('Salvando perfil…');
+      const file=profileForm.elements.avatar.files?.[0];
+      const avatarPath=await uploadAvatar(currentUser,file,currentProfile?.avatar_path || '');
+
+      const {error:profileError}=await supabase.from('profiles').update({
+        display_name:displayName,
+        avatar_path:avatarPath || null,
+        profile_completed_at:new Date().toISOString()
+      }).eq('id',currentUser.id);
+      if(profileError) throw profileError;
+
+      const {error:userError}=await supabase.auth.updateUser({data:{display_name:displayName}});
+      if(userError) throw userError;
+
+      const {data:{session}}=await supabase.auth.getSession();
+      await renderUser(session);
+      profileForm.elements.avatar.value='';
+      setStatus('Perfil salvo. Nome e foto já podem aparecer na página inicial.','success');
+    }catch(error){
+      setStatus('Não foi possível salvar o perfil: '+friendlyError(error),'error');
     }
   });
 
   logoutBtn.addEventListener('click',async ()=>{
-    const { error }=await supabase.auth.signOut();
-    if(error) setStatus('Não foi possível sair: '+friendlyError(error),'error');
+    const {error}=await supabase.auth.signOut();
+    if(error) return setStatus('Não foi possível sair: '+friendlyError(error),'error');
+    setStatus('Sessão encerrada.');
   });
 
-  supabase.auth.onAuthStateChange(async (_event,session)=>{
-    rememberSession(session);
-    const user=session?.user;
-    if(user){
-      const meta=user.user_metadata || {};
-      signedInBox.hidden=false;
-      signedInName.textContent=meta.full_name || meta.name || 'Usuário autenticado';
-      signedInEmail.textContent=user.email || '';
-      notice.hidden=true;
-      setStatus('Login ativo.','success');
-      await updateAccessSummary(supabase,user);
-    }else{
-      signedInBox.hidden=true;
-      notice.hidden=false;
-      accessSummary.textContent='';
-      if(!status.textContent) setStatus('Nenhum usuário autenticado.');
-    }
+  supabase.auth.onAuthStateChange((_event,session)=>{
+    setTimeout(()=>renderUser(session),0);
   });
 
-  const { data:{session} }=await supabase.auth.getSession();
-  rememberSession(session);
-  if(session?.user) await updateAccessSummary(supabase,session.user);
+  const {data:{session}}=await supabase.auth.getSession();
+  await renderUser(session);
+
+  if(new URLSearchParams(location.search).get('confirmed')==='1' && !session){
+    setStatus('Se você acabou de confirmar o e-mail, entre agora com sua senha.','success');
+  }
 }
