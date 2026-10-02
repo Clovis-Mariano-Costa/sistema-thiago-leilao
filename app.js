@@ -117,6 +117,7 @@ function normalizeState(raw) {
   };
 
   next.auctions = next.auctions.map(a => ({
+    ...(a || {}),
     id: a.id || crypto.randomUUID(),
     title: a.title || 'Leilão sem título',
     date: a.date || '',
@@ -126,6 +127,9 @@ function normalizeState(raw) {
     sourceType: a.sourceType === 'official' ? 'official' : 'user',
     sourceLabel: a.sourceType === 'official' ? 'Fonte oficial' : 'Dados inseridos pelo usuário',
     officialUrl: a.officialUrl || '',
+    officialPayload: a.officialPayload || null,
+    sourceEvidence: a.sourceEvidence || null,
+    extraFields: a.extraFields && typeof a.extraFields === 'object' ? a.extraFields : {},
     photoDataUrl: a.photoDataUrl || '',
     notes: a.notes || '',
     participants: Array.isArray(a.participants) ? a.participants : ['thiago'],
@@ -599,17 +603,21 @@ async function compressImage(file) {
 function addAuction(data) {
   const id = 'leilao-' + Date.now().toString(36);
   const auction = {
+    ...(data || {}),
     id,
-    title: data.title,
-    date: data.date,
+    title: data.title || 'Leilão sem título',
+    date: data.date || '',
     time: data.time || '',
-    reference: data.reference,
+    reference: data.reference || 'Sem referência',
     location: data.location || '',
     sourceType: data.sourceType === 'official' ? 'official' : 'user',
     sourceLabel: data.sourceType === 'official' ? 'Fonte oficial' : 'Dados inseridos pelo usuário',
     officialUrl: data.officialUrl || '',
     photoDataUrl: data.photoDataUrl || '',
     notes: data.notes || '',
+    officialPayload: data.officialPayload || null,
+    sourceEvidence: data.sourceEvidence || null,
+    extraFields: data.extraFields && typeof data.extraFields === 'object' ? data.extraFields : {},
     participants: [state.currentUserId],
     createdBy: state.currentUserId,
     createdAt: new Date().toISOString(),
