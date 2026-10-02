@@ -96,54 +96,81 @@ function matchesSearch(item){
 function importAuction(item){
   const state=loadState();
   state.auctions=Array.isArray(state.auctions)?state.auctions:[];
-  const duplicate=state.auctions.find(a=>a.sourceEvidence?.officialResultId===item.id || (a.reference===item.reference&&a.date===item.date&&a.sourceType==='official'));
-  if(duplicate){
-    state.currentAuctionId=duplicate.id;
-    saveState(state);
-    location.href='index.html';
-    return;
-  }
-
-  const knownKeys=new Set(['id','title','date','time','reference','scope','location','sourceId','sourceName','agency','officialUrl','foundAt','lastChecked','object','extraFields']);
+  const knownKeys=new Set(['id','title','date','time','reference','scope','location','sourceId','sourceName','agency','officialUrl','foundAt','lastChecked','object','extraFields','lots']);
   const extraFields={...(item.extraFields||{})};
   Object.entries(item).forEach(([key,value])=>{
     if(!knownKeys.has(key)) extraFields[key]=value;
   });
 
-  const auctionId='oficial-'+item.id+'-'+Date.now().toString(36);
-  state.auctions.push({
-    id:auctionId,
-    title:item.title||item.reference||'Leilão oficial',
-    date:item.date||'',
-    time:item.time||'',
-    reference:item.reference||item.process||'Fonte oficial',
-    location:item.location||item.scope||'',
-    sourceType:'official',
-    sourceLabel:'Fonte oficial',
+  const evidence={
+    officialResultId:item.id,
+    sourceId:item.sourceId||'',
+    sourceName:item.sourceName||'',
+    agency:item.agency||'',
+    foundAt:item.foundAt||'',
     officialUrl:item.officialUrl||'',
-    photoDataUrl:'',
-    notes:item.object||'',
-    participants:[state.currentUserId||'thiago'],
-    createdBy:state.currentUserId||'thiago',
-    createdAt:new Date().toISOString(),
-    officialPayload:JSON.parse(JSON.stringify(item)),
-    sourceEvidence:{
-      officialResultId:item.id,
-      sourceId:item.sourceId||'',
-      sourceName:item.sourceName||'',
-      agency:item.agency||'',
-      foundAt:item.foundAt||'',
+    queriedAt:new Date().toISOString(),
+    lastVerified:item.lastChecked||''
+  };
+  const importedLots=Array.isArray(item.lots)
+    ? item.lots.map((lot,index)=>normalizeImportedLot(lot,index,item)).filter(lot=>lot.n>0)
+    : [];
+
+  const duplicate=state.auctions.find(a=>a.sourceEvidence?.officialResultId===item.id || (a.reference===item.reference&&a.date===item.date&&a.sourceType==='official'));
+  let auctionId;
+
+  if(duplicate){
+    auctionId=duplicate.id;
+    duplicate.title=item.title||duplicate.title||item.reference||'Leilão oficial';
+    duplicate.date=item.date||duplicate.date||'';
+    duplicate.time=item.time||duplicate.time||'';
+    duplicate.reference=item.reference||item.process||duplicate.reference||'Fonte oficial';
+    duplicate.location=item.location||item.scope||duplicate.location||'';
+    duplicate.sourceType='official';
+    duplicate.sourceLabel='Fonte oficial';
+    duplicate.officialUrl=item.officialUrl||duplicate.officialUrl||'';
+    duplicate.notes=item.object||duplicate.notes||'';
+    duplicate.officialPayload=JSON.parse(JSON.stringify(item));
+    duplicate.sourceEvidence=evidence;
+    duplicate.extraFields={...(duplicate.extraFields||{}),...extraFields};
+    if(importedLots.length){
+      const previousByNumber=new Map((duplicate.lots||[]).map(lot=>[Number(lot.n),lot]));
+      duplicate.lots=importedLots.map(lot=>({...lot,...(previousByNumber.get(Number(lot.n))||{}),sourceType:'official',sourceLabel:'Fonte oficial',officialUrl:item.officialUrl||''}));
+    } else if(!Array.isArray(duplicate.lots)) {
+      duplicate.lots=[];
+    }
+  } else {
+    auctionId='oficial-'+item.id+'-'+Date.now().toString(36);
+    state.auctions.push({
+      id:auctionId,
+      title:item.title||item.reference||'Leilão oficial',
+      date:item.date||'',
+      time:item.time||'',
+      reference:item.reference||item.process||'Fonte oficial',
+      location:item.location||item.scope||'',
+      sourceType:'official',
+      sourceLabel:'Fonte oficial',
       officialUrl:item.officialUrl||'',
-      queriedAt:new Date().toISOString(),
-      lastVerified:item.lastChecked||''
-    },
-    extraFields,
-    lots:Array.isArray(item.lots) ? item.lots.map((lot,index)=>normalizeImportedLot(lot,index,item)).filter(lot=>lot.n>0) : []
-  });
+      photoDataUrl:'',
+      notes:item.object||'',
+      participants:[state.currentUserId||'thiago'],
+      createdBy:state.currentUserId||'thiago',
+      createdAt:new Date().toISOString(),
+      officialPayload:JSON.parse(JSON.stringify(item)),
+      sourceEvidence:evidence,
+      extraFields,
+      lots:importedLots
+    });
+  }
 
   state.currentAuctionId=auctionId;
   saveState(state);
-  location.href='index.html';
+  const params=new URLSearchParams({
+    imported:item.id,
+    fields:String(Object.keys(item||{}).length),
+    lots:String(importedLots.length)
+  });
+  location.href='index.html?'+params.toString();
 }
 
 function resultCard(item){
