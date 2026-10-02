@@ -1,6 +1,10 @@
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
 const STORAGE_KEY='sistema-thiago-v3';
 const SOURCES=Array.isArray(window.SISTEMA_THIAGO_OFFICIAL_SOURCES)?window.SISTEMA_THIAGO_OFFICIAL_SOURCES:[];
 const RESULTS=Array.isArray(window.SISTEMA_THIAGO_OFFICIAL_RESULTS)?window.SISTEMA_THIAGO_OFFICIAL_RESULTS:[];
+const SUPABASE_CFG=window.SUPABASE_CONFIG || {};
+const supabase=(SUPABASE_CFG.url && SUPABASE_CFG.publishableKey) ? createClient(SUPABASE_CFG.url,SUPABASE_CFG.publishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) : null;
 
 let sourceFilter='all';
 let searchQuery='';
@@ -103,13 +107,21 @@ function matchesSearch(item){
 async function enrichFromPncp(item,button){
   if(!item?.pncp) return {item,pncpAttempted:false,pncpError:'',pncpData:null};
 
-  const cfg=window.SUPABASE_CONFIG || {};
-  const token=cfg.legacyAnonKey || cfg.publishableKey || '';
-  if(!cfg.url || !token){
+  if(!supabase || !SUPABASE_CFG.url || !SUPABASE_CFG.publishableKey){
     return {
       item,
       pncpAttempted:true,
       pncpError:'Configuração do conector PNCP/Supabase não encontrada nesta publicação.',
+      pncpData:null
+    };
+  }
+
+  const {data:{session}}=await supabase.auth.getSession();
+  if(!session?.access_token){
+    return {
+      item,
+      pncpAttempted:true,
+      pncpError:'Entre na sua conta e confirme o e-mail antes de buscar lotes automaticamente.',
       pncpData:null
     };
   }
@@ -125,8 +137,8 @@ async function enrichFromPncp(item,button){
       method:'POST',
       headers:{
         'Content-Type':'application/json',
-        'Authorization':'Bearer '+token,
-        'apikey':cfg.publishableKey || token
+        'Authorization':'Bearer '+session.access_token,
+        'apikey':SUPABASE_CFG.publishableKey
       },
       body:JSON.stringify({...item.pncp,fallbackUrl:item.detranDownloadPage||''})
     });
