@@ -417,6 +417,7 @@ function renderActiveAuctionHeader() {
         return `<div><dt>${escapeHtml(key)}</dt><dd>${escapeHtml(display)}</dd></div>`;
       }).join('');
       officialDetails.hidden = rows.length === 0;
+      if (rows.length && a.lots.length === 0) officialDetails.open = true;
     } else {
       officialDetails.hidden = true;
       officialData.innerHTML = '';
