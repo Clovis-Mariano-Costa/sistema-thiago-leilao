@@ -228,7 +228,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public, auth
-as $
+as $$
 begin
   insert into public.profiles(id,display_name,email)
   values (
@@ -252,7 +252,7 @@ language sql
 stable
 security definer
 set search_path = public, auth
-as $
+as $$
   select case
     when a.owner_id = (select auth.uid()) then 'owner'::public.auction_member_role
     else (
@@ -273,7 +273,7 @@ language sql
 stable
 security definer
 set search_path = public, auth
-as $
+as $$
   select private.auction_role(p_auction_id) is not null;
 $$;
 
@@ -283,7 +283,7 @@ language sql
 stable
 security definer
 set search_path = public, auth
-as $
+as $$
   select coalesce(private.auction_role(p_auction_id)::text in ('owner','admin'),false);
 $$;
 
@@ -293,7 +293,7 @@ language sql
 stable
 security definer
 set search_path = public, auth
-as $
+as $$
   select coalesce(private.auction_role(p_auction_id)::text in ('owner','admin','participant'),false);
 $$;
 
