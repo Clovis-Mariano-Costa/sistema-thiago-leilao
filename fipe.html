@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#07111f" />
+  <title>Veículos / FIPE • Sistema Thiago</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a class="back-link" href="index.html">←</a>
+      <div>
+        <p class="eyebrow">Sistema Thiago</p>
+        <h1>Veículos / referência FIPE</h1>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="security-warning info-warning">
+      <strong>ORIGEM DOS DADOS.</strong>
+      As informações desta página foram transcritas das imagens fornecidas pelo usuário e estão marcadas como <b>Dados inseridos pelo usuário</b>.
+      Elas não são automaticamente tratadas como oficiais. Para validação de valor FIPE, utilize somente a consulta oficial da FIPE.
+    </section>
+
+    <section class="dashboard-card">
+      <div>
+        <p class="eyebrow dark">Referências</p>
+        <h2>Dados dos veículos e opções FIPE vistas nas imagens</h2>
+        <p class="muted">Placa, chassi parcial, ano, cor, licenciamento e as opções FIPE exibidas na captura ficam separados do cadastro operacional do lote.</p>
+      </div>
+      <div class="dashboard-actions">
+        <a class="primary-link" href="https://www.fipe.org.br/pt-br/indices/veiculos" target="_blank" rel="noopener">Consultar FIPE oficial</a>
+        <a class="secondary-link" href="index.html">Voltar ao leilão</a>
+      </div>
+    </section>
+
+    <section class="controls non-sticky">
+      <label class="search-box">
+        <span aria-hidden="true">⌕</span>
+        <input id="referenceSearch" type="search" placeholder="Buscar placa, veículo, código FIPE, chassi..." />
+      </label>
+      <div class="reference-summary"><strong id="referenceCount">0</strong> referências inseridas pelo usuário</div>
+    </section>
+
+    <section id="referenceList" class="reference-list"></section>
+    <p id="referenceEmpty" class="empty-state" hidden>Nenhuma referência encontrada.</p>
+  </main>
+
+  <script src="user-references.js"></script>
+  <script src="fipe.js"></script>
+</body>
+</html>
