@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#07111f" />
-  <meta name="description" content="Painel mobile first para acompanhamento dos lotes de interesse do leilão." />
-  <title>Sistema Thiago • Controle de Leilão</title>
+  <meta name="description" content="Sistema Thiago para acompanhamento e agenda de leilões." />
+  <title>Sistema Thiago • Leilões</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -13,68 +13,118 @@
     <div class="brand">
       <img class="brand-logo" src="data:image/webp;base64,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" alt="Logo Jus 9" />
       <div>
-        <p class="eyebrow">Jus 9 • acompanhamento de leilão</p>
+        <p class="eyebrow">Jus 9 • acompanhamento de leilões</p>
         <h1>Sistema Thiago</h1>
       </div>
     </div>
-    <button id="resetBtn" class="icon-btn" type="button" aria-label="Reiniciar acompanhamento" title="Reiniciar acompanhamento">↺</button>
+    <div class="top-actions">
+      <span class="user-pill">Thiago • usuário inicial</span>
+      <button id="resetBtn" class="icon-btn" type="button" aria-label="Reiniciar dados locais" title="Reiniciar dados locais">↺</button>
+    </div>
   </header>
 
   <main>
     <section class="security-warning" role="note">
-      <strong>⚠ MVP SEM SEGURANÇA.</strong>
-      Esta versão não oferece autenticação, sigilo, controle de acesso nem garantia contra alteração ou exclusão de dados.
-      Não use dados sensíveis, pessoais, senhas ou credenciais. O cadastro multiusuário será apenas operacional até existir autenticação real.
+      <strong>⚠ MVP EM VALIDAÇÃO.</strong>
+      Os dados desta etapa ainda ficam no navegador. O login verdadeiro e as regras de acesso compartilhado estão no cronograma e exigem a configuração do serviço de autenticação/banco.
+      Não use senhas, documentos sigilosos ou dados sensíveis neste MVP.
     </section>
 
-    <section class="next-card" aria-live="polite">
+    <section class="dashboard-card">
       <div>
-        <div class="next-heading-row">
-          <p class="eyebrow">Próximo lote acompanhado</p>
-          <span id="nextPreference" class="preference-tag" hidden>★ Preferência</span>
+        <p class="eyebrow dark">Painel</p>
+        <h2>Escolha o que deseja fazer</h2>
+        <p class="muted">Você pode acompanhar um leilão existente, cadastrar um novo, consultar os dados inseridos pelo usuário ou abrir as fontes oficiais.</p>
+      </div>
+      <div class="dashboard-actions">
+        <button id="chooseAuctionBtn" class="primary-btn" type="button">Acompanhar leilão</button>
+        <button id="newAuctionBtn" class="secondary-btn strong" type="button">+ Cadastrar Novo Leilão</button>
+        <a class="secondary-link" href="fipe.html">Veículos / FIPE</a>
+        <a class="secondary-link" href="fontes-oficiais.html">Fontes oficiais SC</a>
+      </div>
+    </section>
+
+    <section class="agenda-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow dark">Agenda</p>
+          <h2>Leilões cadastrados</h2>
         </div>
-        <h2 id="nextLot">—</h2>
-        <p id="nextVehicle" class="next-vehicle">Carregando lotes…</p>
-        <p id="nextMaxBid" class="next-max-bid" hidden></p>
+        <span id="auctionCountBadge" class="count-badge">0</span>
       </div>
-      <div class="next-actions">
-        <button id="liveModeBtn" class="secondary-btn" type="button">Modo ao vivo</button>
-        <button id="markNextBtn" class="primary-btn" type="button">Marcar como leiloado</button>
+      <div id="auctionAgenda" class="auction-agenda"></div>
+    </section>
+
+    <section id="activeAuctionPanel" class="active-auction-panel">
+      <div class="auction-header-card">
+        <div class="auction-cover-wrap">
+          <img id="auctionCover" class="auction-cover" alt="" hidden />
+          <div id="auctionCoverPlaceholder" class="auction-cover-placeholder">Leilão</div>
+        </div>
+        <div class="auction-heading-copy">
+          <div class="source-row">
+            <span id="auctionSourceBadge" class="source-badge user-source">Dados inseridos pelo usuário</span>
+            <span id="auctionStatusBadge" class="status-badge waiting">Agendado</span>
+          </div>
+          <h2 id="auctionTitle">Leilão Thiago — Base inicial</h2>
+          <p id="auctionDateRef" class="auction-date-ref"></p>
+          <p id="auctionLocation" class="muted"></p>
+          <div class="auction-header-actions">
+            <button id="switchAuctionBtn" class="secondary-btn" type="button">Trocar leilão</button>
+            <button id="liveModeBtn" class="secondary-btn" type="button">Modo ao vivo</button>
+            <a id="officialSourceLink" class="secondary-link compact" href="#" target="_blank" rel="noopener" hidden>Fonte oficial</a>
+          </div>
+        </div>
       </div>
-    </section>
 
-    <section class="stats" aria-label="Resumo do andamento">
-      <div class="stat"><strong id="totalCount">0</strong><span>Lotes</span></div>
-      <div class="stat"><strong id="waitingCount">0</strong><span>Aguardando</span></div>
-      <div class="stat"><strong id="preferenceCount">0</strong><span>Preferências</span></div>
-      <div class="stat"><strong id="soldCount">0</strong><span>Leiloados</span></div>
-    </section>
+      <section class="next-card" aria-live="polite">
+        <div>
+          <div class="next-heading-row">
+            <p class="eyebrow">Próximo lote acompanhado</p>
+            <span id="nextPreference" class="preference-tag" hidden>★ Preferência</span>
+          </div>
+          <h2 id="nextLot">—</h2>
+          <p id="nextVehicle" class="next-vehicle">Carregando lotes…</p>
+          <p id="nextMaxBid" class="next-max-bid" hidden></p>
+        </div>
+        <div class="next-actions">
+          <button id="markNextBtn" class="primary-btn" type="button">Marcar como leiloado</button>
+        </div>
+      </section>
 
-    <section class="progress-wrap" aria-label="Progresso">
-      <div class="progress-label"><span>Andamento do leilão</span><strong id="progressText">0%</strong></div>
-      <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
-    </section>
+      <section class="stats" aria-label="Resumo do andamento">
+        <div class="stat"><strong id="totalCount">0</strong><span>Lotes</span></div>
+        <div class="stat"><strong id="waitingCount">0</strong><span>Aguardando</span></div>
+        <div class="stat"><strong id="preferenceCount">0</strong><span>Preferências</span></div>
+        <div class="stat"><strong id="soldCount">0</strong><span>Leiloados</span></div>
+      </section>
 
-    <section class="export-bar" aria-label="Exportação">
-      <button id="exportCsvBtn" class="secondary-btn" type="button">Exportar CSV</button>
-      <button id="printBtn" class="secondary-btn" type="button">PDF / Imprimir</button>
-    </section>
+      <section class="progress-wrap" aria-label="Progresso">
+        <div class="progress-label"><span>Andamento do leilão</span><strong id="progressText">0%</strong></div>
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+      </section>
 
-    <section class="controls" aria-label="Busca e filtros">
-      <label class="search-box">
-        <span aria-hidden="true">⌕</span>
-        <input id="searchInput" type="search" placeholder="Buscar lote, veículo ou anotação" autocomplete="off" />
-      </label>
-      <div class="chips" role="group" aria-label="Filtrar lotes">
-        <button class="chip active" type="button" data-filter="all">Todos</button>
-        <button class="chip" type="button" data-filter="waiting">Aguardando</button>
-        <button class="chip" type="button" data-filter="preference">★ Preferências</button>
-        <button class="chip" type="button" data-filter="sold">Leiloados</button>
-      </div>
-    </section>
+      <section class="export-bar" aria-label="Exportação">
+        <button id="exportCsvBtn" class="secondary-btn" type="button">Exportar CSV</button>
+        <button id="printBtn" class="secondary-btn" type="button">PDF / Imprimir</button>
+      </section>
 
-    <section id="lotList" class="lot-list" aria-label="Lotes cadastrados"></section>
-    <p id="emptyState" class="empty-state" hidden>Nenhum lote corresponde ao filtro atual.</p>
+      <section class="controls" aria-label="Busca e filtros">
+        <label class="search-box">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="Buscar lote, veículo, placa ou anotação" autocomplete="off" />
+        </label>
+        <div class="chips" role="group" aria-label="Filtrar lotes">
+          <button class="chip active" type="button" data-filter="all">Todos</button>
+          <button class="chip" type="button" data-filter="waiting">Aguardando</button>
+          <button class="chip" type="button" data-filter="preference">★ Preferências</button>
+          <button class="chip" type="button" data-filter="sold">Leiloados</button>
+        </div>
+      </section>
+
+      <section id="lotList" class="lot-list" aria-label="Lotes cadastrados"></section>
+      <p id="emptyState" class="empty-state" hidden>Nenhum lote corresponde ao filtro atual.</p>
+    </section>
   </main>
 
   <template id="lotCardTemplate">
@@ -86,13 +136,21 @@
             <span class="status-badge"></span>
           </div>
           <p class="vehicle-name"></p>
+          <div class="lot-meta-row">
+            <span class="source-badge user-source lot-source">Dados inseridos pelo usuário</span>
+            <span class="lot-extra"></span>
+          </div>
           <div class="result-chip" hidden></div>
         </div>
       </div>
 
       <div class="financial-grid">
         <label class="field-wrap">
-          <span>Valor máximo <small>opcional</small></span>
+          <span>Lance mínimo <small>opcional</small></span>
+          <input class="minimum-bid-input" type="text" inputmode="decimal" placeholder="Ex.: 25.000" />
+        </label>
+        <label class="field-wrap">
+          <span>Nosso máximo <small>opcional</small></span>
           <input class="max-bid-input" type="text" inputmode="decimal" placeholder="Ex.: 48.000" />
         </label>
         <label class="field-wrap final-value-wrap" hidden>
@@ -104,6 +162,10 @@
       <div class="card-actions primary-actions">
         <button class="preference-btn" type="button" aria-pressed="false">☆ Preferência</button>
         <button class="status-btn" type="button"></button>
+      </div>
+
+      <div class="card-actions utility-actions">
+        <a class="vehicle-data-link secondary-link compact" href="fipe.html">Ver veículo / FIPE</a>
       </div>
 
       <div class="sold-details" hidden>
@@ -128,16 +190,72 @@
     </article>
   </template>
 
+  <dialog id="chooseAuctionDialog" class="sheet-dialog">
+    <div class="dialog-shell">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow dark">Acompanhar leilão</p>
+          <h2>Escolha o leilão</h2>
+          <p class="muted">Data e referência aparecem para evitar confusão entre leilões.</p>
+        </div>
+        <button class="dialog-close" data-close-dialog="chooseAuctionDialog" type="button">×</button>
+      </div>
+      <div id="chooseAuctionList" class="choose-auction-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="newAuctionDialog" class="sheet-dialog">
+    <form id="newAuctionForm" class="dialog-shell">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow dark">Novo leilão</p>
+          <h2>Cadastrar Novo Leilão</h2>
+          <p class="muted">Campos com * são necessários para organizar a agenda.</p>
+        </div>
+        <button class="dialog-close" data-close-dialog="newAuctionDialog" type="button">×</button>
+      </div>
+
+      <div class="form-grid">
+        <label class="field-wrap"><span>Nome do leilão *</span><input name="title" required placeholder="Ex.: Leilão Detran SC — Florianópolis" /></label>
+        <label class="field-wrap"><span>Data *</span><input name="date" type="date" required /></label>
+        <label class="field-wrap"><span>Hora</span><input name="time" type="time" /></label>
+        <label class="field-wrap"><span>Referência *</span><input name="reference" required placeholder="Ex.: Edital 15/2026 ou anotação do usuário" /></label>
+        <label class="field-wrap"><span>Local</span><input name="location" placeholder="Cidade, pátio ou local virtual" /></label>
+        <label class="field-wrap"><span>Fonte</span>
+          <select name="sourceType">
+            <option value="user">Dados inseridos pelo usuário</option>
+            <option value="official">Fonte oficial</option>
+          </select>
+        </label>
+        <label class="field-wrap form-span-2"><span>Link oficial <small>opcional</small></span><input name="officialUrl" type="url" placeholder="https://..." /></label>
+        <label class="field-wrap form-span-2"><span>Foto/capa do leilão <small>opcional</small></span><input name="photo" type="file" accept="image/*" /></label>
+        <label class="field-wrap form-span-2"><span>Observações</span><textarea name="notes" rows="3" placeholder="Informações gerais do leilão"></textarea></label>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="secondary-btn" data-close-dialog="newAuctionDialog" type="button">Cancelar</button>
+        <button class="primary-btn" type="submit">Salvar leilão</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="liveDialog" class="live-dialog">
     <div class="live-shell">
       <button id="closeLiveBtn" class="live-close" type="button" aria-label="Fechar modo ao vivo">×</button>
-      <p class="eyebrow">Modo ao vivo • próximo lote</p>
+      <p class="eyebrow">Modo ao vivo</p>
+      <select id="liveAuctionSelect" class="live-auction-select" aria-label="Escolher leilão"></select>
+      <p id="liveAuctionMeta" class="live-auction-meta"></p>
       <h2 id="liveLot">—</h2>
       <p id="liveVehicle" class="live-vehicle"></p>
       <p id="livePreference" class="live-preference" hidden></p>
       <p id="liveMaxBid" class="live-max-bid" hidden></p>
+      <div class="live-actions-grid">
+        <button id="livePreferenceBtn" class="live-utility-btn" type="button">★ Preferência</button>
+        <button id="liveSkipBtn" class="live-utility-btn" type="button">→ Pular</button>
+      </div>
       <button id="liveSoldBtn" class="live-sold-btn" type="button">LEILOADO</button>
-      <p class="live-hint">Ao marcar, o próximo lote pendente assume esta tela automaticamente.</p>
+      <a id="liveVehicleLink" class="live-detail-link" href="fipe.html">Ver dados do veículo / FIPE</a>
+      <p class="live-hint">O modo ao vivo mostra o próximo lote pendente do leilão selecionado.</p>
     </div>
   </dialog>
 
