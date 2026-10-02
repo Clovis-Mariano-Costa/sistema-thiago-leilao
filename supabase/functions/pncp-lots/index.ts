@@ -239,6 +239,15 @@ Deno.serve(async (req:Request)=>{
       itemCount:items.length,
       fileCount:files.length,
       documentUsed,
+      diagnosticSummary:diagnostics.map(d=>({
+        file:d.file||'',
+        sequence:d.sequence||null,
+        status:d.status||null,
+        pages:d.pages||null,
+        textChars:d.textChars||null,
+        lots:d.lots||0,
+        error:d.error||''
+      })),
       pncpControl:`${cnpj}-1-${String(sequence).padStart(6,"0")}/${year}`,
       items,
       files:files.map(({__score,...file})=>file),
