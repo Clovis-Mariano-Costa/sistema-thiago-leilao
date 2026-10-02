@@ -128,7 +128,7 @@ async function enrichFromPncp(item,button){
         'Authorization':'Bearer '+token,
         'apikey':cfg.publishableKey || token
       },
-      body:JSON.stringify(item.pncp)
+      body:JSON.stringify({...item.pncp,fallbackUrl:item.detranDownloadPage||''})
     });
 
     let data=null;
