@@ -16,32 +16,33 @@
   </header>
   <main class="auth-main">
     <section id="authSetupNotice" class="security-warning info-warning">
-      <strong>MÓDULO PREPARADO, AINDA NÃO ATIVADO.</strong>
-      Falta conectar este site a um projeto Firebase e habilitar os provedores Google e E-mail/Senha. Enquanto isso, o sistema continua no modo local com Thiago como usuário operacional.
+      <strong>AUTENTICAÇÃO REAL EM TESTE.</strong>
+      E-mail e senha já usam o projeto Supabase gratuito do Sistema Thiago. O login Google depende da configuração OAuth do Google e pode permanecer indisponível até esse cadastro ser concluído.
     </section>
 
     <section class="auth-card">
       <div class="auth-heading">
         <p class="eyebrow dark">Acesso</p>
         <h2>Entrar no Sistema Thiago</h2>
-        <p class="muted">Quando a configuração externa for concluída, estes dois métodos usarão autenticação real.</p>
+        <p class="muted">E-mail e senha já usam autenticação real. Novas contas podem exigir confirmação do endereço de e-mail.</p>
       </div>
 
-      <button id="googleLoginBtn" class="primary-btn" type="button" disabled>Entrar com Google</button>
+      <button id="googleLoginBtn" class="primary-btn" type="button">Entrar com Google</button>
 
       <div class="auth-divider"><span>ou</span></div>
 
       <form id="emailLoginForm" class="auth-form">
-        <label class="field-wrap"><span>E-mail</span><input name="email" type="email" autocomplete="email" required disabled /></label>
-        <label class="field-wrap"><span>Senha</span><input name="password" type="password" autocomplete="current-password" minlength="6" required disabled /></label>
-        <button id="emailLoginBtn" class="primary-btn" type="submit" disabled>Entrar com e-mail e senha</button>
-        <button id="emailCreateBtn" class="secondary-btn" type="button" disabled>Criar conta</button>
-        <button id="resetPasswordBtn" class="text-btn" type="button" disabled>Esqueci minha senha</button>
+        <label class="field-wrap"><span>E-mail</span><input name="email" type="email" autocomplete="email" required /></label>
+        <label class="field-wrap"><span>Senha</span><input name="password" type="password" autocomplete="current-password" minlength="6" required /></label>
+        <button id="emailLoginBtn" class="primary-btn" type="submit">Entrar com e-mail e senha</button>
+        <button id="emailCreateBtn" class="secondary-btn" type="button">Criar conta</button>
+        <button id="resetPasswordBtn" class="text-btn" type="button">Esqueci minha senha</button>
       </form>
 
       <div id="authStatus" class="auth-status" aria-live="polite"></div>
 
       <div id="signedInBox" class="signed-in-box" hidden>
+        <span id="accessSummary" class="muted"></span>
         <strong id="signedInName"></strong>
         <span id="signedInEmail"></span>
         <button id="logoutBtn" class="secondary-btn" type="button">Sair</button>
@@ -49,8 +50,8 @@
     </section>
 
     <section class="research-card">
-      <h3>Regra de acesso planejada</h3>
-      <p>Ter uma conta não dará acesso automático aos leilões anteriores. O banco compartilhado só entregará leilões dos quais o usuário participa ou para os quais foi convidado. Quem não tiver acesso abrirá um sistema em branco.</p>
+      <h3>Regra de acesso</h3>
+      <p>Ter uma conta não dá acesso automático aos leilões anteriores. O banco compartilhado só entrega leilões dos quais o usuário é proprietário ou participante autorizado. Usuário novo sem convite começa com uma área de dados compartilhados vazia.</p>
     </section>
   </main>
   <script src="auth-config.js"></script>
