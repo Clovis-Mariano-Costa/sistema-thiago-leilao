@@ -37,6 +37,12 @@ function saveState(state){
 
 function normalizeImportedLot(lot,index,item){
   const n=Number(lot?.n ?? lot?.lot ?? lot?.numero ?? index+1);
+  const known=new Set(['n','lot','numero','vehicle','item','description','descricao','type','tipo','plate','placa','brandModel','marcaModelo','marca/modelo','chassis','chassi','engine','motor','year','ano','color','cor','fuel','combustivel','fipeValue','valorFipe','minimumBid','lanceMinimo','valorMinimo','note','observacao','sourceType','needsReview','extraFields']);
+  const preserved={...(lot?.extraFields||{})};
+  Object.entries(lot||{}).forEach(([key,value])=>{ if(!known.has(key)) preserved[key]=value; });
+  if(lot?.remocao) preserved.remocao=lot.remocao;
+  if(lot?.context) preserved.contexto_oficial=lot.context;
+  if(lot?.needsReview) preserved.needsReview=true;
   return {
     n,
     vehicle:lot?.vehicle || lot?.item || lot?.description || lot?.descricao || lot?.brandModel || lot?.marcaModelo || '',
@@ -60,7 +66,8 @@ function normalizeImportedLot(lot,index,item){
     sourceLabel:'Fonte oficial',
     officialUrl:item.officialUrl || '',
     photoDataUrl:'',
-    extraFields:lot?.extraFields || {}
+    needsReview:Boolean(lot?.needsReview),
+    extraFields:preserved
   };
 }
 
