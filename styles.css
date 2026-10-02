@@ -75,3 +75,27 @@ textarea{font:inherit;resize:vertical}.top-actions{display:flex;align-items:cent
 
 .home-top-link{flex:0 0 auto;min-height:40px;display:flex;align-items:center;padding:0 12px;border:1px solid rgba(214,165,52,.4);border-radius:12px;color:#f0d889;text-decoration:none;font-size:.76rem;font-weight:850}
 @media(max-width:520px){.home-top-link{font-size:0;width:42px;padding:0;justify-content:center}.home-top-link::before{content:"⌂";font-size:1.15rem}}
+
+
+/* Conta, perfil e segurança */
+.auth-layout{display:grid;gap:12px}
+.auth-status-box{min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.auth-status-box:empty{display:none}
+.signed-in-panel{margin-bottom:12px}
+.profile-summary{display:flex;gap:13px;align-items:center}
+.profile-avatar,.user-pill-avatar{display:grid;place-items:center;overflow:hidden;border-radius:50%;background:#162844;color:#f3d77c;font-weight:900;flex:0 0 auto}
+.profile-avatar{width:68px;height:68px;font-size:1.1rem;border:2px solid #d9b956}
+.profile-avatar img,.user-pill-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.form-help{font-size:.72rem;color:var(--muted);line-height:1.45}
+.password-policy{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#f7f9fb;font-size:.76rem;color:#4c5969}
+.password-policy ul{margin:7px 0 5px;padding-left:20px;display:grid;gap:3px}
+.password-policy li::marker{color:#9a3d36}
+.password-policy li.ok{color:#0b6d49;font-weight:750}
+.password-policy li.ok::marker{color:#0b6d49}
+.password-policy p{margin:6px 0 0;line-height:1.4}
+.user-pill{display:flex;align-items:center;gap:7px;min-height:40px;padding:4px 10px 4px 5px;border:1px solid rgba(214,165,52,.36);border-radius:999px;background:rgba(255,255,255,.04);color:#f6e4a9;font-size:.74rem;font-weight:850;max-width:190px;white-space:nowrap;overflow:hidden}
+.user-pill-avatar{width:30px;height:30px;font-size:.66rem;border:1px solid rgba(240,208,113,.55)}
+#userPillLabel{overflow:hidden;text-overflow:ellipsis}
+.review-flag{display:inline-flex;align-items:center;padding:4px 7px;border-radius:999px;background:#fff3cd;color:#735c08;font-size:.64rem;font-weight:900}
+@media(min-width:720px){.auth-layout{grid-template-columns:1fr 1fr}.auth-layout .auth-card{align-self:start}}
