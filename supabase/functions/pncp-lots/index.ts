@@ -232,6 +232,61 @@ Deno.serve(async (req:Request)=>{
       }
     }
 
+
+    const expectedIndividual=Math.max(0,...items.map((x:any)=>Number(x?.quantidade)||0));
+    const fallbackUrl=String(body?.fallbackUrl||'').trim();
+
+    if(fallbackUrl && lots.length < expectedIndividual){
+      try{
+        const page=new URL(fallbackUrl);
+        const allowed=page.protocol==="https:" && (page.hostname==="www.detran.sc.gov.br" || page.hostname==="detran.sc.gov.br");
+        if(!allowed) throw new Error("fallback fora do domínio oficial DETRAN/SC");
+
+        const pageResponse=await fetch(page.toString(),{headers:{"Accept":"text/html","User-Agent":"SistemaThiago/1.0"}});
+        if(!pageResponse.ok) throw new Error(`DETRAN respondeu ${pageResponse.status} ao abrir a página do edital`);
+        const html=await pageResponse.text();
+        const match=html.match(/data-downloadurl=["']([^"']+)["']/i);
+        if(!match) throw new Error("link oficial de download não encontrado na página DETRAN");
+
+        const downloadUrl=match[1].replaceAll("&amp;","&");
+        const pdfResponse=await fetch(downloadUrl,{
+          redirect:"follow",
+          headers:{"Accept":"application/pdf,*/*","User-Agent":"SistemaThiago/1.0"}
+        });
+        if(!pdfResponse.ok) throw new Error(`DETRAN respondeu ${pdfResponse.status} ao baixar o edital`);
+        const bytes=new Uint8Array(await pdfResponse.arrayBuffer());
+        if(bytes.byteLength>20*1024*1024) throw new Error("arquivo DETRAN maior que 20 MB");
+
+        const parsedPdf=await pdf(Buffer.from(bytes));
+        const extracted=parseLots(String(parsedPdf.text||""));
+        diagnostics.push({
+          file:"DETRAN/SC — edital descritivo completo",
+          sequence:null,
+          bytes:bytes.byteLength,
+          pages:parsedPdf.numpages||null,
+          textChars:String(parsedPdf.text||"").length,
+          lots:extracted.length,
+          sourceUrl:page.toString()
+        });
+        if(extracted.length>lots.length){
+          lots=extracted;
+          documentUsed={
+            name:"DETRAN/SC — edital descritivo completo",
+            sequence:null,
+            url:page.toString(),
+            source:"DETRAN/SC"
+          };
+        }
+      }catch(error){
+        diagnostics.push({
+          file:"DETRAN/SC — fallback",
+          sequence:null,
+          error:String(error?.message||error),
+          sourceUrl:fallbackUrl
+        });
+      }
+    }
+
     return json(req,{
       source:"PNCP",
       official:true,
