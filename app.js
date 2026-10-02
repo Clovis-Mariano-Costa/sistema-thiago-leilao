@@ -998,7 +998,8 @@ function showImportFeedback() {
   box.innerHTML = `<strong>Cadastro oficial importado.</strong>
     ${auction ? escapeHtml(auction.title) + ' • ' : ''}
     ${fieldCount ? fieldCount + ' campo(s) de origem processados • ' : ''}
-    ${lotCount} lote(s) disponível(is). ${detail}`;
+    ${lotCount} lote(s) disponível(is). ${detail}
+    <br><strong>Confira os dados no edital/documento oficial antes de dar lance ou tomar decisão.</strong>`;
   box.hidden = false;
 
   const details = $('#officialAuctionDetails');
@@ -1115,3 +1116,13 @@ $('#resetBtn').addEventListener('click',()=>{
 
 renderAll();
 showImportFeedback();
+
+
+window.addEventListener('storage',event=>{
+  if(event.key!==STORAGE_KEY || !event.newValue) return;
+  try{
+    state=normalizeState(JSON.parse(event.newValue));
+    liveCursorByAuction.clear();
+    renderAll();
+  }catch{}
+});
