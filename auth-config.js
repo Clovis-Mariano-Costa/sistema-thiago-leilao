@@ -1,12 +1,6 @@
-// Configure este arquivo somente depois de criar o projeto Firebase.
-// Os valores abaixo não são senhas, mas identificam o projeto e devem ser revisados antes da publicação.
-// Exemplo:
-// window.FIREBASE_CONFIG = {
-//   apiKey: "...",
-//   authDomain: "...firebaseapp.com",
-//   projectId: "...",
-//   storageBucket: "...appspot.com",
-//   messagingSenderId: "...",
-//   appId: "..."
-// };
-window.FIREBASE_CONFIG = null;
+// Configuração pública do cliente Supabase do Sistema Thiago.
+// A publishable key é própria para uso no frontend. Segurança real depende das políticas RLS do banco.
+window.SUPABASE_CONFIG = {
+  url: "https://mnwsyiglxhvblxzimook.supabase.co",
+  publishableKey: "sb_publishable_6YQOnnh-_hHjDZPCfesi_g_8s4JAYzw"
+};
