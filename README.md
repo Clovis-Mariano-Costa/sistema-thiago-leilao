@@ -1,59 +1,63 @@
-# Sistema Thiago — Controle de Leilão
+# Sistema Thiago — Controle e Agenda de Leilões
 
-Painel web **mobile first** para acompanhar lotes de interesse durante leilões.
+Aplicação web **mobile first** para Thiago acompanhar leilões, organizar lotes, registrar preferências, valores e resultados, manter agenda e consultar referências veiculares separadas da operação do leilão.
 
 ## Estado atual
 
-A primeira base contém **37 lotes pré-cadastrados** a partir do material recebido. Ao abrir a página, os lotes já aparecem; não é necessário cadastrá-los manualmente.
+A base inicial preserva os **37 lotes** extraídos das conversas e agora funciona dentro de uma arquitetura de **vários leilões**.
 
-## Funcionalidades já disponíveis
+### Já implementado no MVP
 
-- Status `Aguardando` / `Leiloado`, com possibilidade de desfazer.
-- Preferência em dois níveis: `★ Preferência` e `★★ Prioridade`.
-- Resultado pós-leilão **opcional**: arrematado por nós, arrematado por outro, não vendido, desistimos, sem interesse ou outro.
-- Valor máximo de lance **opcional**.
-- Valor final **opcional** após o lote ser leiloado.
-- Observação livre e opcional por lote.
-- Destaque automático do próximo lote ainda não leiloado.
-- **Modo ao vivo** para uso no celular durante o leilão.
-- Busca por lote, veículo, valores, resultado ou observação.
-- Filtros por aguardando, preferências e leiloados.
-- Contadores e barra de progresso.
-- Exportação do resultado para **CSV**.
-- Relatório preparado para **PDF / impressão**.
-- Identidade visual com o logo fornecido.
-- Layout responsivo, desenvolvido com prioridade para celular.
-- Persistência local pelo `localStorage` do navegador.
+- botão **Acompanhar leilão**, com escolha por data e referência;
+- **Cadastrar Novo Leilão**, com data, hora, referência, local, fonte, URL e foto/capa;
+- agenda de vários leilões;
+- primeiro usuário operacional: **Thiago**;
+- cadastro completo de lote: lote, tipo, placa, marca/modelo, chassi, motor, ano, cor, combustível e lance mínimo;
+- separação entre **Fonte oficial** e **Dados inseridos pelo usuário**;
+- página própria de **Veículos / FIPE**;
+- catálogo das informações transcritas das imagens do usuário, sem promovê-las automaticamente a dados oficiais;
+- links apenas para **FIPE oficial** e fontes oficiais de leilões;
+- módulo **Fontes oficiais SC** com DETRAN/SC e Portal de Compras;
+- importação de leilão oficial para a agenda, mantendo a proveniência;
+- preferência em dois níveis: `★ Preferência` e `★★ Prioridade`;
+- `Aguardando` / `Leiloado`;
+- resultado pós-leilão opcional;
+- nosso valor máximo e valor final opcionais;
+- Modo ao Vivo v2 com seletor de leilão, Preferência, Pular e Leiloado;
+- CSV e PDF/impressão por leilão;
+- migração dos dados da versão anterior salvos no navegador.
 
-## Aviso de segurança
+## Regra de proveniência
 
-> **MVP SEM SEGURANÇA.** A versão atual não oferece autenticação, sigilo, controle de acesso nem garantia contra alteração ou exclusão de dados. Não devem ser inseridos dados sensíveis, pessoais, senhas ou credenciais. Os dados atuais ficam somente no navegador usado.
+Existem apenas duas classificações na entrada:
 
-## Multiusuário, vários leilões e agenda
+1. **Fonte oficial** — acompanhada de URL oficial.
+2. **Dados inseridos pelo usuário** — conversa, imagem, digitação ou informação ainda não validada oficialmente.
 
-A evolução prevista é transformar a aplicação em um pequeno sistema compartilhado com:
+Nenhum dado é convertido automaticamente de “usuário” para “oficial”.
 
-- cadastro operacional de vários usuários;
-- vários leilões independentes;
-- participantes por leilão;
-- lotes separados por leilão;
-- agenda de leilões e lembretes;
-- histórico;
-- sincronização entre celulares/computadores;
-- exportação por leilão.
+## Segurança e login
 
-Enquanto não existir autenticação real, qualquer cadastro de usuário deve ser entendido apenas como **identificação operacional**, não como mecanismo de segurança.
+> **MVP EM VALIDAÇÃO.** A etapa atual ainda usa armazenamento local do navegador e não deve ser tratada como ambiente seguro.
+
+O login verdadeiro com **Google** e **e-mail/senha** está agendado no cronograma e só será considerado implementado quando o serviço de autenticação, banco compartilhado e regras de acesso forem configurados e testados.
+
+Regra planejada: um usuário autenticado só verá leilões de que participe ou para os quais tenha sido convidado. Quem não tiver leilões compartilhados abrirá um sistema em branco.
+
+## Fontes oficiais iniciais
+
+- DETRAN/SC — Leilões
+- Calendário DETRAN/SC
+- Editais DETRAN/SC
+- Portal de Compras de Santa Catarina
+- FIPE oficial para consulta de preço médio
+
+## Cronograma
+
+Veja [CRONOGRAMA.md](CRONOGRAMA.md).
 
 ## Publicação
 
-Site público:
-
 https://clovis-mariano-costa.github.io/sistema-thiago-leilao/
 
-A publicação é feita pelo GitHub Pages a partir da branch `main`.
-
-## Próxima etapa técnica
-
-Para sincronização real entre vários usuários/dispositivos será necessário um armazenamento compartilhado. A opção preferencial para avaliação é um banco simples para web (por exemplo, Firebase/Firestore) ou, se houver vantagem operacional, um mini-backend separado no ecossistema Google.
-
-O miniBackend existente `JUS9_DRIVE_SAVER_MVP` foi concebido para salvamento governado de documentos no Google Drive; ele não deve ser tratado automaticamente como banco transacional deste sistema sem uma adaptação específica.
+A publicação ocorre automaticamente pelo GitHub Pages a partir da branch `main`.
