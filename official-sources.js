@@ -141,8 +141,8 @@ window.SISTEMA_THIAGO_OFFICIAL_RESULTS = [
   {
     id:'detran-sc-0013-2026',
     sourceId:'compras-sc',
-    status:'SUSPENSO',
-    statusNote:'O DETRAN/SC publicou comunicado de suspensão do Leilão 13-CEL-2026. Confirmar eventual republicação/nova data antes de acompanhar.',
+    status:'NOVA DATA PUBLICADA',
+    statusNote:'O DETRAN/SC publicou suspensão anterior e posteriormente um edital do Leilão 13/2026 com “NOVA DATA”. O Portal de Compras lista 13/10/2026 às 09:00; conferir o edital vigente antes do acompanhamento.',
     pncp:{cnpj:'34060183000152',year:2026,sequence:40,control:'34060183000152-1-000040/2026'},
     sourceName:'Portal de Compras SC',
     agency:'DETRAN/SC',
