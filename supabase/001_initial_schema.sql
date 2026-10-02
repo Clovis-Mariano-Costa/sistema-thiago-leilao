@@ -221,12 +221,14 @@ drop trigger if exists sources_set_updated_at on public.official_sources;
 create trigger sources_set_updated_at before update on public.official_sources
 for each row execute function public.set_updated_at();
 
-create or replace function public.handle_new_user()
+create schema if not exists private;
+
+create or replace function private.handle_new_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
-as $$
+set search_path = public, auth
+as $
 begin
   insert into public.profiles(id,display_name,email)
   values (
@@ -242,22 +244,22 @@ $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert or update of email on auth.users
-for each row execute function public.handle_new_user();
+for each row execute function private.handle_new_user();
 
-create or replace function public.auction_role(p_auction_id uuid)
+create or replace function private.auction_role(p_auction_id uuid)
 returns public.auction_member_role
 language sql
 stable
 security definer
-set search_path = public
-as $$
+set search_path = public, auth
+as $
   select case
-    when a.owner_id = auth.uid() then 'owner'::public.auction_member_role
+    when a.owner_id = (select auth.uid()) then 'owner'::public.auction_member_role
     else (
       select m.role
       from public.auction_members m
       where m.auction_id = p_auction_id
-        and m.user_id = auth.uid()
+        and m.user_id = (select auth.uid())
       limit 1
     )
   end
@@ -265,40 +267,40 @@ as $$
   where a.id = p_auction_id;
 $$;
 
-create or replace function public.can_view_auction(p_auction_id uuid)
+create or replace function private.can_view_auction(p_auction_id uuid)
 returns boolean
 language sql
 stable
 security definer
-set search_path = public
-as $$
-  select public.auction_role(p_auction_id) is not null;
+set search_path = public, auth
+as $
+  select private.auction_role(p_auction_id) is not null;
 $$;
 
-create or replace function public.can_manage_auction(p_auction_id uuid)
+create or replace function private.can_manage_auction(p_auction_id uuid)
 returns boolean
 language sql
 stable
 security definer
-set search_path = public
-as $$
-  select coalesce(public.auction_role(p_auction_id)::text in ('owner','admin'),false);
+set search_path = public, auth
+as $
+  select coalesce(private.auction_role(p_auction_id)::text in ('owner','admin'),false);
 $$;
 
-create or replace function public.can_edit_lots(p_auction_id uuid)
+create or replace function private.can_edit_lots(p_auction_id uuid)
 returns boolean
 language sql
 stable
 security definer
-set search_path = public
-as $$
-  select coalesce(public.auction_role(p_auction_id)::text in ('owner','admin','participant'),false);
+set search_path = public, auth
+as $
+  select coalesce(private.auction_role(p_auction_id)::text in ('owner','admin','participant'),false);
 $$;
 
-grant execute on function public.auction_role(uuid) to authenticated;
-grant execute on function public.can_view_auction(uuid) to authenticated;
-grant execute on function public.can_manage_auction(uuid) to authenticated;
-grant execute on function public.can_edit_lots(uuid) to authenticated;
+grant execute on function private.auction_role(uuid) to authenticated;
+grant execute on function private.can_view_auction(uuid) to authenticated;
+grant execute on function private.can_manage_auction(uuid) to authenticated;
+grant execute on function private.can_edit_lots(uuid) to authenticated;
 
 alter table public.profiles enable row level security;
 alter table public.auctions enable row level security;
@@ -313,113 +315,113 @@ alter table public.audit_log enable row level security;
 
 drop policy if exists profiles_self_select on public.profiles;
 create policy profiles_self_select on public.profiles
-for select to authenticated using (id = auth.uid());
+for select to authenticated using (id = (select auth.uid()));
 
 drop policy if exists profiles_self_update on public.profiles;
 create policy profiles_self_update on public.profiles
-for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
+for update to authenticated using (id = (select auth.uid())) with check (id = (select auth.uid()));
 
 drop policy if exists auctions_select_member on public.auctions;
 create policy auctions_select_member on public.auctions
-for select to authenticated using (public.can_view_auction(id));
+for select to authenticated using (private.can_view_auction(id));
 
 drop policy if exists auctions_insert_owner on public.auctions;
 create policy auctions_insert_owner on public.auctions
-for insert to authenticated with check (owner_id = auth.uid());
+for insert to authenticated with check (owner_id = (select auth.uid()));
 
 drop policy if exists auctions_update_manager on public.auctions;
 create policy auctions_update_manager on public.auctions
-for update to authenticated using (public.can_manage_auction(id)) with check (public.can_manage_auction(id));
+for update to authenticated using (private.can_manage_auction(id)) with check (private.can_manage_auction(id));
 
 drop policy if exists auctions_delete_manager on public.auctions;
 create policy auctions_delete_manager on public.auctions
-for delete to authenticated using (public.can_manage_auction(id));
+for delete to authenticated using (private.can_manage_auction(id));
 
 drop policy if exists members_select on public.auction_members;
 create policy members_select on public.auction_members
-for select to authenticated using (user_id = auth.uid() or public.can_manage_auction(auction_id));
+for select to authenticated using (user_id = (select auth.uid()) or private.can_manage_auction(auction_id));
 
 drop policy if exists members_insert_manager on public.auction_members;
 create policy members_insert_manager on public.auction_members
-for insert to authenticated with check (public.can_manage_auction(auction_id));
+for insert to authenticated with check (private.can_manage_auction(auction_id));
 
 drop policy if exists members_update_manager on public.auction_members;
 create policy members_update_manager on public.auction_members
-for update to authenticated using (public.can_manage_auction(auction_id)) with check (public.can_manage_auction(auction_id));
+for update to authenticated using (private.can_manage_auction(auction_id)) with check (private.can_manage_auction(auction_id));
 
 drop policy if exists members_delete_manager on public.auction_members;
 create policy members_delete_manager on public.auction_members
-for delete to authenticated using (public.can_manage_auction(auction_id));
+for delete to authenticated using (private.can_manage_auction(auction_id));
 
 drop policy if exists invitations_select on public.invitations;
 create policy invitations_select on public.invitations
 for select to authenticated using (
-  public.can_manage_auction(auction_id)
-  or lower(email) = lower(coalesce(auth.jwt()->>'email',''))
+  private.can_manage_auction(auction_id)
+  or lower(email) = lower(coalesce((select auth.jwt())->>'email',''))
 );
 
 drop policy if exists invitations_insert_manager on public.invitations;
 create policy invitations_insert_manager on public.invitations
 for insert to authenticated with check (
-  public.can_manage_auction(auction_id)
-  and invited_by = auth.uid()
+  private.can_manage_auction(auction_id)
+  and invited_by = (select auth.uid())
 );
 
 drop policy if exists invitations_update_manager on public.invitations;
 create policy invitations_update_manager on public.invitations
-for update to authenticated using (public.can_manage_auction(auction_id))
-with check (public.can_manage_auction(auction_id));
+for update to authenticated using (private.can_manage_auction(auction_id))
+with check (private.can_manage_auction(auction_id));
 
 drop policy if exists invitations_delete_manager on public.invitations;
 create policy invitations_delete_manager on public.invitations
-for delete to authenticated using (public.can_manage_auction(auction_id));
+for delete to authenticated using (private.can_manage_auction(auction_id));
 
 drop policy if exists lots_select_member on public.lots;
 create policy lots_select_member on public.lots
-for select to authenticated using (public.can_view_auction(auction_id));
+for select to authenticated using (private.can_view_auction(auction_id));
 
 drop policy if exists lots_insert_editor on public.lots;
 create policy lots_insert_editor on public.lots
-for insert to authenticated with check (public.can_edit_lots(auction_id));
+for insert to authenticated with check (private.can_edit_lots(auction_id));
 
 drop policy if exists lots_update_editor on public.lots;
 create policy lots_update_editor on public.lots
-for update to authenticated using (public.can_edit_lots(auction_id))
-with check (public.can_edit_lots(auction_id));
+for update to authenticated using (private.can_edit_lots(auction_id))
+with check (private.can_edit_lots(auction_id));
 
 drop policy if exists lots_delete_editor on public.lots;
 create policy lots_delete_editor on public.lots
-for delete to authenticated using (public.can_edit_lots(auction_id));
+for delete to authenticated using (private.can_edit_lots(auction_id));
 
 drop policy if exists fipe_select on public.fipe_references;
 create policy fipe_select on public.fipe_references
 for select to authenticated using (
-  owner_id = auth.uid()
-  or (auction_id is not null and public.can_view_auction(auction_id))
+  owner_id = (select auth.uid())
+  or (auction_id is not null and private.can_view_auction(auction_id))
 );
 
 drop policy if exists fipe_insert on public.fipe_references;
 create policy fipe_insert on public.fipe_references
 for insert to authenticated with check (
-  owner_id = auth.uid()
-  and (auction_id is null or public.can_edit_lots(auction_id))
+  owner_id = (select auth.uid())
+  and (auction_id is null or private.can_edit_lots(auction_id))
 );
 
 drop policy if exists fipe_update on public.fipe_references;
 create policy fipe_update on public.fipe_references
 for update to authenticated using (
-  owner_id = auth.uid()
-  and (auction_id is null or public.can_edit_lots(auction_id))
+  owner_id = (select auth.uid())
+  and (auction_id is null or private.can_edit_lots(auction_id))
 ) with check (
-  owner_id = auth.uid()
-  and (auction_id is null or public.can_edit_lots(auction_id))
+  owner_id = (select auth.uid())
+  and (auction_id is null or private.can_edit_lots(auction_id))
 );
 
 drop policy if exists fipe_delete on public.fipe_references;
 create policy fipe_delete on public.fipe_references
 for delete to authenticated using (
-  owner_id = auth.uid()
-  and (auction_id is null or public.can_edit_lots(auction_id))
+  owner_id = (select auth.uid())
+  and (auction_id is null or private.can_edit_lots(auction_id))
 );
 
 drop policy if exists sources_read on public.official_sources;
@@ -433,14 +435,14 @@ for select to authenticated using (true);
 drop policy if exists source_documents_read on public.source_documents;
 create policy source_documents_read on public.source_documents
 for select to authenticated using (
-  auction_id is null or public.can_view_auction(auction_id)
+  auction_id is null or private.can_view_auction(auction_id)
 );
 
 drop policy if exists audit_read on public.audit_log;
 create policy audit_read on public.audit_log
 for select to authenticated using (
-  actor_user_id = auth.uid()
-  or (auction_id is not null and public.can_manage_auction(auction_id))
+  actor_user_id = (select auth.uid())
+  or (auction_id is not null and private.can_manage_auction(auction_id))
 );
 
 -- Storage: bucket privado para capas/fotos.
