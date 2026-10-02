@@ -33,6 +33,7 @@
       </div>
       <div class="dashboard-actions">
         <a class="primary-link" href="https://www.fipe.org.br/pt-br/indices/veiculos" target="_blank" rel="noopener">Pesquisar na FIPE oficial</a>
+        <button id="openFipeInsertBtn" class="secondary-btn strong" type="button">+ Inserir novos dados FIPE</button>
         <a class="secondary-link" href="index.html">Voltar ao leilão</a>
       </div>
     </section>
@@ -48,6 +49,66 @@
     <section id="referenceList" class="reference-list"></section>
     <p id="referenceEmpty" class="empty-state" hidden>Nenhuma referência encontrada.</p>
   </main>
+
+  <dialog id="fipeDataDialog" class="sheet-dialog">
+    <div class="dialog-shell">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow dark">Dados FIPE</p>
+          <h2>Inserir novos dados</h2>
+          <p class="muted">Escolha cadastro unitário ou importação em massa. Dados digitados/importados permanecem marcados como inseridos pelo usuário.</p>
+        </div>
+        <button id="closeFipeDialogBtn" class="dialog-close" type="button">×</button>
+      </div>
+
+      <div class="chips fipe-mode-chips">
+        <button class="chip active" type="button" data-fipe-mode="single">Cadastro unitário</button>
+        <button class="chip" type="button" data-fipe-mode="bulk">Inserção em massa</button>
+      </div>
+
+      <form id="singleFipeForm" class="fipe-entry-panel">
+        <div class="form-grid">
+          <label class="field-wrap"><span>Veículo / identificação</span><input name="vehicle" placeholder="Ex.: FORD/Ranger XLS 2.2 4x4 CD" /></label>
+          <label class="field-wrap"><span>Placa</span><input name="plate" placeholder="Ex.: ABC1D23" /></label>
+          <label class="field-wrap"><span>Município/UF</span><input name="cityUf" placeholder="Ex.: Florianópolis/SC" /></label>
+          <label class="field-wrap"><span>Chassi</span><input name="chassis" placeholder="Completo ou parcial" /></label>
+          <label class="field-wrap"><span>Ano do veículo</span><input name="year" placeholder="Ex.: 2019/2020" /></label>
+          <label class="field-wrap"><span>Cor</span><input name="color" /></label>
+          <label class="field-wrap"><span>Licenciamento</span><input name="licensing" /></label>
+          <label class="field-wrap"><span>Mês de referência FIPE</span><input name="referenceMonth" placeholder="Ex.: outubro de 2026" /></label>
+          <label class="field-wrap"><span>Marca FIPE</span><input name="brand" /></label>
+          <label class="field-wrap"><span>Modelo FIPE</span><input name="model" /></label>
+          <label class="field-wrap"><span>Código FIPE</span><input name="code" placeholder="Ex.: 003421-5" /></label>
+          <label class="field-wrap"><span>Ano modelo FIPE</span><input name="fipeYear" /></label>
+          <label class="field-wrap"><span>Combustível</span><input name="fuel" /></label>
+          <label class="field-wrap"><span>Valor FIPE</span><input name="value" inputmode="decimal" placeholder="Ex.: 126.233,00" /></label>
+          <label class="field-wrap form-span-2"><span>URL consultada <small>opcional</small></span><input name="sourceUrl" type="url" placeholder="https://www.fipe.org.br/..." /></label>
+          <label class="check-field form-span-2"><input name="consultedOfficial" type="checkbox" /> <span>Informo que consultei este dado diretamente no canal oficial da FIPE.</span></label>
+          <label class="field-wrap form-span-2"><span>Observação</span><textarea name="note" rows="2"></textarea></label>
+        </div>
+        <div class="dialog-actions">
+          <button id="cancelSingleFipeBtn" class="secondary-btn" type="button">Cancelar</button>
+          <button class="primary-btn" type="submit">Salvar dado FIPE</button>
+        </div>
+      </form>
+
+      <form id="bulkFipeForm" class="fipe-entry-panel" hidden>
+        <section class="research-card bulk-help">
+          <h3>Importação em massa</h3>
+          <p>Aceita JSON (array de registros) ou CSV. No CSV, cada linha é uma referência. Cabeçalhos reconhecidos incluem: veículo, placa, município/UF, chassi, ano, cor, referência, marca, modelo, código FIPE, ano modelo, combustível, valor FIPE e URL.</p>
+          <p>Colunas desconhecidas não são descartadas: ficam preservadas em <strong>campos adicionais</strong>.</p>
+        </section>
+        <label class="field-wrap"><span>Arquivo CSV / JSON <small>opcional</small></span><input id="bulkFipeFile" type="file" accept=".csv,.json,.txt,text/csv,application/json,text/plain" /></label>
+        <label class="field-wrap"><span>Ou cole os dados</span><textarea id="bulkFipeText" rows="10" placeholder="Cole JSON ou CSV aqui..."></textarea></label>
+        <label class="check-field"><input id="bulkConsultedOfficial" type="checkbox" /> <span>Informo que estes registros foram transcritos de consultas realizadas no canal oficial da FIPE.</span></label>
+        <div id="bulkFipeStatus" class="auth-status" aria-live="polite"></div>
+        <div class="dialog-actions">
+          <button id="cancelBulkFipeBtn" class="secondary-btn" type="button">Cancelar</button>
+          <button class="primary-btn" type="submit">Importar em massa</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
 
   <script src="user-references.js"></script>
   <script src="fipe.js"></script>
