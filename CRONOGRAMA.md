@@ -41,6 +41,8 @@ Campos:
 - ano;
 - cor;
 - combustível;
+- valor FIPE;
+- imagem do lote/veículo;
 - lance mínimo;
 - nosso máximo;
 - resultado;
@@ -57,6 +59,9 @@ Campos:
 - placa, chassi parcial, ano, cor, licenciamento e referência mostrada;
 - lista das opções FIPE exibidas nas capturas;
 - link exclusivo para consulta FIPE oficial;
+- cadastro unitário de novas referências;
+- importação em massa CSV/JSON;
+- colunas adicionais preservadas;
 - nenhuma opção é escolhida automaticamente como "a correta".
 
 ### Módulo 04 — Fontes oficiais de leilões
@@ -83,9 +88,10 @@ Inclui:
 - lote atual;
 - preferência/prioridade;
 - nosso máximo;
-- botão LEILOADO;
+- botão LEILOADO reversível;
+- botão Voltar;
 - botão Preferência/Prioridade;
-- botão Pular;
+- botão Próximo;
 - acesso aos dados do veículo/FIPE.
 
 ### Módulo 06 — Exportação e fechamento do leilão
