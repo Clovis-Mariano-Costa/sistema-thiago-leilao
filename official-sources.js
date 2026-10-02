@@ -141,6 +141,9 @@ window.SISTEMA_THIAGO_OFFICIAL_RESULTS = [
   {
     id:'detran-sc-0013-2026',
     sourceId:'compras-sc',
+    status:'SUSPENSO',
+    statusNote:'O DETRAN/SC publicou comunicado de suspensão do Leilão 13-CEL-2026. Confirmar eventual republicação/nova data antes de acompanhar.',
+    pncp:{cnpj:'34060183000152',year:2026,sequence:40,control:'34060183000152-1-000040/2026'},
     sourceName:'Portal de Compras SC',
     agency:'DETRAN/SC',
     title:'DETRAN/SC — Processo 0013/2026',
@@ -159,6 +162,8 @@ window.SISTEMA_THIAGO_OFFICIAL_RESULTS = [
   {
     id:'detran-sc-1500-2026',
     sourceId:'compras-sc',
+    status:'EM RECEBIMENTO DE PROPOSTA',
+    pncp:{cnpj:'34060183000152',year:2026,sequence:41,control:'34060183000152-1-000041/2026'},
     sourceName:'Portal de Compras SC',
     agency:'DETRAN/SC',
     title:'DETRAN/SC — Processo 1500/2026',
@@ -177,6 +182,8 @@ window.SISTEMA_THIAGO_OFFICIAL_RESULTS = [
   {
     id:'detran-sc-1600-2026',
     sourceId:'compras-sc',
+    status:'EM RECEBIMENTO DE PROPOSTA',
+    pncp:{cnpj:'34060183000152',year:2026,sequence:44,control:'34060183000152-1-000044/2026'},
     sourceName:'Portal de Compras SC',
     agency:'DETRAN/SC',
     title:'DETRAN/SC — Processo 1600/2026',
