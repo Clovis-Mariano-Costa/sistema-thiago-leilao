@@ -235,11 +235,14 @@ Deno.serve(async (req:Request)=>{
     return json(req,{
       source:"PNCP",
       official:true,
+      lotCount:lots.length,
+      itemCount:items.length,
+      fileCount:files.length,
+      documentUsed,
       pncpControl:`${cnpj}-1-${String(sequence).padStart(6,"0")}/${year}`,
       items,
       files:files.map(({__score,...file})=>file),
       lots,
-      documentUsed,
       diagnostics,
       importedAt:new Date().toISOString()
     });
