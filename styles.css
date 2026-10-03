@@ -173,3 +173,39 @@ body{background:
   .charlie-launcher{right:12px;bottom:12px}
   .charlie-panel{right:8px;bottom:70px;width:calc(100vw - 16px);height:min(620px,calc(100vh - 90px))}
 }
+
+
+/* Charlie Echo — espaço especializado em leilões */
+.charlie-dashboard-link{
+  border-color:rgba(211,163,58,.55);
+  background:linear-gradient(135deg,#fffdf6,#f5faf8);
+  color:#17384d;
+  font-weight:900;
+}
+.charlie-page-main{width:min(1120px,calc(100% - 28px));margin:0 auto;padding:18px 0 94px;display:grid;gap:14px}
+.charlie-profile-card,.charlie-workbench{
+  background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;
+}
+.charlie-profile-card{display:grid;gap:18px;border-top:3px solid var(--gold)}
+.charlie-profile-card h2,.charlie-workbench h2{margin:.25rem 0 .65rem;color:var(--navy)}
+.charlie-lead{max-width:760px;color:#3f4e60;line-height:1.65}
+.charlie-learning-badge{
+  display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;margin:8px 0 10px;padding:7px 10px;
+  border:1px solid #d9c27e;border-radius:999px;background:#fff9e9;color:#6f5508;font-size:.76rem;font-weight:950;
+}
+.charlie-profile-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.charlie-institution-grid{display:grid;gap:12px}
+.charlie-institution-grid .research-card{display:grid;align-content:start;gap:7px;margin:0}
+.charlie-context-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+.charlie-context-grid>div{display:grid;gap:3px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#f8fafb}
+.charlie-context-grid span{font-size:.67rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:900}
+.charlie-context-grid strong{font-size:.84rem;color:#21384a;word-break:break-word}
+.charlie-quick-grid{display:grid;gap:8px}
+.charlie-quick{min-height:46px;text-align:left;justify-content:flex-start}
+.charlie-boundary{margin:0}
+@media(min-width:720px){
+  .charlie-profile-card{grid-template-columns:1fr auto;align-items:center}
+  .charlie-institution-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .charlie-context-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .charlie-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
