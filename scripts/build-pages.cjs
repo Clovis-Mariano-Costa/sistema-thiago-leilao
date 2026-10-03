@@ -4,7 +4,7 @@ const path=require('node:path');
 const root=process.cwd();
 const out=path.join(root,'dist');
 const publicFiles=[
-  'index.html','app.html','app.js','charlie-echo.html','charlie-page.js',
+  'index.html','app.html','app.js','charlie-echo.html','charlie-page.js','recuperar-legado.html','legacy-recovery.js',
   'auth.html','auth.js','auth-config.js',
   'charlie-chat.js','cloud-sync.js',
   'cookie-notice.js','cookies.html',
