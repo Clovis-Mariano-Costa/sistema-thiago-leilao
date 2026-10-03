@@ -256,3 +256,28 @@ Manter e-mail de autenticação separado de marketing.
 - senha da interface alinhada ao Supabase: mínimo 8 + minúscula + maiúscula + número + símbolo;
 - OAuth Google documentado como configurado, pendente de teste ponta a ponta;
 - nenhuma regra comercial/autoridade desta proposta foi aplicada ao banco ainda.
+
+
+## Atualização operacional — 03/10/2026
+
+Esta atualização prevalece sobre trechos anteriores quando houver divergência operacional.
+
+- **Todas as contas devem começar limpas.** Nenhuma conta nova recebe automaticamente leilões, lotes, preferências ou dados pertencentes a outra conta ou workspace.
+- A página pública do **Sistema Thiago** passa a ser mobile-first e separada do painel operacional autenticado.
+- A identidade visual aprovada do Sistema Thiago deve estar presente no site e no painel.
+- A página inicial deve informar: **“Uma parceria entre Jus 9 Tecnologia Jurídica - Jus 9 Verde e Nações Por Herança”.**
+- Menu público mínimo: Início, Como funciona, Sobre nós, Contato, Política de Privacidade, Login e Cadastro.
+- O contato público da Jus 9 para WhatsApp passa a ser **(48) 99108-9206**.
+- O único e-mail operacional que deve aparecer como canal de atendimento do Sistema Thiago é **suporte@jus9tecnologia.com.br**.
+- A página inicial poderá oferecer um **chat simples com Charlie Echo**, com aviso para não inserir dados sensíveis. Dentro do ambiente autenticado, o módulo da Charlie Echo poderá evoluir para uma experiência mais completa, auditável e contextual.
+- Segredos devem ser separados por ambiente: segredos usados por CI/CD ficam no mecanismo seguro do provedor de automação; segredos de Edge Functions ficam no mecanismo seguro do backend; segredos de runtime ficam no provedor de execução. **Nenhum segredo real deve ser incluído em HTML, JavaScript público ou repositório.**
+- O login Google foi testado com sucesso no fluxo humano. A documentação que ainda o descreva apenas como “pendente de teste” deve ser atualizada.
+- Valores comerciais e quotas continuam **não congelados**. Qualquer tabela anterior permanece apenas como referência histórica até telemetria real, revisão competente e decisão humana de publicação.
+
+### Separação entre página pública e sistema
+
+- `index.html`: apresentação pública e institucional do Sistema Thiago.
+- `auth.html`: login e cadastro.
+- `app.html`: painel operacional do Sistema Thiago.
+
+A passagem ao painel não autoriza acesso a dados de terceiros. Compartilhamento depende de autorização e das políticas de acesso do backend.
