@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 520" role="img" aria-labelledby="title desc">
+<title id="title">Sistema Thiago</title><desc id="desc">Marca do Sistema Thiago em azul, verde e dourado, com nove, estrela e balança.</desc>
+<defs>
+  <linearGradient id="gold" x1="0" x2="1"><stop stop-color="#9d6714"/><stop offset=".45" stop-color="#ffe59a"/><stop offset="1" stop-color="#c88d27"/></linearGradient>
+  <linearGradient id="blue" x1="0" x2="1"><stop stop-color="#072f5d"/><stop offset=".55" stop-color="#0e67a5"/><stop offset="1" stop-color="#06315f"/></linearGradient>
+  <linearGradient id="green" x1="0" x2="1"><stop stop-color="#0f5b35"/><stop offset=".55" stop-color="#42a62a"/><stop offset="1" stop-color="#0b472c"/></linearGradient>
+  <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity=".18"/></filter>
+</defs>
+<rect width="760" height="520" rx="42" fill="#fff"/>
+<g transform="translate(380 220)" filter="url(#shadow)">
+  <circle r="175" fill="none" stroke="url(#gold)" stroke-width="5"/>
+  <path d="M0-188 10-160 37-174 22-148 51-145 27-130 47-107 18-115 20-84 0-108-20-84-18-115-47-107-27-130-51-145-22-148-37-174-10-160Z" fill="url(#gold)"/>
+  <path d="M-105-55 Q-48-124 0-78 Q48-124 105-55" fill="none" stroke="url(#gold)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M-105-55 -140 28M-105-55 -72 28M105-55 72 28M105-55 140 28" stroke="url(#gold)" stroke-width="5"/>
+  <path d="M-160 28 Q-105 70-50 28Z M50 28 Q105 70 160 28Z" fill="url(#gold)"/>
+  <circle cx="-52" cy="-40" r="17" fill="url(#blue)"/>
+  <path d="M-68-18 Q-20 12 8-44 Q-4 30-62 72 Q-103 37-68-18Z" fill="url(#blue)"/>
+  <path d="M-90 62 Q-24 105 16 60 Q-5 130-102 118Z" fill="url(#green)"/>
+  <path d="M28-18 Q88-69 111-87 Q95-35 42 4Z M43 34 Q105 10 130 4 Q105 62 42 82Z" fill="url(#green)"/>
+  <path d="M15-46 C78-46 88 20 55 58 C33 84 2 87-20 72 C9 75 34 60 39 36 C45 7 31-2 15 0 C-8 3-12 29-4 44 C2 54 10 58 18 58 L18 92 C-21 92-48 66-48 25 C-48-20-22-46 15-46Z" fill="url(#gold)"/>
+</g>
+<text x="380" y="438" text-anchor="middle" font-family="Georgia,serif" font-weight="700" font-size="58" fill="#082f5f">SISTEMA <tspan fill="#b67a18">THIAGO</tspan></text>
+<text x="380" y="476" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" letter-spacing="5" fill="#31506d">TECNOLOGIA • ORGANIZAÇÃO • IMPACTO SOCIAL</text>
+</svg>
