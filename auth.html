@@ -64,7 +64,7 @@
         <div class="auth-heading">
           <p class="eyebrow dark">Já tenho conta</p>
           <h2>Entrar</h2>
-          <p class="muted">Use e-mail e senha. O Google ficará disponível quando o OAuth institucional for ligado a este projeto.</p>
+          <p class="muted">Use Google ou e-mail e senha. O OAuth Google já está configurado e agora entra na etapa de teste real.</p>
         </div>
 
         <button id="googleLoginBtn" class="primary-btn" type="button">Entrar com Google</button>
@@ -89,13 +89,13 @@
         <form id="signupForm" class="auth-form">
           <label class="field-wrap"><span>Seu nome</span><input name="displayName" type="text" autocomplete="name" maxlength="80" required /></label>
           <label class="field-wrap"><span>E-mail</span><input name="email" type="email" autocomplete="email" required /></label>
-          <label class="field-wrap"><span>Crie uma senha</span><input name="password" type="password" autocomplete="new-password" minlength="12" required /></label>
-          <label class="field-wrap"><span>Confirme a senha</span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" required /></label>
+          <label class="field-wrap"><span>Crie uma senha</span><input name="password" type="password" autocomplete="new-password" minlength="8" required /></label>
+          <label class="field-wrap"><span>Confirme a senha</span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
 
           <div class="password-policy" id="passwordPolicy">
             <strong>A senha precisa ter:</strong>
             <ul>
-              <li data-password-rule="length">12 ou mais caracteres</li>
+              <li data-password-rule="length">8 ou mais caracteres</li>
               <li data-password-rule="lower">uma letra minúscula</li>
               <li data-password-rule="upper">uma letra maiúscula</li>
               <li data-password-rule="number">um número</li>
