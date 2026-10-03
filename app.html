@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07111f" />
+  <meta name="description" content="Painel autenticado do Sistema Thiago para acompanhamento e organização de leilões." />
+  <title>Sistema Thiago • Leilões</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-logo" src="assets/sistema-thiago-logo.svg" alt="Sistema Thiago" />
+      <div>
+        <p class="eyebrow">Jus 9 • acompanhamento de leilões</p>
+        <h1>Sistema Thiago</h1>
+      </div>
+    </div>
+    <div class="top-actions">
+      <a id="userPill" class="user-pill" href="auth.html"><span id="userPillAvatar" class="user-pill-avatar"><span>?</span></span><span id="userPillLabel">Entrar / criar conta</span></a>
+      <button id="resetBtn" class="icon-btn" type="button" aria-label="Reiniciar dados locais" title="Reiniciar dados locais">↺</button>
+    </div>
+  </header>
+
+  <main>\n    <section id="importFeedback" class="research-mode-notice import-feedback" hidden></section>
+    <section class="security-warning" role="note">
+      <strong>⚠ SEGURANÇA EM TRANSIÇÃO.</strong>
+      O login e as regras RLS do banco já estão ativos, mas os leilões deste MVP ainda são gravados principalmente no navegador. O login não protege o conteúdo que permanece em <code>localStorage</code>. Até a migração para o banco compartilhado, não armazene material sigiloso.
+    </section>
+
+    <section class="dashboard-card">
+      <div>
+        <p class="eyebrow dark">Painel</p>
+        <h2>Escolha o que deseja fazer</h2>
+        <p class="muted">Você pode acompanhar um leilão existente, cadastrar um novo, consultar os dados inseridos pelo usuário ou abrir as fontes oficiais.</p>
+      </div>
+      <div class="dashboard-actions">
+        <button id="chooseAuctionBtn" class="primary-btn" type="button">Acompanhar leilão</button>
+        <button id="newAuctionBtn" class="secondary-btn strong" type="button">+ Cadastrar Novo Leilão</button>
+        <a class="primary-link research-action" href="fipe.html">Pesquisar Tabela FIPE</a>
+        <a class="primary-link research-action" href="fontes-oficiais.html">Pesquisar Leilões</a>
+        <a class="secondary-link" href="fipe.html">Veículos / FIPE</a>
+        <a class="secondary-link" href="fontes-oficiais.html">Fontes iniciais</a>
+      </div>
+    </section>
+
+    <section class="agenda-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow dark">Agenda</p>
+          <h2>Leilões cadastrados</h2>
+        </div>
+        <span id="auctionCountBadge" class="count-badge">0</span>
+      </div>
+      <div id="auctionAgenda" class="auction-agenda"></div>
+    </section>
+
+    <section id="activeAuctionPanel" class="active-auction-panel">
+      <div class="auction-header-card">
+        <div class="auction-cover-wrap">
+          <img id="auctionCover" class="auction-cover" alt="" hidden />
+          <div id="auctionCoverPlaceholder" class="auction-cover-placeholder">Leilão</div>
+        </div>
+        <div class="auction-heading-copy">
+          <div class="source-row">
+            <span id="auctionSourceBadge" class="source-badge user-source">Dados inseridos pelo usuário</span>
+            <span id="auctionStatusBadge" class="status-badge waiting">Agendado</span>
+          </div>
+          <h2 id="auctionTitle">Leilão Thiago — Base inicial</h2>
+          <p id="auctionDateRef" class="auction-date-ref"></p>
+          <p id="auctionLocation" class="muted"></p>
+          <div class="auction-header-actions">
+            <button id="switchAuctionBtn" class="secondary-btn" type="button">Trocar leilão</button>
+            <button id="newLotBtn" class="secondary-btn" type="button">+ Cadastrar lote</button>
+            <button id="liveModeBtn" class="secondary-btn" type="button">Modo ao vivo</button>
+            <a id="officialSourceLink" class="secondary-link compact" href="#" target="_blank" rel="noopener" hidden>Fonte oficial</a>
+          </div>
+        </div>
+      </div>
+
+      <details id="officialAuctionDetails" class="lot-details official-auction-details" hidden>
+        <summary>Dados oficiais importados</summary>
+        <div id="officialAuctionData" class="official-auction-data"></div>
+      </details>
+
+      <section id="officialNoLotsNotice" class="research-mode-notice" hidden>
+        <strong>Cadastro oficial importado.</strong>
+        Os dados gerais do leilão foram salvos, mas os lotes do edital ainda não foram extraídos. Use a fonte oficial para conferir o edital enquanto o importador de lotes é concluído.
+      </section>
+
+      <section class="next-card" aria-live="polite">
+        <div>
+          <div class="next-heading-row">
+            <p class="eyebrow">Próximo lote acompanhado</p>
+            <span id="nextPreference" class="preference-tag" hidden>★ Preferência</span>
+          </div>
+          <h2 id="nextLot">—</h2>
+          <p id="nextVehicle" class="next-vehicle">Carregando lotes…</p>
+          <p id="nextMaxBid" class="next-max-bid" hidden></p>
+        </div>
+        <div class="next-actions">
+          <button id="markNextBtn" class="primary-btn" type="button">Marcar como leiloado</button>
+        </div>
+      </section>
+
+      <section class="stats" aria-label="Resumo do andamento">
+        <div class="stat"><strong id="totalCount">0</strong><span>Lotes</span></div>
+        <div class="stat"><strong id="waitingCount">0</strong><span>Aguardando</span></div>
+        <div class="stat"><strong id="preferenceCount">0</strong><span>Preferências</span></div>
+        <div class="stat"><strong id="soldCount">0</strong><span>Leiloados</span></div>
+      </section>
+
+      <section class="progress-wrap" aria-label="Progresso">
+        <div class="progress-label"><span>Andamento do leilão</span><strong id="progressText">0%</strong></div>
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+      </section>
+
+      <section class="export-bar" aria-label="Exportação e segurança dos dados">
+        <button id="exportCsvBtn" class="secondary-btn" type="button">Exportar CSV</button>
+        <button id="printBtn" class="secondary-btn" type="button">PDF / Imprimir</button>
+        <button id="backupJsonBtn" class="secondary-btn" type="button">Backup JSON</button>
+        <button id="restoreJsonBtn" class="secondary-btn" type="button">Restaurar backup</button>
+        <input id="restoreJsonInput" type="file" accept=".json,application/json" hidden />
+      </section>
+
+      <section class="controls" aria-label="Busca e filtros">
+        <label class="search-box">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="Buscar lote, veículo, placa ou anotação" autocomplete="off" />
+        </label>
+        <div class="chips" role="group" aria-label="Filtrar lotes">
+          <button class="chip active" type="button" data-filter="all">Todos</button>
+          <button class="chip" type="button" data-filter="waiting">Aguardando</button>
+          <button class="chip" type="button" data-filter="preference">★ Preferências</button>
+          <button class="chip" type="button" data-filter="sold">Leiloados</button>
+        </div>
+      </section>
+
+      <section id="lotList" class="lot-list" aria-label="Lotes cadastrados"></section>
+      <p id="emptyState" class="empty-state" hidden>Nenhum lote corresponde ao filtro atual.</p>
+    </section>
+  </main>
+
+  <template id="lotCardTemplate">
+    <article class="lot-card">
+      <div class="card-main">
+        <img class="lot-photo" alt="" hidden />
+        <div class="lot-copy">
+          <div class="lot-line">
+            <h3 class="lot-number"></h3>
+            <span class="status-badge"></span>
+          </div>
+          <p class="vehicle-name"></p>
+          <div class="lot-meta-row">
+            <span class="source-badge user-source lot-source">Dados inseridos pelo usuário</span>
+            <span class="review-flag lot-review" hidden>Revisar extração</span>
+            <span class="lot-extra"></span>
+          </div>
+          <div class="result-chip" hidden></div>
+        </div>
+      </div>
+
+      <div class="financial-grid">
+        <label class="field-wrap">
+          <span>Valor FIPE <small>opcional</small></span>
+          <input class="fipe-value-input" type="text" inputmode="decimal" placeholder="Ex.: 82.450" />
+        </label>
+        <label class="field-wrap">
+          <span>Lance mínimo <small>opcional</small></span>
+          <input class="minimum-bid-input" type="text" inputmode="decimal" placeholder="Ex.: 25.000" />
+        </label>
+        <label class="field-wrap">
+          <span>Nosso máximo <small>opcional</small></span>
+          <input class="max-bid-input" type="text" inputmode="decimal" placeholder="Ex.: 48.000" />
+        </label>
+        <label class="field-wrap final-value-wrap" hidden>
+          <span>Valor final <small>opcional</small></span>
+          <input class="final-value-input" type="text" inputmode="decimal" placeholder="Ex.: 51.500" />
+        </label>
+      </div>
+
+      <details class="lot-details">
+        <summary>Dados completos do lote</summary>
+        <div class="form-grid lot-data-grid">
+          <label class="field-wrap"><span>Tipo</span><input class="lot-type-input" placeholder="Ex.: Conservado" /></label>
+          <label class="field-wrap"><span>Placa</span><input class="plate-input" placeholder="Ex.: ABC1D23" /></label>
+          <label class="field-wrap"><span>Marca / modelo</span><input class="brand-model-input" placeholder="Ex.: Ford/Ranger XLS" /></label>
+          <label class="field-wrap"><span>Chassi</span><input class="chassis-input" placeholder="Completo ou parcial" /></label>
+          <label class="field-wrap"><span>Motor</span><input class="engine-input" placeholder="Número ou identificação" /></label>
+          <label class="field-wrap"><span>Ano</span><input class="year-input" placeholder="Ex.: 2019/2020" /></label>
+          <label class="field-wrap"><span>Cor</span><input class="color-input" placeholder="Ex.: Branca" /></label>
+          <label class="field-wrap"><span>Combustível</span><input class="fuel-input" placeholder="Ex.: Diesel" /></label>
+        </div>
+      </details>
+
+      <div class="card-actions primary-actions">
+        <button class="preference-btn" type="button" aria-pressed="false">☆ Preferência</button>
+        <button class="status-btn" type="button"></button>
+      </div>
+
+      <div class="card-actions utility-actions">
+        <a class="vehicle-data-link secondary-link compact" href="fipe.html">Ver veículo / FIPE</a>
+        <button class="save-lot-btn secondary-btn compact-action" type="button">Salvar</button>
+        <button class="delete-lot-btn danger-btn compact-action" type="button">Apagar</button>
+      </div>
+
+      <div class="sold-details" hidden>
+        <label class="field-wrap">
+          <span>Resultado <small>opcional</small></span>
+          <select class="result-select">
+            <option value="">Não informado</option>
+            <option value="Arrematado por nós">Arrematado por nós</option>
+            <option value="Arrematado por outro">Arrematado por outro</option>
+            <option value="Não vendido">Não vendido</option>
+            <option value="Desistimos">Desistimos</option>
+            <option value="Sem interesse">Sem interesse</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field-wrap note-wrap">
+        <span>Observação <small>opcional</small></span>
+        <input class="note-input" type="text" placeholder="Ex.: condição, lembrete, motivo…" />
+      </label>
+    </article>
+  </template>
+
+  <dialog id="chooseAuctionDialog" class="sheet-dialog">
+    <div class="dialog-shell">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow dark">Acompanhar leilão</p>
+          <h2>Escolha o leilão</h2>
+          <p class="muted">Data e referência aparecem para evitar confusão entre leilões.</p>
+        </div>
+        <button class="dialog-close" data-close-dialog="chooseAuctionDialog" type="button">×</button>
+      </div>
+      <div id="chooseAuctionList" class="choose-auction-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="newAuctionDialog" class="sheet-dialog">
+    <form id="newAuctionForm" class="dialog-shell">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow dark">Novo leilão</p>
+          <h2>Cadastrar Novo Leilão</h2>
+          <p class="muted">Preencha o que souber. Campos podem ficar em branco e novas fontes podem trazer informações adicionais.</p>
+        </div>
+        <button class="dialog-close" data-close-dialog="newAuctionDialog" type="button">×</button>
+      </div>
+
+      <div class="official-search-strip">
+        <div>
+          <strong>Antes de cadastrar manualmente</strong>
+          <span>Pesquise se este leilão já possui cadastro ou edital em fonte oficial.</span>
+        </div>
+        <a class="secondary-link compact" href="fontes-oficiais.html?mode=import">Pesquisar cadastro oficial</a>
+      </div>
+
+      <div class="form-grid">
+        <label class="field-wrap"><span>Nome do leilão</span><input name="title" placeholder="Ex.: Leilão Detran SC — Florianópolis" /></label>
+        <label class="field-wrap"><span>Data</span><input name="date" type="date" /></label>
+        <label class="field-wrap"><span>Hora</span><input name="time" type="time" /></label>
+        <label class="field-wrap"><span>Referência</span><input name="reference" placeholder="Ex.: Edital 15/2026 ou anotação do usuário" /></label>
+        <label class="field-wrap"><span>Local</span><input name="location" placeholder="Cidade, pátio ou local virtual" /></label>
+        <label class="field-wrap"><span>Fonte</span>
+          <select name="sourceType">
+            <option value="user">Dados inseridos pelo usuário</option>
+            <option value="official">Fonte oficial</option>
+          </select>
+        </label>
+        <label class="field-wrap form-span-2"><span>Link oficial <small>opcional</small></span><input name="officialUrl" type="url" placeholder="https://..." /></label>
+        <label class="field-wrap form-span-2"><span>Foto/capa do leilão <small>opcional</small></span><input name="photo" type="file" accept="image/*" /></label>
+        <label class="field-wrap form-span-2"><span>Observações</span><textarea name="notes" rows="3" placeholder="Informações gerais do leilão"></textarea></label>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="secondary-btn" data-close-dialog="newAuctionDialog" type="button">Cancelar</button>
+        <button class="primary-btn" type="submit">Salvar leilão</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="newLotDialog" class="sheet-dialog">
+    <form id="newLotForm" class="dialog-shell">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow dark">Novo lote</p>
+          <h2>Cadastrar lote</h2>
+          <p class="muted">O lote será incluído no leilão atualmente selecionado.</p>
+        </div>
+        <button class="dialog-close" data-close-dialog="newLotDialog" type="button">×</button>
+      </div>
+      <div class="form-grid">
+        <label class="field-wrap"><span>Número do lote *</span><input name="lotNumber" type="number" min="1" required /></label>
+        <label class="field-wrap"><span>Veículo / item *</span><input name="vehicle" required placeholder="Ex.: Ford Ranger" /></label>
+        <label class="field-wrap"><span>Tipo</span><input name="type" placeholder="Ex.: Conservado" /></label>
+        <label class="field-wrap"><span>Placa</span><input name="plate" placeholder="Ex.: ABC1D23" /></label>
+        <label class="field-wrap"><span>Marca / modelo</span><input name="brandModel" placeholder="Ex.: Ford/Ranger XLS" /></label>
+        <label class="field-wrap"><span>Chassi</span><input name="chassis" placeholder="Completo ou parcial" /></label>
+        <label class="field-wrap"><span>Motor</span><input name="engine" placeholder="Número ou identificação" /></label>
+        <label class="field-wrap"><span>Ano</span><input name="year" placeholder="Ex.: 2019/2020" /></label>
+        <label class="field-wrap"><span>Cor</span><input name="color" placeholder="Ex.: Branca" /></label>
+        <label class="field-wrap"><span>Combustível</span><input name="fuel" placeholder="Ex.: Diesel" /></label>
+        <label class="field-wrap"><span>Valor FIPE</span><input name="fipeValue" inputmode="decimal" placeholder="Ex.: 82.450" /></label>
+        <label class="field-wrap"><span>Lance mínimo</span><input name="minimumBid" inputmode="decimal" placeholder="Ex.: 25.000" /></label>
+        <label class="field-wrap form-span-2"><span>Imagem do lote / veículo <small>opcional</small></span><input name="photo" type="file" accept="image/*" /></label>
+        <label class="field-wrap"><span>Fonte</span>
+          <select name="sourceType">
+            <option value="user">Dados inseridos pelo usuário</option>
+            <option value="official">Fonte oficial</option>
+          </select>
+        </label>
+        <label class="field-wrap form-span-2"><span>Link da fonte oficial <small>opcional</small></span><input name="officialUrl" type="url" placeholder="https://..." /></label>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary-btn" data-close-dialog="newLotDialog" type="button">Cancelar</button>
+        <button class="primary-btn" type="submit">Salvar lote</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="liveDialog" class="live-dialog">
+    <div class="live-shell">
+      <button id="closeLiveBtn" class="live-close" type="button" aria-label="Fechar modo ao vivo">×</button>
+      <p class="eyebrow">Modo ao vivo</p>
+      <select id="liveAuctionSelect" class="live-auction-select" aria-label="Escolher leilão"></select>
+      <p id="liveAuctionMeta" class="live-auction-meta"></p>
+      <h2 id="liveLot">—</h2>
+      <p id="liveVehicle" class="live-vehicle"></p>
+      <p id="livePreference" class="live-preference" hidden></p>
+      <p id="liveMaxBid" class="live-max-bid" hidden></p>
+      <div class="live-actions-grid live-actions-three">
+        <button id="liveBackBtn" class="live-utility-btn" type="button">← Voltar</button>
+        <button id="livePreferenceBtn" class="live-utility-btn" type="button">★ Preferência</button>
+        <button id="liveSkipBtn" class="live-utility-btn" type="button">→ Próximo</button>
+      </div>
+      <button id="liveSoldBtn" class="live-sold-btn" type="button">LEILOADO</button>
+      <a id="liveVehicleLink" class="live-detail-link" href="fipe.html">Ver dados do veículo / FIPE</a>
+      <p class="live-hint">O modo ao vivo mostra o próximo lote pendente do leilão selecionado.</p>
+    </div>
+  </dialog>
+
+  <script src="auth-config.js"></script>
+  <script src="official-sources.js"></script>
+  <script src="app.js"></script>
+  <script type="module" src="session-ui.js"></script>
+  <script src="cookie-notice.js"></script>
+</body>
+</html>
