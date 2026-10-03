@@ -1,6 +1,16 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const STORAGE_KEY='sistema-thiago-v3';
+const STORAGE_KEY_BASE='sistema-thiago-v4';
+const AUTH_SESSION_KEY='sistema-thiago-auth-session';
+
+function currentSessionIdentity(){
+  try{
+    const parsed=JSON.parse(localStorage.getItem(AUTH_SESSION_KEY)||'null');
+    if(parsed?.authenticated && parsed?.uid) return String(parsed.uid);
+  }catch{}
+  return 'guest';
+}
+function storageKey(){ return `${STORAGE_KEY_BASE}:${currentSessionIdentity()}`; }
 const SOURCES=Array.isArray(window.SISTEMA_THIAGO_OFFICIAL_SOURCES)?window.SISTEMA_THIAGO_OFFICIAL_SOURCES:[];
 const RESULTS=Array.isArray(window.SISTEMA_THIAGO_OFFICIAL_RESULTS)?window.SISTEMA_THIAGO_OFFICIAL_RESULTS:[];
 const SUPABASE_CFG=window.SUPABASE_CONFIG || {};
@@ -23,20 +33,21 @@ function formatDate(value){
 
 function loadState(){
   try{
-    const raw=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
+    const raw=JSON.parse(localStorage.getItem(storageKey())||'null');
     if(raw&&typeof raw==='object') return raw;
   }catch{}
+  const identity=currentSessionIdentity();
   return {
-    version:3,
-    currentUserId:'thiago',
-    users:[{id:'thiago',name:'Thiago',email:'',authMode:'local_mvp'}],
+    version:4,
+    currentUserId:identity==='guest'?'':identity,
+    users:[],
     currentAuctionId:'',
     auctions:[]
   };
 }
 
 function saveState(state){
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  localStorage.setItem(storageKey(),JSON.stringify(state));
 }
 
 function normalizeImportedLot(lot,index,item){
@@ -133,7 +144,7 @@ async function enrichFromPncp(item,button){
   }
 
   try{
-    const response=await fetch(cfg.url+'/functions/v1/pncp-lots',{
+    const response=await fetch(SUPABASE_CFG.url+'/functions/v1/pncp-lots',{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
@@ -251,8 +262,8 @@ async function importAuction(item,button){
       officialUrl:item.officialUrl||'',
       photoDataUrl:'',
       notes:item.object||'',
-      participants:[state.currentUserId||'thiago'],
-      createdBy:state.currentUserId||'thiago',
+      participants:state.currentUserId?[state.currentUserId]:[],
+      createdBy:state.currentUserId||'',
       createdAt:new Date().toISOString(),
       officialPayload:JSON.parse(JSON.stringify(item)),
       sourceEvidence:evidence,
@@ -271,7 +282,7 @@ async function importAuction(item,button){
   if(item.__pncpAttempted) params.set('pncp','1');
   if(item.__pncpError) params.set('pncp_error',item.__pncpError);
   if(item.__pncpDocument) params.set('pncp_document',item.__pncpDocument);
-  location.href='index.html?'+params.toString();
+  location.href='app.html?'+params.toString();
 }
 
 function resultCard(item){
