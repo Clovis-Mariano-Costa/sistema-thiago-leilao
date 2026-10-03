@@ -74,6 +74,7 @@
           <div class="auction-header-actions">
             <button id="switchAuctionBtn" class="secondary-btn" type="button">Trocar leilão</button>
             <button id="newLotBtn" class="secondary-btn" type="button">+ Cadastrar lote</button>
+            <button id="bulkLotsBtn" class="secondary-btn" type="button">+ Vários lotes</button>
             <button id="liveModeBtn" class="secondary-btn" type="button">Modo ao vivo</button>
             <a id="officialSourceLink" class="secondary-link compact" href="#" target="_blank" rel="noopener" hidden>Fonte oficial</a>
           </div>
@@ -183,6 +184,7 @@
 
       <details class="lot-details">
         <summary>Dados completos do lote</summary>
+        <div class="lot-items-summary" aria-label="Itens do lote"></div>
         <div class="form-grid lot-data-grid">
           <label class="field-wrap"><span>Tipo</span><input class="lot-type-input" placeholder="Ex.: Conservado" /></label>
           <label class="field-wrap"><span>Placa</span><input class="plate-input" placeholder="Ex.: ABC1D23" /></label>
@@ -297,7 +299,8 @@
       </div>
       <div class="form-grid">
         <label class="field-wrap"><span>Número do lote *</span><input name="lotNumber" type="number" min="1" required /></label>
-        <label class="field-wrap"><span>Veículo / item *</span><input name="vehicle" required placeholder="Ex.: Ford Ranger" /></label>
+        <label class="field-wrap"><span>Veículo / item principal *</span><input name="vehicle" required placeholder="Ex.: Ford Ranger" /></label>
+        <label class="field-wrap"><span>Identificador do item <small>opcional</small></span><input name="itemIdentifier" placeholder="Ex.: código observado na fonte" /></label>
         <label class="field-wrap"><span>Tipo</span><input name="type" placeholder="Ex.: Conservado" /></label>
         <label class="field-wrap"><span>Placa</span><input name="plate" placeholder="Ex.: ABC1D23" /></label>
         <label class="field-wrap"><span>Marca / modelo</span><input name="brandModel" placeholder="Ex.: Ford/Ranger XLS" /></label>
@@ -316,10 +319,34 @@
           </select>
         </label>
         <label class="field-wrap form-span-2"><span>Link da fonte oficial <small>opcional</small></span><input name="officialUrl" type="url" placeholder="https://..." /></label>
+        <label class="field-wrap form-span-2"><span>Itens adicionais do mesmo lote <small>opcional</small></span><textarea name="additionalItems" rows="5" placeholder="Um por linha: identificador | descrição | placa | FIPE\nEx.: 004305-3 | Ranger XLS 2.2 4x4 CD Diesel | ABC1D23 | 122.032,00"></textarea><small class="form-help">Cada linha cria um item separado dentro deste lote. Campos ausentes podem ficar vazios.</small></label>
       </div>
       <div class="dialog-actions">
         <button class="secondary-btn" data-close-dialog="newLotDialog" type="button">Cancelar</button>
         <button class="primary-btn" type="submit">Salvar lote</button>
+      </div>
+    </form>
+  </dialog>
+
+
+  <dialog id="bulkLotsDialog" class="sheet-dialog">
+    <form id="bulkLotsForm" class="dialog-shell">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow dark">Cadastro em lote</p>
+          <h2>Cadastrar vários lotes</h2>
+          <p class="muted">Adicione um lote por linha. O sistema não substituirá lotes já existentes.</p>
+        </div>
+        <button class="dialog-close" data-close-dialog="bulkLotsDialog" type="button">×</button>
+      </div>
+      <label class="field-wrap">
+        <span>Lotes *</span>
+        <textarea name="lotsBulk" rows="12" required placeholder="015 | Ranger&#10;018 | Kombi&#10;020 | Renault Master"></textarea>
+        <small class="form-help">Formato: número do lote | descrição do item principal. Depois você pode abrir cada lote e complementar os itens.</small>
+      </label>
+      <div class="dialog-actions">
+        <button class="secondary-btn" data-close-dialog="bulkLotsDialog" type="button">Cancelar</button>
+        <button class="primary-btn" type="submit">Cadastrar lotes</button>
       </div>
     </form>
   </dialog>
