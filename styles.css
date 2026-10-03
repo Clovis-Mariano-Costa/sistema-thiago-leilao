@@ -209,3 +209,10 @@ body{background:
   .charlie-context-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .charlie-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* Recuperação local entre origens — sem envio automático */
+.legacy-recovery-list{display:grid;gap:10px;margin-top:12px}
+.legacy-recovery-card{display:grid;gap:8px;box-shadow:none}
+.legacy-recovery-card h3,.legacy-recovery-card p{margin:0}
+.legacy-recovery-card .primary-btn{width:max-content;max-width:100%}
+@media(min-width:720px){.legacy-recovery-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
