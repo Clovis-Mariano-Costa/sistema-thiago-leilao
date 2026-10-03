@@ -12,6 +12,11 @@ const profileForm=$('#profileForm');
 const googleBtn=$('#googleLoginBtn');
 const resetPasswordBtn=$('#resetPasswordBtn');
 const resendConfirmationBtn=$('#resendConfirmationBtn');
+const signupInlineStatus=$('#signupInlineStatus');
+const confirmationPanel=$('#confirmationPanel');
+const confirmationEmail=$('#confirmationEmail');
+const confirmationResendBtn=$('#confirmationResendBtn');
+const confirmationLoginBtn=$('#confirmationLoginBtn');
 const logoutBtn=$('#logoutBtn');
 const signedInName=$('#signedInName');
 const signedInEmail=$('#signedInEmail');
@@ -65,6 +70,44 @@ function renderPasswordPolicy(){
     if(el) el.classList.toggle('ok',ok);
   });
   return Object.values(checks).every(Boolean);
+}
+
+function passwordFailureMessage(){
+  const p=signupForm.elements.password.value || '';
+  const c=signupForm.elements.confirmPassword.value || '';
+  const checks=passwordChecks(p,c);
+  const names={
+    length:'8 ou mais caracteres',
+    lower:'uma letra minúscula',
+    upper:'uma letra maiúscula',
+    number:'um número',
+    symbol:'um símbolo',
+    match:'as duas senhas precisam ser idênticas'
+  };
+  return Object.entries(checks).filter(([,ok])=>!ok).map(([k])=>names[k]);
+}
+
+function showSignupError(message){
+  signupInlineStatus.textContent=message;
+  signupInlineStatus.className='inline-form-status error';
+  signupInlineStatus.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function maskEmail(email){
+  const [name,domain]=String(email||'').split('@');
+  if(!domain) return email || 'seu e-mail';
+  const shown=name.length<=2 ? name[0]+'*' : name.slice(0,2)+'***';
+  return shown+'@'+domain;
+}
+
+function showConfirmation(email){
+  lastSignupEmail=email || lastSignupEmail;
+  confirmationEmail.textContent=maskEmail(lastSignupEmail);
+  authForms.hidden=true;
+  confirmationPanel.hidden=false;
+  signedInBox.hidden=true;
+  notice.hidden=true;
+  confirmationPanel.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function rememberSession(session){
@@ -214,8 +257,12 @@ if(!config.url || !config.publishableKey){
     const password=signupForm.elements.password.value;
     const confirmPassword=signupForm.elements.confirmPassword.value;
 
-    if(name.length<2) return setStatus('Informe seu nome para criar o perfil.','error');
-    if(!renderPasswordPolicy()) return setStatus('A senha ainda não cumpre todos os requisitos indicados.','error');
+    signupInlineStatus.textContent='';
+    if(name.length<2) return showSignupError('Informe seu nome para criar o perfil.');
+    if(!renderPasswordPolicy()){
+      const missing=passwordFailureMessage();
+      return showSignupError('A senha ainda não cumpre os requisitos: '+missing.join('; ')+'.');
+    }
 
     lastSignupEmail=email;
     try{
@@ -234,7 +281,8 @@ if(!config.url || !config.publishableKey){
         setStatus('Conta criada e sessão aberta. Verificando confirmação…','success');
         await renderUser(data.session);
       }else{
-        setStatus('Conta criada. Enviamos um e-mail de confirmação. Abra o link recebido e depois volte para entrar.','success');
+        setStatus('Conta criada. Confirme seu e-mail para continuar.','success');
+        showConfirmation(email);
       }
       signupForm.elements.password.value='';
       signupForm.elements.confirmPassword.value='';
@@ -259,6 +307,16 @@ if(!config.url || !config.publishableKey){
     }catch(error){
       setStatus('Não foi possível reenviar: '+friendlyError(error),'error');
     }
+  });
+
+  confirmationResendBtn.addEventListener('click',()=>resendConfirmationBtn.click());
+  confirmationLoginBtn.addEventListener('click',()=>{
+    confirmationPanel.hidden=true;
+    authForms.hidden=false;
+    notice.hidden=false;
+    loginForm.elements.email.value=lastSignupEmail || signupForm.elements.email.value || '';
+    loginForm.scrollIntoView({behavior:'smooth',block:'start'});
+    loginForm.elements.password.focus();
   });
 
   loginForm.addEventListener('submit',async e=>{
