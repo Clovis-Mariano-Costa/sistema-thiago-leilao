@@ -13,7 +13,7 @@ const publicFiles=[
   'landing.css','landing.js',
   'parceria.html','privacidade.html','termos.html',
   'session-ui.js','styles.css','user-references.js',
-  'favicon.png'
+  'favicon.png','favicon.svg'
 ];
 
 fs.rmSync(out,{recursive:true,force:true});
