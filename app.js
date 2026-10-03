@@ -300,7 +300,9 @@ function syncPrimaryItemFromLegacy(lot) {
 function saveState(showError = true) {
   try {
     state.auctions.forEach(a => (a.lots || []).forEach(syncPrimaryItemFromLegacy));
-    localStorage.setItem(storageKey(), JSON.stringify(state));
+    const serialized = JSON.stringify(state);
+    localStorage.setItem(storageKey(), serialized);
+    window.dispatchEvent(new CustomEvent('sistema-thiago:state-saved',{detail:{key:storageKey(),state}}));
     return true;
   } catch (err) {
     if (showError) alert('Não foi possível salvar todos os dados neste navegador. A foto pode estar grande demais para o armazenamento local.');
@@ -1253,9 +1255,24 @@ $('#resetBtn').addEventListener('click',()=>{
   renderAll();
 });
 
+window.SISTEMA_THIAGO_APP = {
+  getState:()=>JSON.parse(JSON.stringify(state)),
+  replaceState:(nextState,{save=true}={})=>{
+    state=normalizeState(nextState);
+    liveCursorByAuction.clear();
+    if(save) saveState();
+    renderAll();
+    return JSON.parse(JSON.stringify(state));
+  },
+  storageKey,
+  currentSessionIdentity,
+  renderAll,
+  buildBackupPayload
+};
+
 renderAll();
 showImportFeedback();
-
+window.dispatchEvent(new CustomEvent('sistema-thiago:app-ready'));
 
 window.addEventListener('storage',event=>{
   if(event.key!==storageKey() || !event.newValue) return;
