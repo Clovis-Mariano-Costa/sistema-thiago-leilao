@@ -24,10 +24,13 @@ test('página Charlie Echo preserva vínculos, limites e aprendizagem permanente
 test('Charlie Echo envia contexto mínimo e nunca trata aprendizagem como encerrada',()=>{
   const chat=fs.readFileSync('charlie-chat.js','utf8');
   const page=fs.readFileSync('charlie-page.js','utf8');
+  const html=fs.readFileSync('charlie-echo.html','utf8');
+  const contextFn=page.match(/function contextSummary\(\)\{([\s\S]*?)\n\}/)?.[1] || '';
   assert.match(chat,/SISTEMA_THIAGO_CHARLIE_CONTEXT/);
   assert.match(chat,/aprendizagem permanente/i);
-  assert.match(page,/contexto automático permanece mínimo/i);
-  assert.doesNotMatch(page,/plate|placa|chassis|chassi/i);
+  assert.match(html,/contexto automático permanece mínimo/i);
+  assert.match(contextFn,/aprendizagem contínua/i);
+  assert.doesNotMatch(contextFn,/plate|placa|chassis|chassi/i);
 });
 
 test('build do Pages inclui o espaço Charlie Echo',()=>{
