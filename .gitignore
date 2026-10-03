@@ -136,8 +136,13 @@ dist
 .pnp.*
 
 # Sistema Thiago — configs locais / segredos
+.env.*
+!.env.example
 supabase-config.local.js
 auth-config.local.js
 wrangler.local.toml
 .dev.vars
 .dev.vars.*
+
+# Cloudflare local state
+.wrangler/
