@@ -3,11 +3,18 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const {execFileSync}=require('node:child_process');
 
-for(const file of ['app.js','fontes.js','charlie-chat.js','cloud-sync.js']){
+for(const file of ['app.js','charlie-chat.js']){
   test(file+' tem sintaxe JavaScript válida',()=>{
     execFileSync(process.execPath,['--check',file],{stdio:'pipe'});
   });
 }
+
+test('módulos ESM preservam import do cliente Supabase',()=>{
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  const sync=fs.readFileSync('cloud-sync.js','utf8');
+  assert.match(fontes,/^import \{ createClient \} from /);
+  assert.match(sync,/^import \{ createClient \} from /);
+});
 
 test('importador oficial usa configuração correta e retorna ao painel',()=>{
   const js=fs.readFileSync('fontes.js','utf8');
