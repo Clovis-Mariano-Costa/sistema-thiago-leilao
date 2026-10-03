@@ -77,7 +77,28 @@ async function start(){
     });
   }
 
-  if(cloud?.state && Array.isArray(cloud.state.auctions)){
+  function offerLegacyRecovery(candidate){
+    setStatus(
+      '<strong>Dados antigos encontrados neste aparelho.</strong> Há '+auctionCount(candidate.state)+' leilão(ões) em '+candidate.key+'. '+
+      'Não limpe os dados do navegador antes de conferir a recuperação. '+
+      '<button type="button" data-recover-legacy>Recuperar e proteger online</button>',
+      'warn'
+    );
+    statusBox.querySelector('[data-recover-legacy]')?.addEventListener('click',async()=>{
+      app.replaceState(candidate.state,{save:true});
+      const recovered=app.getState();
+      const ok=await upload(recovered,'Dados antigos recuperados');
+      if(ok) setStatus('<strong>Recuperação concluída.</strong> '+auctionCount(recovered)+' leilão(ões) e '+lotCount(recovered)+' lote(s) foram vinculados à sua conta. Confira antes de apagar qualquer dado antigo.','ok');
+    });
+  }
+
+  const cloudState=(cloud?.state && Array.isArray(cloud.state.auctions)) ? cloud.state : null;
+
+  // Um snapshot online vazio não deve esconder os dados legados deste aparelho.
+  // Isso é especialmente importante na recuperação do leilão antigo do celular.
+  if(legacy && !auctionCount(local) && !auctionCount(cloudState)){
+    offerLegacyRecovery(legacy);
+  }else if(cloudState){
     const cloudState=cloud.state;
     if(!auctionCount(local) && auctionCount(cloudState)){
       app.replaceState(cloudState,{save:true});
@@ -91,16 +112,7 @@ async function start(){
   }else if(auctionCount(local)){
     await upload(local,'Primeiro backup online criado');
   }else if(legacy){
-    setStatus(
-      '<strong>Dados antigos encontrados neste navegador.</strong> Há '+auctionCount(legacy.state)+' leilão(ões) em '+legacy.key+'. '+
-      '<button type="button" data-recover-legacy>Recuperar e proteger online</button>',
-      'warn'
-    );
-    statusBox.querySelector('[data-recover-legacy]')?.addEventListener('click',async()=>{
-      app.replaceState(legacy.state,{save:true});
-      const recovered=app.getState();
-      await upload(recovered,'Dados antigos recuperados');
-    });
+    offerLegacyRecovery(legacy);
   }else{
     await upload(local,'Conta iniciada com backup online vazio');
   }
