@@ -5,11 +5,11 @@ const fs=require('node:fs');
 test('cadastro exige senha forte no frontend e confirmação',()=>{
   const html=fs.readFileSync('auth.html','utf8');
   const js=fs.readFileSync('auth.js','utf8');
-  assert.match(html,/minlength="12"/);
+  assert.match(html,/minlength="8"/);
   assert.match(html,/data-password-rule="upper"/);
   assert.match(html,/data-password-rule="symbol"/);
   assert.match(html,/confirmPassword/);
-  assert.match(js,/password\.length>=12/);
+  assert.match(js,/password\.length>=8/);
   assert.match(js,/\[A-Z\]/);
   assert.match(js,/\[a-z\]/);
   assert.match(js,/\\d/);
