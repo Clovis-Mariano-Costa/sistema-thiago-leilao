@@ -123,3 +123,53 @@ textarea{font:inherit;resize:vertical}.top-actions{display:flex;align-items:cent
 .lot-item-row{display:grid;gap:3px;padding:8px 9px;border-radius:10px;background:#f7f9fb}
 .lot-item-row strong{font-size:.78rem;color:#26384b}
 .lot-item-row span{font-size:.7rem;line-height:1.4;color:var(--muted)}
+
+/* === Sistema Thiago 2026-10-03: nova identidade, sync e Charlie Echo === */
+:root{
+  --navy:#071729;
+  --navy-soft:#103a5d;
+  --gold:#d3a33a;
+  --green:#176a4a;
+  --bg:#f4f7f9;
+  --surface:#ffffff;
+  --ink:#142435;
+  --muted:#647386;
+  --line:#dfe7ed;
+  --focus:#1e6fa8;
+}
+body{background:
+  radial-gradient(circle at 8% 0%,rgba(23,106,74,.08),transparent 26rem),
+  radial-gradient(circle at 92% 0%,rgba(211,163,58,.10),transparent 24rem),
+  var(--bg)}
+.topbar{background:linear-gradient(115deg,#071729,#0b2942 58%,#103a45);border-bottom-color:rgba(211,163,58,.45)}
+.brand-logo{object-fit:contain;background:#fff;border-radius:16px}
+.dashboard-card{background:linear-gradient(145deg,#fff,#fbfdfd);border-top:3px solid var(--gold)}
+.primary-btn,.primary-link{background:linear-gradient(135deg,#071729,#103a5d)}
+.secondary-btn:hover,.secondary-link:hover{border-color:#b9ccd9;background:#f8fbfc}
+.auction-header-card{border-top:3px solid var(--green)}
+.security-warning{background:#fff8f3;border-color:#efc7b9}
+.sync-status{margin:0 0 12px;padding:12px 14px;border-radius:14px;border:1px solid #bcd8ea;background:#eef8ff;color:#214c67;font-size:.8rem;line-height:1.5}
+.sync-status.ok{border-color:#b8dfca;background:#effbf4;color:#195b3d}
+.sync-status.warn{border-color:#ead293;background:#fff9e8;color:#735317}
+.sync-status.error{border-color:#efb9b3;background:#fff2f1;color:#8a302a}
+.sync-status button{min-height:36px;padding:0 12px;border:1px solid currentColor;border-radius:10px;background:#fff;color:inherit;font-weight:850;cursor:pointer}
+.sync-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+
+.charlie-launcher{position:fixed;right:18px;bottom:18px;z-index:800;border:1px solid rgba(211,163,58,.6);border-radius:999px;background:linear-gradient(135deg,#071729,#176a4a);color:#fff;padding:13px 17px;font-weight:900;box-shadow:0 14px 36px rgba(7,23,41,.3);cursor:pointer}
+.charlie-panel{position:fixed;right:14px;bottom:78px;z-index:850;width:min(430px,calc(100vw - 28px));height:min(650px,calc(100vh - 110px));display:grid;grid-template-rows:auto 1fr auto;background:#fff;border:1px solid #dce6eb;border-radius:22px;box-shadow:0 26px 80px rgba(7,23,41,.28);overflow:hidden}
+.charlie-panel[hidden]{display:none}
+.charlie-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:linear-gradient(115deg,#071729,#0d4e55);color:#fff;border-bottom:2px solid var(--gold)}
+.charlie-head div div{margin-top:2px;font-size:.72rem;opacity:.78}
+.charlie-head button{width:36px;height:36px;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(255,255,255,.08);color:#fff;font-size:1.2rem}
+.charlie-body{overflow:auto;padding:14px;background:linear-gradient(180deg,#f7fafb,#eef4f5)}
+.charlie-msg{max-width:90%;margin:0 0 10px;padding:10px 12px;border:1px solid #dfe7ed;border-radius:15px;background:#fff;font-size:.87rem;line-height:1.5;box-shadow:0 3px 10px rgba(7,23,41,.04)}
+.charlie-msg.user{margin-left:auto;background:#eaf4fb;border-color:#c9dce9}
+.charlie-msg a{color:#1b5e86;font-weight:750}
+.charlie-form{display:grid;grid-template-columns:1fr auto;gap:8px;padding:12px;border-top:1px solid #dfe7ed;background:#fff}
+.charlie-form textarea{min-height:54px;max-height:140px;resize:vertical;border:1px solid #d6e0e6;border-radius:12px;padding:10px;font:inherit}
+.charlie-form>button{border:0;border-radius:12px;background:var(--gold);color:#18212a;font-weight:900;padding:0 15px}
+.charlie-note{grid-column:1/-1;font-size:.68rem;color:var(--muted);line-height:1.35}
+@media(max-width:640px){
+  .charlie-launcher{right:12px;bottom:12px}
+  .charlie-panel{right:8px;bottom:70px;width:calc(100vw - 16px);height:min(620px,calc(100vh - 90px))}
+}

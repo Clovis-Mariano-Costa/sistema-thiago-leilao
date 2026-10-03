@@ -4,7 +4,7 @@ Aplicação web **mobile first** para Thiago acompanhar leilões, organizar lote
 
 ## Estado atual
 
-A base inicial preserva os **37 lotes** extraídos das conversas e agora funciona dentro de uma arquitetura de **vários leilões**.
+O sistema está em transição do armazenamento apenas local para Supabase. A estrutura suporta **vários leilões**, **vários itens por lote**, login real e backup/sincronização online por usuário. A recuperação da antiga Base inicial depende de trazer os dados do navegador/origem em que foram cadastrados; não se atribui conteúdo antigo silenciosamente a uma nova conta.
 
 ### Já implementado no MVP
 
@@ -25,7 +25,11 @@ A base inicial preserva os **37 lotes** extraídos das conversas e agora funcion
 - nosso valor máximo e valor final opcionais;
 - Modo ao Vivo v2 com seletor de leilão, Preferência, Pular e Leiloado;
 - CSV e PDF/impressão por leilão;
-- migração dos dados da versão anterior salvos no navegador.
+- recuperação assistida de dados legados encontrados no mesmo navegador/origem;
+- snapshot online por usuário autenticado, protegido por RLS, como ponte até a migração relacional completa;
+- conversa contextual com Charlie Echo dentro do painel;
+- aviso de cookies/armazenamento essencial;
+- múltiplos itens dentro do mesmo lote e cadastro de vários lotes.
 
 ## Regra de proveniência
 
@@ -38,11 +42,9 @@ Nenhum dado é convertido automaticamente de “usuário” para “oficial”.
 
 ## Segurança e login
 
-> **MVP EM VALIDAÇÃO.** A etapa atual ainda usa armazenamento local do navegador e não deve ser tratada como ambiente seguro.
+> **MVP EM VALIDAÇÃO.** O login verdadeiro com **Google** e **e-mail/senha**, RLS e perfis já estão ativos. O navegador ainda mantém uma cópia local, enquanto um snapshot online por usuário autenticado serve como ponte de recuperação e sincronização. A fonte canônica final continua sendo o modelo relacional Supabase.
 
-O login verdadeiro com **Google** e **e-mail/senha** está agendado no cronograma e só será considerado implementado quando o serviço de autenticação, banco compartilhado e regras de acesso forem configurados e testados.
-
-Regra planejada: um usuário autenticado só verá leilões de que participe ou para os quais tenha sido convidado. Quem não tiver leilões compartilhados abrirá um sistema em branco.
+Regra vigente: uma conta nova começa vazia. Dados antigos só são recuperados quando pertencem àquele navegador/origem ou quando chegam pelo backup online da própria conta. Compartilhamento entre usuários deve respeitar associação explícita ao leilão.
 
 ## Fontes oficiais iniciais
 
@@ -68,18 +70,14 @@ https://clovis-mariano-costa.github.io/sistema-thiago-leilao/
 
 O GitHub continua como fonte de código e histórico. Durante a transição, lembre que `localStorage` é separado por domínio/origem: os dados locais gravados no GitHub Pages não aparecem automaticamente no domínio próprio e vice-versa.
 
-## Persistência — arquitetura candidata
+## Persistência — arquitetura vigente
 
-A persistência atual em `localStorage` é apenas de MVP e não deve virar a fonte canônica multiusuário.
+- Supabase Auth: Google e e-mail/senha.
+- Supabase Postgres + RLS: usuários, leilões, membros, lotes, itens, FIPE e auditoria em migração gradual.
+- `user_state_snapshots`: ponte transitória para recuperação/sincronização do estado do MVP por usuário.
+- Supabase Storage privado `auction-media`: destino previsto para imagens e documentos do leilão com políticas por leilão/papel.
+- Cloudflare: entrega do domínio próprio e Workers/Pages Functions quando necessários.
+- GitHub Actions: testes/publicação; usar Secrets só para pipeline e preferir OIDC quando possível.
+- Google Drive: continuidade, documentação e exportação, não banco transacional principal.
 
-Arquitetura em avaliação:
-
-- Cloudflare Workers: API/backend e autorização;
-- Cloudflare D1: usuários, leilões, membros, convites, lotes, FIPE, fontes e auditoria;
-- Cloudflare R2: imagens, capas e documentos;
-- Cron Triggers/Workflows: atualização periódica de fontes oficiais;
-- Queues: processamento assíncrono;
-- Browser Run: apenas para páginas oficiais que exijam navegador real e permitam automação;
-- Firebase Authentication: Google + e-mail/senha, com identidade validada pelo backend.
-
-Google Drive permanece adequado para continuidade, documentação e exportação, não como banco transacional principal do aplicativo.
+`localStorage` permanece apenas como cache/cópia local enquanto a migração relacional é concluída.

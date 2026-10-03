@@ -1,6 +1,6 @@
 # Segurança e autenticação — Sistema Thiago
 
-Estado: MVP em endurecimento — 2026-10-02.
+Estado: MVP em endurecimento — 2026-10-03.
 
 ## O que já está ativo
 
@@ -14,6 +14,8 @@ Estado: MVP em endurecimento — 2026-10-02.
 - Publishable key no navegador; nenhuma service-role key ou segredo administrativo no repositório.
 - Lotes extraídos automaticamente recebem aviso de revisão.
 - Backup JSON local disponível.
+- Backup/sincronização transitória por usuário autenticado em Supabase, protegida por RLS.
+- Bucket `auction-media` privado com políticas por leilão e papel.
 - GitHub Actions executa testes a cada push.
 
 ## Política de senha
@@ -55,21 +57,22 @@ Authorized redirect URI do Google para o Supabase:
 
 - https://mnwsyiglxhvblxzimook.supabase.co/auth/v1/callback
 
-No Supabase Dashboard > Authentication > Providers > Google, o provedor já foi habilitado, com Client ID e Client Secret inseridos diretamente no painel. O Client Secret continua proibido em GitHub, HTML, print ou chat. Falta apenas a validação ponta a ponta do login Google.
+No Supabase Dashboard > Authentication > Providers > Google, o provedor já foi habilitado, com Client ID e Client Secret inseridos diretamente no painel. O Client Secret continua proibido em GitHub, HTML, print ou chat. O fluxo humano de login Google já foi validado; mudanças futuras em domínio ou redirect precisam repetir o teste ponta a ponta.
 
-## Risco ainda aberto: localStorage
+## Persistência em transição
 
-A autenticação **não protege** os dados que continuam armazenados em localStorage.
+O navegador mantém uma cópia em `localStorage` para funcionamento rápido, mas contas autenticadas e confirmadas passam a ter também um snapshot online em Supabase, isolado por `user_id` e RLS. Isso reduz o risco de perda por troca de domínio/dispositivo, mas ainda não substitui o modelo relacional canônico de leilões, lotes e itens.
 
 Enquanto a migração operacional não terminar:
 
-- dados locais são separados por navegador e origem/domínio;
-- GitHub Pages e o domínio customizado têm localStorage diferentes;
-- outra pessoa com acesso ao mesmo perfil do navegador pode ler os dados locais;
-- não armazenar material sigiloso nessa camada;
-- o banco Supabase deverá se tornar a fonte canônica antes de declarar o sistema multiusuário seguro.
+- dados locais continuam separados por navegador e origem/domínio;
+- GitHub Pages e o domínio customizado têm `localStorage` diferentes;
+- o snapshot online serve como ponte de recuperação/sincronização, não como banco final;
+- outra pessoa com acesso ao mesmo perfil do navegador pode ler a cópia local;
+- material sigiloso deve usar somente os fluxos privados previstos;
+- o modelo relacional Supabase deverá ser a fonte canônica antes de declarar o sistema multiusuário concluído.
 
-Abas abertas no mesmo domínio recebem atualização automática por evento storage.
+Abas abertas no mesmo domínio recebem atualização automática por evento `storage`.
 
 ## Próximos hardenings gratuitos/candidatos
 
@@ -93,3 +96,22 @@ Dados extraídos de fonte oficial não dispensam revisão humana. O sistema deve
 - marcador needsReview quando houver extração automática.
 
 Antes de dar lance ou tomar decisão, conferir o lote no edital/documento oficial vigente.
+
+
+## Segredos e CI/CD
+
+Arquitetura adotada:
+
+- navegador recebe apenas configuração pública, como URL do projeto e publishable key com RLS;
+- Supabase Project Secrets guardam credenciais consumidas por Edge Functions;
+- Cloudflare Secrets guardam credenciais usadas por Workers/Pages Functions;
+- GitHub Actions Secrets recebem somente o necessário ao pipeline;
+- quando o provedor permitir, preferir identidade federada/OIDC e credenciais de curta duração em vez de segredo permanente.
+
+Arquivos locais de segredo devem ficar fora do Git:
+
+- `.env` e `.env.*` reais;
+- `.dev.vars` e `.dev.vars.*`;
+- estado local do Wrangler em `.wrangler/`.
+
+Exemplos sanitizados como `.env.example` podem ser versionados sem valores reais.
