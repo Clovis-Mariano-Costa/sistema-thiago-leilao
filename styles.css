@@ -99,3 +99,19 @@ textarea{font:inherit;resize:vertical}.top-actions{display:flex;align-items:cent
 #userPillLabel{overflow:hidden;text-overflow:ellipsis}
 .review-flag{display:inline-flex;align-items:center;padding:4px 7px;border-radius:999px;background:#fff3cd;color:#735c08;font-size:.64rem;font-weight:900}
 @media(min-width:720px){.auth-layout{grid-template-columns:1fr 1fr}.auth-layout .auth-card{align-self:start}}
+
+.inline-form-status{display:none;padding:10px 12px;border-radius:10px;font-size:.8rem;font-weight:800;line-height:1.4}
+.inline-form-status.error{display:block;background:#fff0ee;border:1px solid #e9a29a;color:#8b241d}
+.confirmation-panel{max-width:720px;margin:14px auto}
+.confirmation-panel h2{margin:.2rem 0 .65rem}
+.confirmation-panel .primary-btn{margin-top:10px;width:100%}
+.legal-main{max-width:980px;margin:0 auto;padding:24px 18px 80px}
+.legal-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;margin:14px 0;box-shadow:0 8px 24px rgba(7,17,31,.05)}
+.legal-card h2,.legal-card h3{color:#07111f}
+.legal-card p,.legal-card li{line-height:1.65;color:#364152}
+.legal-alert{border-left:5px solid #c68b1e;background:#fff8e8}
+.cookie-notice{position:fixed;left:16px;right:16px;bottom:16px;z-index:1000;max-width:980px;margin:auto;background:#07111f;color:#fff;border:1px solid rgba(226,184,78,.55);border-radius:16px;padding:14px 16px;box-shadow:0 16px 45px rgba(0,0,0,.25);display:flex;gap:14px;align-items:center;justify-content:space-between}
+.cookie-notice p{margin:0;font-size:.78rem;line-height:1.45}
+.cookie-notice a{color:#f2d678}
+.cookie-notice button{flex:0 0 auto;border:1px solid #f2d678;background:#f2d678;color:#07111f;border-radius:10px;padding:8px 12px;font-weight:900;cursor:pointer}
+@media(max-width:640px){.cookie-notice{align-items:stretch;flex-direction:column}.cookie-notice button{width:100%}}
