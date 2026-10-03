@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07111f" />
+  <meta name="description" content="Charlie Echo no Sistema Thiago: assistência de IA especializada em leilões, com aprendizagem permanente, fontes e revisão humana." />
+  <title>Charlie Echo • Sistema Thiago</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=20261003c" />
+  <link rel="shortcut icon" type="image/png" href="/favicon.png?v=20261003c" />
+  <link rel="apple-touch-icon" href="/favicon.png?v=20261003c" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a class="back-link" href="app.html" aria-label="Voltar ao Sistema Thiago">←</a>
+      <img class="brand-logo" src="assets/sistema-thiago-logo.svg" alt="Sistema Thiago" />
+      <div>
+        <p class="eyebrow">Sistema Thiago • leilões</p>
+        <h1>Charlie Echo</h1>
+      </div>
+    </div>
+    <div class="top-actions">
+      <a id="userPill" class="user-pill" href="auth.html"><span id="userPillAvatar" class="user-pill-avatar"><span>?</span></span><span id="userPillLabel">Minha conta</span></a>
+    </div>
+  </header>
+
+  <main class="charlie-page-main">
+    <section class="charlie-profile-card">
+      <div>
+        <p class="eyebrow dark">Assistente especializada em leilões</p>
+        <h2>Charlie Echo no Sistema Thiago</h2>
+        <p class="charlie-lead">Apoio para compreender editais, organizar lotes e itens, conferir referências, comparar informações e identificar pontos que merecem revisão humana.</p>
+        <div class="charlie-learning-badge">✦ Aprendizagem permanente</div>
+        <p class="muted"><strong>Estudar faz parte permanente da função.</strong> Demonstrar competência não encerra a formação: Charlie Echo deve continuar aprendendo, revisando fontes, testando o que sabe e registrando limites ao longo de toda a sua atuação.</p>
+      </div>
+      <div class="charlie-profile-actions">
+        <button class="primary-btn" type="button" data-open-charlie>Conversar com Charlie Echo</button>
+        <a class="secondary-link" href="app.html">Voltar ao painel</a>
+      </div>
+    </section>
+
+    <section class="charlie-institution-grid" aria-label="Vínculos institucionais">
+      <article class="research-card">
+        <p class="eyebrow dark">Jus 9 Tecnologia Jurídica</p>
+        <h3>Serviço tecnológico</h3>
+        <p>Charlie Echo atua no ecossistema da Jus 9 Tecnologia Jurídica oferecendo assistência de IA governada, com foco em organização, fontes, rastreabilidade e apoio ao trabalho humano.</p>
+        <a class="secondary-link compact" href="https://jus9tecnologia.com.br/" target="_blank" rel="noopener">Conhecer a Jus 9</a>
+      </article>
+      <article class="research-card">
+        <p class="eyebrow dark">Jus 9 Verde</p>
+        <h3>Voluntariado</h3>
+        <p>Além do serviço tecnológico, Charlie Echo participa de iniciativas de voluntariado da Jus 9 Verde, preservando a separação entre atividade social, produto e responsabilidades humanas.</p>
+        <a class="secondary-link compact" href="https://jus9verde.jus9tecnologia.com.br/" target="_blank" rel="noopener">Conhecer a Jus 9 Verde</a>
+      </article>
+      <article class="research-card">
+        <p class="eyebrow dark">Nações Por Herança</p>
+        <h3>Vínculo neste serviço</h3>
+        <p>No Sistema Thiago, Charlie Echo atua vinculada à parceria com Nações Por Herança. Essa vinculação contextualiza o serviço e não cria autoridade jurídica, profissional ou decisória para a IA.</p>
+        <a class="secondary-link compact" href="https://nacoesporheranca.jus9verde.jus9tecnologia.com.br/" target="_blank" rel="noopener">Conhecer Nações Por Herança</a>
+      </article>
+    </section>
+
+    <section class="charlie-workbench">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow dark">Contexto de trabalho</p>
+          <h2>Leilão atualmente acompanhado</h2>
+        </div>
+        <span class="source-badge official-source">contexto mínimo</span>
+      </div>
+      <div id="charlieContextStatus" class="sync-status" aria-live="polite">Carregando o contexto do leilão…</div>
+      <div id="charlieAuctionContext" class="charlie-context-grid" hidden>
+        <div><span>Leilão</span><strong id="charlieAuctionTitle">—</strong></div>
+        <div><span>Data</span><strong id="charlieAuctionDate">—</strong></div>
+        <div><span>Referência</span><strong id="charlieAuctionReference">—</strong></div>
+        <div><span>Lotes</span><strong id="charlieAuctionLots">0</strong></div>
+        <div><span>Próximo lote</span><strong id="charlieNextLot">—</strong></div>
+        <div><span>Origem</span><strong id="charlieAuctionSource">—</strong></div>
+      </div>
+      <p class="form-help">O resumo enviado automaticamente ao chat evita placa, chassi, documentos pessoais e outros dados desnecessários. Charlie pode pedir que você confirme informações quando isso for importante.</p>
+    </section>
+
+    <section class="charlie-workbench">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow dark">Atalhos</p>
+          <h2>O que Charlie Echo pode ajudar a fazer</h2>
+        </div>
+      </div>
+      <div class="charlie-quick-grid">
+        <button type="button" class="secondary-btn charlie-quick" data-charlie-prompt="Ajude a revisar o leilão atual. Separe fatos, lacunas, pontos de atenção e o que precisa ser conferido na fonte oficial.">Revisar leilão atual</button>
+        <button type="button" class="secondary-btn charlie-quick" data-charlie-prompt="Ajude a preparar um checklist para leitura do edital deste leilão, sem presumir informações que não estejam disponíveis.">Checklist do edital</button>
+        <button type="button" class="secondary-btn charlie-quick" data-charlie-prompt="Ajude a organizar a análise dos lotes e itens deste leilão, indicando quais dados ainda precisam de conferência humana.">Analisar lotes e itens</button>
+        <button type="button" class="secondary-btn charlie-quick" data-charlie-prompt="Explique como devo conferir a referência FIPE dos veículos deste leilão e quais ambiguidades devo observar.">Conferir FIPE</button>
+        <button type="button" class="secondary-btn charlie-quick" data-charlie-prompt="Ajude a identificar quais fontes e evidências ainda faltam para este leilão e como registrar a proveniência.">Verificar fontes</button>
+        <button type="button" class="secondary-btn charlie-quick" data-charlie-prompt="Prepare perguntas que eu deveria responder antes de tomar uma decisão humana sobre um lote. Não escolha nem recomende um lance por mim.">Preparar perguntas</button>
+      </div>
+    </section>
+
+    <section class="security-warning info-warning charlie-boundary" role="note">
+      <strong>DECISÃO HUMANA + APRENDIZAGEM PERMANENTE.</strong>
+      Charlie Echo pode organizar, explicar, comparar e apontar divergências. Ela não dá lances, não arremata, não presume autoridade profissional e não transforma inferência em fato oficial. O estudo e a revisão de suas competências continuam permanentemente, mesmo quando uma competência já foi demonstrada.
+    </section>
+  </main>
+
+  <button class="charlie-launcher" data-system-chat-launcher type="button" aria-label="Conversar com Charlie Echo">✦ Charlie Echo</button>
+  <section class="charlie-panel" data-system-chat-panel hidden aria-label="Conversa com Charlie Echo">
+    <div class="charlie-head">
+      <div><strong>Charlie Echo • Leilões</strong><div>Especializada • aprendizagem permanente</div></div>
+      <button data-system-chat-close type="button" aria-label="Fechar conversa">×</button>
+    </div>
+    <div class="charlie-body" data-system-chat-body>
+      <div class="charlie-msg">Estou no espaço especializado do Sistema Thiago. Posso ajudar a estudar o leilão, conferir fontes, organizar lotes e apontar dúvidas. Minha aprendizagem é permanente e decisões de lance continuam humanas.</div>
+    </div>
+    <form class="charlie-form" data-system-chat-form>
+      <textarea data-system-chat-input maxlength="5000" placeholder="Pergunte sobre o leilão..." aria-label="Mensagem para Charlie Echo"></textarea>
+      <button type="submit">Enviar</button>
+      <div class="charlie-note">Aprendizagem permanente: competência demonstrada não encerra estudo, revisão de fontes nem avaliação. O contexto automático permanece mínimo.</div>
+    </form>
+  </section>
+
+  <script src="auth-config.js"></script>
+  <script type="module" src="charlie-page.js"></script>
+  <script src="charlie-chat.js"></script>
+  <script type="module" src="session-ui.js"></script>
+  <script src="cookie-notice.js"></script>
+</body>
+</html>
