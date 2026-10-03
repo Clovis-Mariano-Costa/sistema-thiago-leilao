@@ -18,7 +18,7 @@ test('cadastro exige senha forte no frontend e confirmação',()=>{
 });
 
 test('perfil e cabeçalho usam sessão Supabase',()=>{
-  const html=fs.readFileSync('index.html','utf8');
+  const html=fs.readFileSync('app.html','utf8');
   const sessionUi=fs.readFileSync('session-ui.js','utf8');
   const auth=fs.readFileSync('auth.js','utf8');
   assert.match(html,/id="userPill"/);
