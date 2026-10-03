@@ -1,5 +1,19 @@
-const STORAGE_KEY = 'sistema-thiago-v3';
+const STORAGE_KEY_BASE = 'sistema-thiago-v4';
+const LEGACY_STORAGE_KEY = 'sistema-thiago-v3';
 const LEGACY_KEY = 'sistema-thiago-leilao-v2';
+const AUTH_SESSION_KEY = 'sistema-thiago-auth-session';
+
+function currentSessionIdentity() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || 'null');
+    if (parsed?.authenticated && parsed?.uid) return String(parsed.uid);
+  } catch {}
+  return 'guest';
+}
+
+function storageKey() {
+  return `${STORAGE_KEY_BASE}:${currentSessionIdentity()}`;
+}
 
 const BASE_LOTS = [
   [15,'Ranger'],[18,'Kombi'],[20,'Renault Master'],[26,'Palio Weekend'],[27,'Palio Weekend'],
@@ -60,21 +74,13 @@ function defaultAuction() {
 }
 
 function defaultState() {
+  const identity = currentSessionIdentity();
   return {
-    version: 3,
-    currentUserId: 'thiago',
-    users: [
-      {
-        id: 'thiago',
-        name: 'Thiago',
-        email: '',
-        authMode: 'local_mvp',
-        sourceType: 'user',
-        note: 'Primeiro usuário operacional. Login verdadeiro ainda não ativado.'
-      }
-    ],
-    currentAuctionId: 'thiago-base-inicial',
-    auctions: [defaultAuction()]
+    version: 4,
+    currentUserId: identity === 'guest' ? '' : identity,
+    users: [],
+    currentAuctionId: '',
+    auctions: []
   };
 }
 
@@ -94,17 +100,10 @@ function normalizeLot(lot) {
 }
 
 function migrateLegacy() {
-  const state = defaultState();
-  try {
-    const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) || 'null');
-    if (!legacy || typeof legacy !== 'object') return state;
-    const auction = state.auctions[0];
-    auction.lots = auction.lots.map(lot => {
-      const saved = legacy[lot.n];
-      return saved ? normalizeLot({ ...lot, ...saved }) : lot;
-    });
-  } catch {}
-  return state;
+  // Migração automática entre contas foi desativada por segurança.
+  // Os dados legados continuam preservados nas chaves antigas e só devem
+  // ser importados por uma ação explícita do titular correto.
+  return defaultState();
 }
 
 const OFFICIAL_RESULTS = Array.isArray(window.SISTEMA_THIAGO_OFFICIAL_RESULTS) ? window.SISTEMA_THIAGO_OFFICIAL_RESULTS : [];
@@ -142,11 +141,11 @@ function officialLotsFromResult(result) {
 }
 
 function normalizeState(raw) {
-  if (!raw || typeof raw !== 'object') return migrateLegacy();
+  if (!raw || typeof raw !== 'object') return defaultState();
   const base = defaultState();
   const next = {
-    version: 3,
-    currentUserId: raw.currentUserId || 'thiago',
+    version: 4,
+    currentUserId: raw.currentUserId || (currentSessionIdentity() === 'guest' ? '' : currentSessionIdentity()),
     users: Array.isArray(raw.users) && raw.users.length ? raw.users : base.users,
     currentAuctionId: raw.currentAuctionId || base.currentAuctionId,
     auctions: Array.isArray(raw.auctions) ? raw.auctions : base.auctions
@@ -187,8 +186,8 @@ function normalizeState(raw) {
       },
       photoDataUrl: original.photoDataUrl || '',
       notes: original.notes || official?.object || '',
-      participants: Array.isArray(original.participants) ? original.participants : ['thiago'],
-      createdBy: original.createdBy || 'thiago',
+      participants: Array.isArray(original.participants) ? original.participants : (currentSessionIdentity() === 'guest' ? [] : [currentSessionIdentity()]),
+      createdBy: original.createdBy || (currentSessionIdentity() === 'guest' ? '' : currentSessionIdentity()),
       createdAt: original.createdAt || new Date().toISOString(),
       lots: importedLots
     };
@@ -202,12 +201,13 @@ function normalizeState(raw) {
 
 function loadState() {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-    const state = raw ? normalizeState(raw) : migrateLegacy();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const key = storageKey();
+    const raw = JSON.parse(localStorage.getItem(key) || 'null');
+    const state = raw ? normalizeState(raw) : defaultState();
+    localStorage.setItem(key, JSON.stringify(state));
     return state;
   } catch {
-    return migrateLegacy();
+    return defaultState();
   }
 }
 
@@ -227,7 +227,7 @@ const liveDialog = $('#liveDialog');
 
 function saveState(showError = true) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(storageKey(), JSON.stringify(state));
     return true;
   } catch (err) {
     if (showError) alert('Não foi possível salvar todos os dados neste navegador. A foto pode estar grande demais para o armazenamento local.');
@@ -961,7 +961,7 @@ async function restoreBackupJson(file) {
 
   try {
     state = normalizeState(incomingState);
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    localStorage.setItem(storageKey(),JSON.stringify(state));
     if (parsed?.format === 'sistema-thiago-backup' && Array.isArray(parsed.fipeUserRefs)) {
       localStorage.setItem(FIPE_USER_KEY,JSON.stringify(parsed.fipeUserRefs));
     }
@@ -1108,8 +1108,8 @@ $('#restoreJsonInput').addEventListener('change',async e=>{
 $('#resetBtn').addEventListener('click',()=>{
   if (!confirm('Reiniciar todos os dados locais do Sistema Thiago neste navegador? Esta ação remove leilões cadastrados, lotes, resultados e preferências locais.')) return;
   state=defaultState();
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  localStorage.removeItem(storageKey());
+  localStorage.setItem(storageKey(),JSON.stringify(state));
   liveCursorByAuction.clear();
   renderAll();
 });
@@ -1119,7 +1119,7 @@ showImportFeedback();
 
 
 window.addEventListener('storage',event=>{
-  if(event.key!==STORAGE_KEY || !event.newValue) return;
+  if(event.key!==storageKey() || !event.newValue) return;
   try{
     state=normalizeState(JSON.parse(event.newValue));
     liveCursorByAuction.clear();
