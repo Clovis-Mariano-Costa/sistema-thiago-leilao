@@ -46,8 +46,25 @@ function friendlyError(error){
   return message || 'Ocorreu um erro de autenticação.';
 }
 
+function appOrigin(){
+  return String(config.appOrigin || location.origin).replace(/\/$/,'');
+}
+
+function authUrl(params=''){
+  const suffix=params ? '?' + params : '';
+  return appOrigin() + '/auth.html' + suffix;
+}
+
+function appUrl(){
+  return appOrigin() + '/app.html';
+}
+
 function emailRedirectUrl(){
-  return new URL('auth.html?confirmed=1',location.href).href;
+  return authUrl('confirmed=1');
+}
+
+function oauthRedirectUrl(){
+  return authUrl('oauth=1');
 }
 
 function passwordChecks(password,confirmPassword=''){
@@ -328,6 +345,7 @@ if(!config.url || !config.publishableKey){
       const {data,error}=await supabase.auth.signInWithPassword({email,password});
       if(error) throw error;
       await renderUser(data.session);
+      if(data.session?.user?.email_confirmed_at) location.replace(appUrl());
     }catch(error){
       setStatus('Não foi possível entrar: '+friendlyError(error),'error');
     }
@@ -351,7 +369,7 @@ if(!config.url || !config.publishableKey){
       setStatus('Abrindo autenticação Google…');
       const {error}=await supabase.auth.signInWithOAuth({
         provider:'google',
-        options:{redirectTo:emailRedirectUrl()}
+        options:{redirectTo:oauthRedirectUrl()}
       });
       if(error) throw error;
     }catch(error){
@@ -404,7 +422,13 @@ if(!config.url || !config.publishableKey){
   const {data:{session}}=await supabase.auth.getSession();
   await renderUser(session);
 
-  if(new URLSearchParams(location.search).get('confirmed')==='1' && !session){
+  const authParams=new URLSearchParams(location.search);
+  if(authParams.get('oauth')==='1' && session?.user?.email_confirmed_at){
+    history.replaceState({},document.title,location.pathname);
+    location.replace(appUrl());
+  }
+
+  if(authParams.get('confirmed')==='1' && !session){
     setStatus('Se você acabou de confirmar o e-mail, entre agora com sua senha.','success');
   }
 }
