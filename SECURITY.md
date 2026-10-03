@@ -20,7 +20,7 @@ Estado: MVP em endurecimento — 2026-10-02.
 
 A interface exige:
 
-- mínimo de 12 caracteres;
+- mínimo de 8 caracteres;
 - pelo menos uma letra minúscula;
 - pelo menos uma letra maiúscula;
 - pelo menos um número;
@@ -44,7 +44,7 @@ No Supabase Dashboard, configurar URL de site/redirects para os ambientes usados
 
 A Jus 9 já possui projeto Google Cloud institucional com login público usando somente openid, email e profile.
 
-Para o Sistema Thiago, criar um **OAuth Client ID do tipo Web application separado** dentro do mesmo projeto Google Cloud institucional.
+Para o Sistema Thiago, foi criado um **OAuth Client ID do tipo Web application separado** dentro do mesmo projeto Google Cloud institucional.
 
 Authorized JavaScript origins:
 
@@ -55,13 +55,7 @@ Authorized redirect URI do Google para o Supabase:
 
 - https://mnwsyiglxhvblxzimook.supabase.co/auth/v1/callback
 
-Depois, no Supabase Dashboard > Authentication > Providers > Google:
-
-1. habilitar Google;
-2. colar Client ID;
-3. colar Client Secret diretamente no painel;
-4. salvar;
-5. nunca colocar Client Secret no GitHub, HTML, print ou chat.
+No Supabase Dashboard > Authentication > Providers > Google, o provedor já foi habilitado, com Client ID e Client Secret inseridos diretamente no painel. O Client Secret continua proibido em GitHub, HTML, print ou chat. Falta apenas a validação ponta a ponta do login Google.
 
 ## Risco ainda aberto: localStorage
 
