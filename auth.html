@@ -91,6 +91,7 @@
           <label class="field-wrap"><span>E-mail</span><input name="email" type="email" autocomplete="email" required /></label>
           <label class="field-wrap"><span>Crie uma senha</span><input name="password" type="password" autocomplete="new-password" minlength="8" required /></label>
           <label class="field-wrap"><span>Confirme a senha</span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+          <div id="signupInlineStatus" class="inline-form-status" aria-live="polite"></div>
 
           <div class="password-policy" id="passwordPolicy">
             <strong>A senha precisa ter:</strong>
@@ -109,6 +110,18 @@
           <button id="resendConfirmationBtn" class="secondary-btn" type="button">Reenviar confirmação por e-mail</button>
         </form>
       </section>
+    </section>
+
+    <section id="confirmationPanel" class="auth-card confirmation-panel" hidden>
+      <p class="eyebrow dark">Cadastro recebido</p>
+      <h2>Confirme seu e-mail</h2>
+      <p>Enviamos o link de confirmação para <strong id="confirmationEmail">seu e-mail</strong>.</p>
+      <p class="muted">Abra o link recebido. Depois da confirmação, você poderá entrar normalmente. Muitas tentativas seguidas podem ativar um bloqueio temporário de segurança.</p>
+      <div class="card-actions">
+        <button id="confirmationResendBtn" class="secondary-btn" type="button">Reenviar confirmação</button>
+        <a class="secondary-link" href="index.html">Voltar à página inicial</a>
+      </div>
+      <button id="confirmationLoginBtn" class="primary-btn" type="button">Já confirmei — quero entrar</button>
     </section>
 
     <section class="research-card">
