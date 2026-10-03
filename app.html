@@ -24,11 +24,13 @@
     </div>
   </header>
 
-  <main>\n    <section id="importFeedback" class="research-mode-notice import-feedback" hidden></section>
+  <main>
+    <section id="importFeedback" class="research-mode-notice import-feedback" hidden></section>
     <section class="security-warning" role="note">
       <strong>⚠ SEGURANÇA EM TRANSIÇÃO.</strong>
-      O login e as regras RLS do banco já estão ativos, mas os leilões deste MVP ainda são gravados principalmente no navegador. O login não protege o conteúdo que permanece em <code>localStorage</code>. Até a migração para o banco compartilhado, não armazene material sigiloso.
+      O login e as regras RLS do banco já estão ativos. O navegador mantém uma cópia local para funcionamento rápido e, quando você está autenticado com e-mail confirmado, o sistema também mantém um backup online protegido pela sua conta. A migração para o modelo relacional completo do Supabase continua em andamento.
     </section>
+    <section id="cloudSyncStatus" class="sync-status" hidden aria-live="polite"></section>
 
     <section class="dashboard-card">
       <div>
@@ -372,10 +374,29 @@
     </div>
   </dialog>
 
+
+  <button class="charlie-launcher" data-system-chat-launcher type="button" aria-label="Conversar com Charlie Echo">✦ Charlie Echo</button>
+  <section class="charlie-panel" data-system-chat-panel hidden aria-label="Conversa com Charlie Echo">
+    <div class="charlie-head">
+      <div><strong>Charlie Echo • Sistema Thiago</strong><div>Apoio dentro do sistema</div></div>
+      <button data-system-chat-close type="button" aria-label="Fechar conversa">×</button>
+    </div>
+    <div class="charlie-body" data-system-chat-body>
+      <div class="charlie-msg">Estou dentro do Sistema Thiago. Posso ajudar com organização do leilão, leitura dos dados já exibidos, FIPE, fontes e próximos passos. Decisões de lance continuam humanas.</div>
+    </div>
+    <form class="charlie-form" data-system-chat-form>
+      <textarea data-system-chat-input maxlength="5000" placeholder="Pergunte à Charlie Echo..." aria-label="Mensagem para Charlie Echo"></textarea>
+      <button type="submit">Enviar</button>
+      <div class="charlie-note">O contexto enviado à Charlie é limitado ao leilão atualmente aberto e ao histórico curto desta conversa.</div>
+    </form>
+  </section>
+
   <script src="auth-config.js"></script>
   <script src="official-sources.js"></script>
   <script src="app.js"></script>
+  <script src="charlie-chat.js"></script>
   <script type="module" src="session-ui.js"></script>
+  <script type="module" src="cloud-sync.js"></script>
   <script src="cookie-notice.js"></script>
 </body>
 </html>
