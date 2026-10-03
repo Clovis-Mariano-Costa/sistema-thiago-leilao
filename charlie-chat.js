@@ -21,6 +21,9 @@ function openChat(open){
   if(open) setTimeout(()=>input.focus(),40);
 }
 function auctionContext(){
+  if(typeof window.SISTEMA_THIAGO_CHARLIE_CONTEXT==='function'){
+    try{return String(window.SISTEMA_THIAGO_CHARLIE_CONTEXT()||'Nenhum leilão está aberto neste momento.');}catch{}
+  }
   const state=window.SISTEMA_THIAGO_APP?.getState?.();
   const auction=(state?.auctions||[]).find(a=>a.id===state.currentAuctionId) || state?.auctions?.[0];
   if(!auction) return 'Nenhum leilão está aberto neste momento.';
@@ -31,7 +34,8 @@ function auctionContext(){
     auction.date?'Data: '+auction.date:'',
     auction.reference?'Referência: '+String(auction.reference).slice(0,180):'',
     'Lotes cadastrados: '+lots.length,
-    pending?'Próximo lote pendente: '+String(pending.n||'')+' — '+String(pending.vehicle||'item').slice(0,120):'Sem lote pendente'
+    pending?'Próximo lote pendente: '+String(pending.n||'')+' — '+String(pending.vehicle||'item').slice(0,120):'Sem lote pendente',
+    'Regra permanente: Charlie Echo permanece em aprendizagem contínua; competência demonstrada não encerra estudo ou revisão.'
   ].filter(Boolean).join('\n');
 }
 
@@ -59,8 +63,8 @@ form.addEventListener('submit',async e=>{
         message:text,
         mode:'profissional',
         room:{
-          title:'Sistema Thiago — ambiente autenticado',
-          summary:'Apoio operacional para acompanhamento de leilões. Não decidir lance pelo usuário. Não presumir dado ausente.',
+          title:window.SISTEMA_THIAGO_CHARLIE_ROOM?.title || 'Sistema Thiago — ambiente autenticado',
+          summary:window.SISTEMA_THIAGO_CHARLIE_ROOM?.summary || 'Apoio especializado em leilões, em aprendizagem permanente. Não decidir lance pelo usuário. Não presumir dado ausente. Separar fonte oficial, dado do usuário, inferência e dúvida.',
           currentTopic:auctionContext(),
           lastUserIntent:text,
           messages:messages.slice(-10)
