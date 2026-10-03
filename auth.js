@@ -47,7 +47,7 @@ function emailRedirectUrl(){
 
 function passwordChecks(password,confirmPassword=''){
   return {
-    length:password.length>=12,
+    length:password.length>=8,
     lower:/[a-z]/.test(password),
     upper:/[A-Z]/.test(password),
     number:/\d/.test(password),
