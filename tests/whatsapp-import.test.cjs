@@ -9,6 +9,9 @@ const build=fs.readFileSync('scripts/build-pages.cjs','utf8');
 test('painel expõe importação WhatsApp por pacote ZIP local',()=>{
   assert.match(html,/id="importWhatsappBtn"/);
   assert.match(html,/id="importWhatsappInput"/);
+  const dashboardIndex=html.indexOf('id="importWhatsappBtn"');
+  const activePanelIndex=html.indexOf('id="activeAuctionPanel"');
+  assert.ok(dashboardIndex > -1 && activePanelIndex > -1 && dashboardIndex < activePanelIndex,'importador deve ficar visível antes do painel de leilão ativo');
   assert.match(html,/whatsapp-import\.js/);
 });
 
