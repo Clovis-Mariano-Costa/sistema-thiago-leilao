@@ -15,6 +15,8 @@ test('painel expõe gateway Importar Pacote sem IDs duplicados',()=>{
   const activePanelIndex=html.indexOf('id="activeAuctionPanel"');
   assert.ok(dashboardIndex > -1 && activePanelIndex > -1 && dashboardIndex < activePanelIndex,'importador deve ficar visível antes do painel de leilão ativo');
   assert.match(html,/whatsapp-import\.js/);
+  assert.match(js,/buttons\.forEach\(button=>button\.addEventListener/);
+  assert.doesNotMatch(js,/^button\?\.addEventListener/m);
 });
 
 test('adaptador aceita manifesto seguro legado e preserva múltiplos itens do mesmo lote',()=>{
