@@ -6,13 +6,24 @@ const html=fs.readFileSync('app.html','utf8');
 const js=fs.readFileSync('whatsapp-import.js','utf8');
 const build=fs.readFileSync('scripts/build-pages.cjs','utf8');
 
-test('painel expõe importação WhatsApp por pacote ZIP local',()=>{
-  assert.match(html,/id="importWhatsappBtn"/);
-  assert.match(html,/id="importWhatsappInput"/);
-  const dashboardIndex=html.indexOf('id="importWhatsappBtn"');
+test('painel expõe gateway Importar Pacote sem IDs duplicados',()=>{
+  assert.match(html,/data-import-package/);
+  assert.match(html,/id="importPackageInput"/);
+  assert.equal((html.match(/id="importPackageInput"/g)||[]).length,1);
+  assert.equal((html.match(/data-import-package/g)||[]).length,2);
+  const dashboardIndex=html.indexOf('data-import-package');
   const activePanelIndex=html.indexOf('id="activeAuctionPanel"');
   assert.ok(dashboardIndex > -1 && activePanelIndex > -1 && dashboardIndex < activePanelIndex,'importador deve ficar visível antes do painel de leilão ativo');
   assert.match(html,/whatsapp-import\.js/);
+});
+
+test('adaptador aceita manifesto seguro legado e preserva múltiplos itens do mesmo lote',()=>{
+  assert.match(js,/raw\.entries/);
+  assert.match(js,/lot_mentions/);
+  assert.match(js,/legacy_safe_staging_v1/);
+  assert.match(js,/item_order/);
+  assert.match(js,/uniqueLotEntries/);
+  assert.match(js,/legacy_message_sequence_requires_review/);
 });
 
 test('importador exige sessão confirmada e usa Storage privado',()=>{
@@ -27,9 +38,8 @@ test('importador exige sessão confirmada e usa Storage privado',()=>{
 test('build publica o importador sem publicar o pacote privado',()=>{
   assert.match(build,/whatsapp-import\.js/);
   assert.doesNotMatch(build,/IMG-20261002-WA0008/);
-  assert.doesNotMatch(build,/manifesto_importacao_whatsapp/);
+  assert.doesNotMatch(build,/manifest_importacao_thiago/);
 });
-
 
 test('importador renova sessão, protege snapshot e trata bloqueio RLS sem perder a base',()=>{
   assert.match(js,/refreshSession\(\)/);
