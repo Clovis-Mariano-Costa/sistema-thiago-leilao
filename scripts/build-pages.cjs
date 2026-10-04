@@ -12,7 +12,7 @@ const publicFiles=[
   'fontes-oficiais.html','fontes.js','official-sources.js',
   'landing.css','landing.js',
   'parceria.html','privacidade.html','termos.html',
-  'session-ui.js','styles.css','user-references.js','whatsapp-import.js',
+  'session-ui.js','styles.css','user-references.js','whatsapp-import.js','private-media.js',
   'favicon.png','favicon.svg','_headers'
 ];
 
