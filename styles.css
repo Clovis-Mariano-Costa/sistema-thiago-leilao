@@ -216,3 +216,9 @@ body{background:
 .legacy-recovery-card h3,.legacy-recovery-card p{margin:0}
 .legacy-recovery-card .primary-btn{width:max-content;max-width:100%}
 @media(min-width:720px){.legacy-recovery-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.lot-fipe-candidates{display:grid;gap:5px;margin-top:7px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fffaf0}
+.lot-fipe-candidates>span{font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;font-weight:900;color:#765c16}
+.lot-fipe-candidates>div{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.lot-fipe-candidates strong{color:#9f1d1d;font-size:.82rem}
+.lot-fipe-candidates small{color:var(--muted);font-size:.71rem}
