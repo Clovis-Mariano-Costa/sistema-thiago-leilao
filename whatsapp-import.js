@@ -347,9 +347,60 @@ async function upsertItems(supabase,lotIds,manifest,uid){
       created_by:uid
     });
   }
-  if(!rows.length) return;
-  const {error}=await supabase.from('lot_items').upsert(rows,{onConflict:'lot_id,item_order'});
+  if(!rows.length) return new Map();
+  const {data,error}=await supabase.from('lot_items')
+    .upsert(rows,{onConflict:'lot_id,item_order'})
+    .select('id,lot_id,item_order');
   if(error) throw error;
+  return new Map((data||[]).map(row=>[`${row.lot_id}:${Number(row.item_order)||1}`,row.id]));
+}
+
+async function replaceLotFipeCandidates(supabase,lotIds,itemIds,manifest,uid){
+  const lotIdList=[...lotIds.values()];
+  if(lotIdList.length){
+    const {error:deleteError}=await supabase.from('lot_fipe_candidates')
+      .delete()
+      .in('lot_id',lotIdList)
+      .contains('extra_data',{import_batch:IMPORT_BATCH});
+    if(deleteError) throw deleteError;
+  }
+
+  const rows=[];
+  for(const entry of manifest.lots||[]){
+    const lotId=lotIds.get(Number(entry.lot));
+    if(!lotId) continue;
+    const itemOrder=Math.max(1,Number(entry.item_order)||1);
+    const itemId=itemIds.get(`${lotId}:${itemOrder}`) || null;
+    const imageData=entry.image_data_ref ? manifest.image_data?.[entry.image_data_ref] : null;
+    for(const candidate of imageData?.fipe_candidates||[]){
+      rows.push({
+        lot_id:lotId,
+        lot_item_id:itemId,
+        fipe_code:candidate.code || null,
+        brand:candidate.brand || null,
+        model:candidate.description || candidate.model || null,
+        model_year:candidate.model_year ? String(candidate.model_year) : null,
+        fuel:candidate.fuel || null,
+        fipe_value:candidate.value_brl ?? candidate.value ?? null,
+        reference_month:imageData.reference || null,
+        source_type:'user',
+        verification_status:'user_reference',
+        is_selected:false,
+        notes:'Valor transcrito da captura fornecida pelo usuário; associação e versão devem ser revisadas.',
+        extra_data:{
+          import_batch:IMPORT_BATCH,
+          source_image:entry.image || null,
+          association:entry.association || null,
+          review_required:true
+        },
+        created_by:uid
+      });
+    }
+  }
+  if(!rows.length) return 0;
+  const {error}=await supabase.from('lot_fipe_candidates').insert(rows);
+  if(error) throw error;
+  return rows.length;
 }
 
 async function replaceFipeReferences(supabase,auctionId,manifest,uid){
@@ -468,13 +519,14 @@ async function runImport(file){
     const lotIds=await upsertLots(supabase,auction.id,manifest,user.id);
 
     setStatus('Vinculando itens e candidatos FIPE…');
-    await upsertItems(supabase,lotIds,manifest,user.id);
+    const itemIds=await upsertItems(supabase,lotIds,manifest,user.id);
+    const lotFipeCount=await replaceLotFipeCandidates(supabase,lotIds,itemIds,manifest,user.id);
     const fipeCount=await replaceFipeReferences(supabase,auction.id,manifest,user.id);
 
     setStatus('Enviando as imagens ao Storage privado…');
     const imageCount=await uploadImages(supabase,auction.id,zip,manifest,lotIds);
 
-    setStatus(`Importação concluída: ${lotIds.size} lotes, ${fipeCount} referências FIPE e ${imageCount} imagens privadas vinculadas. Revise as associações marcadas antes de tratar os dados como confirmados.`,'ok');
+    setStatus(`Importação concluída: ${lotIds.size} lotes, ${fipeCount} referências FIPE (${lotFipeCount} vínculos por item) e ${imageCount} imagens privadas vinculadas. Revise as associações marcadas antes de tratar os dados como confirmados.`,'ok');
   }catch(error){
     const message=String(error?.message||error||'');
     if(/row-level security|violates.*policy|42501/i.test(message)){
