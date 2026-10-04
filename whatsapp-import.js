@@ -52,6 +52,29 @@ function splitLocation(value=''){
   return {city,state};
 }
 
+function mimeTypeForName(name=''){
+  const value=String(name).toLowerCase();
+  if(/\.jpe?g$/.test(value)) return 'image/jpeg';
+  if(/\.png$/.test(value)) return 'image/png';
+  if(/\.webp$/.test(value)) return 'image/webp';
+  throw new Error('Tipo de imagem não suportado no pacote: '+name);
+}
+
+async function sha256Hex(value=''){
+  const bytes=new TextEncoder().encode(String(value));
+  const digest=await crypto.subtle.digest('SHA-256',bytes);
+  return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function assertPackageTargetAccount(manifest,user){
+  const expected=String(manifest?.expected_account_email_sha256||'').trim().toLowerCase();
+  if(!expected) return;
+  const current=await sha256Hex(String(user?.email||'').trim().toLowerCase());
+  if(current!==expected){
+    throw new Error('Este pacote foi preparado para outra conta. Saia desta conta e entre na conta de destino correta antes de importar.');
+  }
+}
+
 function cleanLegacyNotes(notes=[]){
   return notes.map(x=>String(x||'').trim()).filter(Boolean).filter(note=>{
     return !/arquivo anexado/i.test(note) && !/\.(?:opus|pdf|jpe?g|png|webp)$/i.test(note);
@@ -96,6 +119,8 @@ function normalizePackageManifest(raw={}){
       source_schema:'legacy_safe_staging_v1',
       source:raw.source || 'WhatsApp exportado pelo usuário',
       rules:raw.rules || [],
+      package_id:raw.package_id || null,
+      expected_account_email_sha256:raw.expected_account_email_sha256 || null,
       lots,
       image_data
     };
@@ -374,9 +399,13 @@ async function uploadImages(supabase,auctionId,zip,manifest,lotIds){
   for(const name of uniqueImages){
     const entry=Object.keys(zip.files).find(path=>path.endsWith('/'+name) || path===name);
     if(!entry) continue;
-    const blob=await zip.file(entry).async('blob');
+    const bytes=await zip.file(entry).async('uint8array');
+    const mimeType=mimeTypeForName(name);
+    const body=typeof File==='function'
+      ? new File([bytes],name,{type:mimeType})
+      : new Blob([bytes],{type:mimeType});
     const path=`${auctionId}/${IMPORT_BATCH}/${name}`;
-    const {error}=await supabase.storage.from('auction-media').upload(path,blob,{upsert:true,contentType:'image/jpeg'});
+    const {error}=await supabase.storage.from('auction-media').upload(path,body,{upsert:true,contentType:mimeType});
     if(error) throw error;
     uploaded++;
     paths.set(name,path);
@@ -417,6 +446,7 @@ async function runImport(file){
   const {data:{user},error:userError}=await supabase.auth.getUser();
   if(userError || !user?.id) throw new Error('Entre novamente na sua conta antes de importar o pacote.');
   if(!user.email_confirmed_at) throw new Error('Confirme o e-mail da conta antes de gravar a importação online.');
+  await assertPackageTargetAccount(manifest,user);
 
   // Primeiro protege a parte recuperável no estado local e no snapshot da própria conta.
   const localState=mergeLocalState(manifest);
@@ -464,7 +494,7 @@ input?.addEventListener('change',async event=>{
     await runImport(file);
   }catch(error){
     console.error(error);
-    setStatus('Importação interrompida: '+(error?.message || error)+'. Nenhum dado foi promovido a oficial.','error');
+    setStatus('Importação interrompida: '+(error?.message || error)+'. As etapas já concluídas permanecem protegidas; mídias ou etapas seguintes podem estar pendentes e a importação pode ser repetida com segurança após a correção.','error');
   }finally{
     buttons.forEach(button=>{button.disabled=false;});
     input.value='';
