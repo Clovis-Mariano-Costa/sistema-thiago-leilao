@@ -50,3 +50,27 @@ test('importador renova sessão, protege snapshot e trata bloqueio RLS sem perde
   assert.match(js,/Base inicial preservada neste navegador e no backup online/);
   assert.match(js,/ensure_owned_auction/);
 });
+
+
+test('upload preserva MIME real aceito pelo Storage privado',()=>{
+  assert.match(js,/mimeTypeForName/);
+  assert.match(js,/image\/jpeg/);
+  assert.match(js,/image\/png/);
+  assert.match(js,/image\/webp/);
+  assert.match(js,/async\('uint8array'\)/);
+  assert.match(js,/new File\(\[bytes\],name,\{type:mimeType\}\)/);
+  assert.match(js,/contentType:mimeType/);
+  assert.doesNotMatch(js,/contentType:'image\/jpeg'/);
+});
+
+test('pacote pode ser vinculado a uma conta sem expor o e-mail em código público',()=>{
+  assert.match(js,/expected_account_email_sha256/);
+  assert.match(js,/crypto\.subtle\.digest\('SHA-256'/);
+  assert.match(js,/assertPackageTargetAccount\(manifest,user\)/);
+  assert.match(js,/foi preparado para outra conta/);
+});
+
+test('erro parcial não afirma falsamente que nada foi gravado',()=>{
+  assert.match(js,/As etapas já concluídas permanecem protegidas/);
+  assert.doesNotMatch(js,/Importação interrompida:[^\n]+Nenhum dado foi promovido a oficial/);
+});
