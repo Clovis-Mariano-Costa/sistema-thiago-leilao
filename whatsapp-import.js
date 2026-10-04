@@ -455,18 +455,18 @@ async function runImport(file){
   }
 }
 
-button?.addEventListener('click',()=>input?.click());
+buttons.forEach(button=>button.addEventListener('click',()=>input?.click()));
 input?.addEventListener('change',async event=>{
   const file=event.target.files?.[0];
   if(!file) return;
-  button.disabled=true;
+  buttons.forEach(button=>{button.disabled=true;});
   try{
     await runImport(file);
   }catch(error){
     console.error(error);
     setStatus('Importação interrompida: '+(error?.message || error)+'. Nenhum dado foi promovido a oficial.','error');
   }finally{
-    button.disabled=false;
+    buttons.forEach(button=>{button.disabled=false;});
     input.value='';
   }
 });
