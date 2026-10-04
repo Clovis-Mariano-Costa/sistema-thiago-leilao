@@ -16,7 +16,7 @@ test('painel expõe importação WhatsApp por pacote ZIP local',()=>{
 });
 
 test('importador exige sessão confirmada e usa Storage privado',()=>{
-  assert.match(js,/getSession\(\)/);
+  assert.match(js,/auth\.getUser\(\)/);
   assert.match(js,/email_confirmed_at/);
   assert.match(js,/storage\.from\('auction-media'\)/);
   assert.match(js,/Leilão Thiago — Base inicial/);
