@@ -6,8 +6,8 @@ const TARGET_AUCTION_TITLE='Leilão Thiago — Base inicial';
 const IMPORT_LABEL='Dados inseridos pelo usuário';
 const cfg=window.SUPABASE_CONFIG || {};
 const app=window.SISTEMA_THIAGO_APP;
-const button=document.querySelector('#importWhatsappBtn');
-const input=document.querySelector('#importWhatsappInput');
+const buttons=[...document.querySelectorAll('[data-import-package]')];
+const input=document.querySelector('#importPackageInput');
 
 function ensureStatusBox(){
   let box=document.querySelector('#whatsappImportStatus');
@@ -52,6 +52,82 @@ function splitLocation(value=''){
   return {city,state};
 }
 
+function cleanLegacyNotes(notes=[]){
+  return notes.map(x=>String(x||'').trim()).filter(Boolean).filter(note=>{
+    return !/arquivo anexado/i.test(note) && !/\.(?:opus|pdf|jpe?g|png|webp)$/i.test(note);
+  });
+}
+
+function normalizePackageManifest(raw={}){
+  let manifest=raw;
+
+  // Formato seguro legado produzido na primeira triagem: entries[] + lot_mentions[].
+  if(Array.isArray(raw.entries) && !Array.isArray(raw.lots)){
+    const occurrence=new Map();
+    const lots=[];
+    const image_data={};
+
+    for(const entry of raw.entries){
+      const image=String(entry?.image||'').trim();
+      const notes=cleanLegacyNotes(entry?.notes||[]);
+      const mentions=Array.isArray(entry?.lot_mentions)?entry.lot_mentions:[];
+      if(image && !image_data[image]) image_data[image]={};
+
+      mentions.forEach((mention,index)=>{
+        const lot=Number(mention?.lot_number);
+        if(!lot) return;
+        const itemOrder=(occurrence.get(lot)||0)+1;
+        occurrence.set(lot,itemOrder);
+        const label=notes[index] || notes[notes.length-1] || '';
+        lots.push({
+          lot,
+          item_order:itemOrder,
+          image,
+          label,
+          association:'legacy_message_sequence_requires_review',
+          note:'Associação proveniente do manifesto seguro legado; requer revisão humana.',
+          image_data_ref:image || null
+        });
+      });
+    }
+
+    manifest={
+      project:'Sistema Thiago - Leilao',
+      source_schema:'legacy_safe_staging_v1',
+      source:raw.source || 'WhatsApp exportado pelo usuário',
+      rules:raw.rules || [],
+      lots,
+      image_data
+    };
+  }
+
+  if(manifest?.project!=='Sistema Thiago - Leilao' || !Array.isArray(manifest?.lots) || !manifest?.image_data){
+    throw new Error('O manifesto não corresponde ao adaptador WhatsApp atual do Sistema Thiago.');
+  }
+
+  // Mesmo no formato enriquecido, duplicidades do mesmo lote viram itens distintos.
+  const occurrence=new Map();
+  manifest.lots=manifest.lots.map(entry=>{
+    const lot=Number(entry?.lot);
+    const next=(occurrence.get(lot)||0)+1;
+    occurrence.set(lot,next);
+    return {...entry,item_order:Number(entry?.item_order)||next};
+  });
+
+  return manifest;
+}
+
+function uniqueLotEntries(manifest){
+  const byLot=new Map();
+  for(const entry of manifest.lots||[]){
+    const lot=Number(entry?.lot);
+    if(!lot) continue;
+    const current=byLot.get(lot);
+    if(!current || Number(entry?.item_order||1) < Number(current?.item_order||1)) byLot.set(lot,entry);
+  }
+  return [...byLot.values()];
+}
+
 function mergeLocalState(manifest){
   if(!app) throw new Error('Aplicação do Sistema Thiago não está disponível.');
   const state=app.getState();
@@ -74,13 +150,17 @@ function mergeLocalState(manifest){
   for(const entry of manifest.lots || []){
     const n=Number(entry.lot);
     if(!n) continue;
+    const itemOrder=Math.max(1,Number(entry.item_order)||1);
     const imageData=entry.image_data_ref ? manifest.image_data?.[entry.image_data_ref] : null;
     const {city,state:uf}=splitLocation(imageData?.location || '');
     const fipeCandidates=(imageData?.fipe_candidates || []).map(normalizeCandidate);
     const existing=byNumber.get(n) || {n,preferenceLevel:0,sold:false,result:'',note:'',minimumBid:'',maxBid:'',finalValue:'',items:[]};
-    const existingItem=Array.isArray(existing.items) && existing.items[0] ? existing.items[0] : {};
+    const items=Array.isArray(existing.items)?existing.items:[];
+    const index=items.findIndex(it=>Number(it?.itemOrder||1)===itemOrder);
+    const existingItem=index>=0?items[index]:{};
     const item={
       ...existingItem,
+      itemOrder,
       itemIdentifier:String(imageData?.plate || existingItem.itemIdentifier || '').trim(),
       description:String(imageData?.vehicle_source || entry.label || existingItem.description || '').trim(),
       vehicle:String(imageData?.vehicle_source || entry.label || existingItem.vehicle || '').trim(),
@@ -100,22 +180,23 @@ function mergeLocalState(manifest){
         referenceMonth:imageData?.reference || ''
       }
     };
-    existing.vehicle=existing.vehicle || item.vehicle || entry.label || '';
-    existing.plate=existing.plate || item.plate || '';
-    existing.brandModel=existing.brandModel || item.brandModel || '';
-    existing.chassis=existing.chassis || item.chassis || '';
-    existing.year=existing.year || item.year || '';
-    existing.color=existing.color || item.color || '';
+    if(index>=0) items[index]=item; else items.push(item);
+    items.sort((a,b)=>Number(a?.itemOrder||1)-Number(b?.itemOrder||1));
+
+    const primary=items[0]||item;
+    existing.vehicle=existing.vehicle || primary.vehicle || entry.label || '';
+    existing.plate=existing.plate || primary.plate || '';
+    existing.brandModel=existing.brandModel || primary.brandModel || '';
+    existing.chassis=existing.chassis || primary.chassis || '';
+    existing.year=existing.year || primary.year || '';
+    existing.color=existing.color || primary.color || '';
     existing.sourceType='user';
     existing.sourceLabel=IMPORT_LABEL;
-    existing.items=[item,...((existing.items||[]).slice(1))];
+    existing.items=items;
     existing.extraFields={
       ...(existing.extraFields||{}),
       importBatch:IMPORT_BATCH,
-      whatsappLabel:entry.label || '',
-      sourceAssociation:entry.association || '',
-      reviewRequired:true,
-      sourceImage:entry.image || ''
+      reviewRequired:true
     };
     byNumber.set(n,existing);
   }
@@ -128,12 +209,10 @@ function mergeLocalState(manifest){
 async function readPackage(file){
   if(!file || !/\.zip$/i.test(file.name)) throw new Error('Selecione o pacote ZIP preparado para o Sistema Thiago.');
   const zip=await JSZip.loadAsync(file);
-  const jsonNames=Object.keys(zip.files).filter(name=>/manifesto.*\.json$/i.test(name));
+  const jsonNames=Object.keys(zip.files).filter(name=>/(?:^|\/)manifest(?:o|_)?[^/]*\.json$/i.test(name));
   if(!jsonNames.length) throw new Error('Manifesto JSON não encontrado dentro do ZIP.');
-  const manifest=JSON.parse(await zip.file(jsonNames[0]).async('string'));
-  if(manifest?.project!=='Sistema Thiago - Leilao' || !Array.isArray(manifest?.lots) || !manifest?.image_data){
-    throw new Error('O manifesto não corresponde ao pacote esperado do Sistema Thiago.');
-  }
+  const rawManifest=JSON.parse(await zip.file(jsonNames[0]).async('string'));
+  const manifest=normalizePackageManifest(rawManifest);
   return {zip,manifest};
 }
 
@@ -178,7 +257,7 @@ async function ensureAuction(supabase,uid){
 }
 
 async function upsertLots(supabase,auctionId,manifest,uid){
-  const rows=(manifest.lots||[]).map(entry=>{
+  const rows=uniqueLotEntries(manifest).map(entry=>{
     const imageData=entry.image_data_ref ? manifest.image_data?.[entry.image_data_ref] : null;
     return {
       auction_id:auctionId,
@@ -216,7 +295,7 @@ async function upsertItems(supabase,lotIds,manifest,uid){
     const {city,state}=splitLocation(imageData?.location || '');
     rows.push({
       lot_id:lotId,
-      item_order:1,
+      item_order:Math.max(1,Number(entry.item_order)||1),
       item_identifier:imageData?.plate || null,
       description:imageData?.vehicle_source || entry.label || null,
       vehicle:imageData?.vehicle_source || entry.label || null,
@@ -303,12 +382,17 @@ async function uploadImages(supabase,auctionId,zip,manifest,lotIds){
     paths.set(name,path);
   }
 
+  const lotPhotoSet=new Set();
   for(const entry of manifest.lots||[]){
     const lotId=lotIds.get(Number(entry.lot));
     const path=entry.image ? paths.get(entry.image) : null;
     if(!lotId || !path) continue;
-    const {error}=await supabase.from('lots').update({photo_path:path}).eq('id',lotId);
-    if(error) throw error;
+    if(!lotPhotoSet.has(lotId)){
+      const {error}=await supabase.from('lots').update({photo_path:path}).eq('id',lotId);
+      if(error) throw error;
+      lotPhotoSet.add(lotId);
+    }
+    const itemOrder=Math.max(1,Number(entry.item_order)||1);
     const {error:itemError}=await supabase.from('lot_items').update({
       source_evidence:{
         import_batch:IMPORT_BATCH,
@@ -317,7 +401,7 @@ async function uploadImages(supabase,auctionId,zip,manifest,lotIds){
         review_required:true,
         storage_path:path
       }
-    }).eq('lot_id',lotId).eq('item_order',1);
+    }).eq('lot_id',lotId).eq('item_order',itemOrder);
     if(itemError) throw itemError;
   }
   return uploaded;
@@ -325,7 +409,7 @@ async function uploadImages(supabase,auctionId,zip,manifest,lotIds){
 
 async function runImport(file){
   if(!cfg.url || !cfg.publishableKey) throw new Error('Configuração Supabase não encontrada.');
-  setStatus('Lendo o pacote do WhatsApp…');
+  setStatus('Lendo o pacote…');
   const {zip,manifest}=await readPackage(file);
 
   const supabase=createClient(cfg.url,cfg.publishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
@@ -348,7 +432,8 @@ async function runImport(file){
   }
 
   try{
-    setStatus('Preparando o leilão e os 37 lotes no Supabase…');
+    const uniqueLotCount=new Set((manifest.lots||[]).map(x=>Number(x.lot)).filter(Boolean)).size;
+    setStatus(`Preparando o leilão e ${uniqueLotCount} lotes no Supabase…`);
     const auction=await ensureAuction(supabase,user.id);
     const lotIds=await upsertLots(supabase,auction.id,manifest,user.id);
 
