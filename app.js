@@ -607,17 +607,32 @@ function renderLots() {
               item.year,
               item.fipeValue && 'FIPE R$ ' + item.fipeValue
             ].filter(Boolean).join(' • ');
+            const candidates=Array.isArray(item.fipeCandidates)?item.fipeCandidates:[];
+            const candidateHtml=candidates.length
+              ? '<div class="lot-fipe-candidates"><span>Referências FIPE da captura • revisar</span>' +
+                candidates.map(candidate=>{
+                  const desc=[candidate.model||candidate.description||'',candidate.code||'',candidate.year||candidate.model_year||'',candidate.fuel||''].filter(Boolean).join(' • ');
+                  const value=candidate.value||candidate.value_brl||'';
+                  return '<div><strong>'+escapeHtml(value ? 'R$ '+String(value) : 'Valor não informado')+'</strong>' +
+                    (desc ? '<small>'+escapeHtml(desc)+'</small>' : '') + '</div>';
+                }).join('') + '</div>'
+              : '';
             return '<div class="lot-item-row"><strong>' + escapeHtml(String(index + 1) + '. ' + label) + '</strong>' +
-              (bits ? '<span>' + escapeHtml(bits) + '</span>' : '') + '</div>';
+              (bits ? '<span>' + escapeHtml(bits) + '</span>' : '') + candidateHtml + '</div>';
           }).join('')
         : '<div class="lot-item-row"><span>Nenhum item individualizado ainda.</span></div>';
     }
 
     const lotPhoto = card.querySelector('.lot-photo');
-    if (lot.photoDataUrl) {
-      lotPhoto.src = lot.photoDataUrl;
+    const runtimePhoto = window.SISTEMA_THIAGO_MEDIA_URLS?.[String(lot.n)] || '';
+    const lotPhotoUrl = runtimePhoto || lot.photoDataUrl || '';
+    if (lotPhotoUrl) {
+      lotPhoto.src = lotPhotoUrl;
       lotPhoto.alt = `Imagem do lote ${padLot(lot.n)}`;
       lotPhoto.hidden = false;
+    } else {
+      lotPhoto.hidden = true;
+      lotPhoto.removeAttribute('src');
     }
 
     const resultChip = card.querySelector('.result-chip');
