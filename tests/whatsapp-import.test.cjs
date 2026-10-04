@@ -16,7 +16,7 @@ test('painel expõe importação WhatsApp por pacote ZIP local',()=>{
 });
 
 test('importador exige sessão confirmada e usa Storage privado',()=>{
-  assert.match(js,/getSession\(\)/);
+  assert.match(js,/auth\.getUser\(\)/);
   assert.match(js,/email_confirmed_at/);
   assert.match(js,/storage\.from\('auction-media'\)/);
   assert.match(js,/Leilão Thiago — Base inicial/);
@@ -28,4 +28,13 @@ test('build publica o importador sem publicar o pacote privado',()=>{
   assert.match(build,/whatsapp-import\.js/);
   assert.doesNotMatch(build,/IMG-20261002-WA0008/);
   assert.doesNotMatch(build,/manifesto_importacao_whatsapp/);
+});
+
+
+test('importador renova sessão, protege snapshot e trata bloqueio RLS sem perder a base',()=>{
+  assert.match(js,/refreshSession\(\)/);
+  assert.match(js,/auth\.getUser\(\)/);
+  assert.match(js,/user_state_snapshots/);
+  assert.match(js,/Base inicial preservada neste navegador e no backup online/);
+  assert.match(js,/ensure_owned_auction/);
 });

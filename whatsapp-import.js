@@ -145,6 +145,23 @@ async function ensureAuction(supabase,uid){
     .limit(1);
   if(findError) throw findError;
   if(found?.[0]) return found[0];
+
+  const rpcPayload={
+    p_title:TARGET_AUCTION_TITLE,
+    p_reference:'Conversas e imagens enviadas pelo usuário — outubro/2026',
+    p_source_label:IMPORT_LABEL,
+    p_notes:'Base inicial criada a partir das informações fornecidas pelo usuário.',
+    p_source_evidence:{import_batch:IMPORT_BATCH,origin:'WhatsApp exportado pelo usuário',review_required:true},
+    p_extra_data:{import_batch:IMPORT_BATCH}
+  };
+  const {data:rpcId,error:rpcError}=await supabase.rpc('ensure_owned_auction',rpcPayload);
+  if(!rpcError && rpcId){
+    return {id:rpcId,title:TARGET_AUCTION_TITLE,owner_id:uid};
+  }
+  if(rpcError && !/function .*ensure_owned_auction.* does not exist|Could not find the function/i.test(String(rpcError.message||rpcError))){
+    throw rpcError;
+  }
+
   const payload={
     owner_id:uid,
     title:TARGET_AUCTION_TITLE,
@@ -311,26 +328,46 @@ async function runImport(file){
   setStatus('Lendo o pacote do WhatsApp…');
   const {zip,manifest}=await readPackage(file);
 
-  // Primeiro protege a parte recuperável no estado local/snapshot.
-  mergeLocalState(manifest);
-
   const supabase=createClient(cfg.url,cfg.publishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-  const {data:{session}}=await supabase.auth.getSession();
-  if(!session?.user?.id) throw new Error('Entre na sua conta antes de importar o pacote. Os dados locais já foram preparados e não foram apagados.');
-  if(!session.user.email_confirmed_at) throw new Error('Confirme o e-mail da conta antes de gravar a importação online. Os dados locais já foram preparados.');
+  await supabase.auth.refreshSession();
+  const {data:{user},error:userError}=await supabase.auth.getUser();
+  if(userError || !user?.id) throw new Error('Entre novamente na sua conta antes de importar o pacote.');
+  if(!user.email_confirmed_at) throw new Error('Confirme o e-mail da conta antes de gravar a importação online.');
 
-  setStatus('Preparando o leilão e os 37 lotes no Supabase…');
-  const auction=await ensureAuction(supabase,session.user.id);
-  const lotIds=await upsertLots(supabase,auction.id,manifest,session.user.id);
+  // Primeiro protege a parte recuperável no estado local e no snapshot da própria conta.
+  const localState=mergeLocalState(manifest);
+  const {error:snapshotError}=await supabase.from('user_state_snapshots').upsert({
+    user_id:user.id,
+    state_version:Number(localState?.version)||4,
+    state:localState,
+    source_origin:location.origin,
+    last_client_change:new Date().toISOString()
+  },{onConflict:'user_id'});
+  if(snapshotError){
+    throw new Error('A base foi preparada neste navegador, mas o backup online da própria conta falhou: '+snapshotError.message);
+  }
 
-  setStatus('Vinculando itens e candidatos FIPE…');
-  await upsertItems(supabase,lotIds,manifest,session.user.id);
-  const fipeCount=await replaceFipeReferences(supabase,auction.id,manifest,session.user.id);
+  try{
+    setStatus('Preparando o leilão e os 37 lotes no Supabase…');
+    const auction=await ensureAuction(supabase,user.id);
+    const lotIds=await upsertLots(supabase,auction.id,manifest,user.id);
 
-  setStatus('Enviando as imagens ao Storage privado…');
-  const imageCount=await uploadImages(supabase,auction.id,zip,manifest,lotIds);
+    setStatus('Vinculando itens e candidatos FIPE…');
+    await upsertItems(supabase,lotIds,manifest,user.id);
+    const fipeCount=await replaceFipeReferences(supabase,auction.id,manifest,user.id);
 
-  setStatus(`Importação concluída: ${lotIds.size} lotes, ${fipeCount} referências FIPE e ${imageCount} imagens privadas vinculadas. Revise as associações marcadas antes de tratar os dados como confirmados.`,'ok');
+    setStatus('Enviando as imagens ao Storage privado…');
+    const imageCount=await uploadImages(supabase,auction.id,zip,manifest,lotIds);
+
+    setStatus(`Importação concluída: ${lotIds.size} lotes, ${fipeCount} referências FIPE e ${imageCount} imagens privadas vinculadas. Revise as associações marcadas antes de tratar os dados como confirmados.`,'ok');
+  }catch(error){
+    const message=String(error?.message||error||'');
+    if(/row-level security|violates.*policy|42501/i.test(message)){
+      setStatus('Base inicial preservada neste navegador e no backup online da sua conta. A etapa relacional/mídias foi bloqueada pela política RLS do banco e ficou pendente para correção administrativa; nenhum dado foi promovido a oficial.','warn');
+      return;
+    }
+    throw error;
+  }
 }
 
 button?.addEventListener('click',()=>input?.click());
