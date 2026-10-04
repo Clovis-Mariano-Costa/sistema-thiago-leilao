@@ -1,0 +1,5 @@
+/app*
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/whatsapp-import.js
+  Cache-Control: no-cache, must-revalidate

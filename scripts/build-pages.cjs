@@ -13,7 +13,7 @@ const publicFiles=[
   'landing.css','landing.js',
   'parceria.html','privacidade.html','termos.html',
   'session-ui.js','styles.css','user-references.js','whatsapp-import.js',
-  'favicon.png','favicon.svg'
+  'favicon.png','favicon.svg','_headers'
 ];
 
 fs.rmSync(out,{recursive:true,force:true});
