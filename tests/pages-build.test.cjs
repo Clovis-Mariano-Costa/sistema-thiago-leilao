@@ -13,3 +13,11 @@ test('build do Pages publica somente arquivos do site',()=>{
     assert.equal(fs.existsSync(path.join('dist',name)),false,name+' não deve ir para o Pages');
   }
 });
+
+
+test('workflow do GitHub Pages publica somente a pasta dist',()=>{
+  const workflow=fs.readFileSync('.github/workflows/pages.yml','utf8');
+  assert.match(workflow,/run: node scripts\/build-pages\.cjs/);
+  assert.match(workflow,/path: dist/);
+  assert.doesNotMatch(workflow,/path: \.\s*$/m);
+});

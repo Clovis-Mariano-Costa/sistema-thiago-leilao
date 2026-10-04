@@ -28,9 +28,12 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Preparar site
+        run: node scripts/build-pages.cjs
+
+      - name: Empacotar site público
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
 
       - name: Publicar
         id: deployment
