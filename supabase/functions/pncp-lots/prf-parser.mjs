@@ -7,6 +7,25 @@ export function prfMoney(value){
   return String(value||"").replace(/[^0-9,.-]/g,"");
 }
 
+export function extractPrfMinimumBid(value){
+  const row=String(value||"").replace(/\s+/g," ").trim();
+
+  // O PDF real frequentemente desloca "R$" para antes ou depois da célula,
+  // mas o valor com centavos continua preservado. Não dependemos do status
+  // ("Cir culaç ão", "Suc ata", etc.) para localizar a coluna monetária.
+  const decimals=[...row.matchAll(/(?:R\$\s*)?([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})(?:\s*R\$)?/gi)];
+  if(decimals.length){
+    return prfMoney(decimals[decimals.length-1]?.[1]||"");
+  }
+
+  // Duas linhas reais do Anexo I perderam ",00" na extração textual.
+  // Nesses casos aceitamos somente inteiro imediatamente associado ao
+  // marcador administrativo "DEL 8/6", evitando confundir ano/RENAVAM.
+  const integerBeforeDel=row.match(/\b([0-9]{2,6})\s+(?:(?:DOCA|CALDERAN|SUDE\s*STE|TET\s*O)\s*-\s*)?DEL\s+8\/6\b/i)
+    || row.match(/\b([0-9]{2,6})\s+DEL\s+8\/6\b/i);
+  return integerBeforeDel ? prfMoney(integerBeforeDel[1]) : "";
+}
+
 export function preparePrfText(value){
   return String(value||"")
     .replace(/\u00a0/g," ")
@@ -71,6 +90,8 @@ export function parsePrfLots(rawText){
     let entryDate="";
     let context="";
 
+    minimumBid=extractPrfMinimumBid(block);
+
     const plateMatch=block.match(PRF_PLATE);
     if(plateMatch && plateMatch.index!=null){
       plate=plateMatch[1].replace(/\s+/g,"").toUpperCase();
@@ -105,12 +126,10 @@ export function parsePrfLots(rawText){
           warnings.push("campos técnicos não totalmente reconciliados");
         }
 
-        const afterStatus=afterPlate.slice((statusMatch.index||0)+statusMatch[0].length);
-        const bidMatch=afterStatus.match(/R\$\s*([0-9.]+,[0-9]{2})/i);
-        minimumBid=prfMoney(bidMatch?.[1]||"");
         if(!minimumBid) warnings.push("valor avaliado não localizado");
       }else{
         warnings.push("status de avaliação não localizado");
+        if(!minimumBid) warnings.push("valor avaliado não localizado");
       }
     }else{
       warnings.push("placa/UF não localizados");
