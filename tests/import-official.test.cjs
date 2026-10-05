@@ -112,7 +112,7 @@ test('PRF/SC possui adaptador de lotes oficial sem depender de coordenadas PNCP'
   assert.match(edge,/sourceId==="prf-sc"/);
   assert.match(edge,/fetchPrfLots/);
   assert.match(edge,/Anexo I/);
-  assert.match(edge,/parsedRatio<0\.98/);
+  assert.match(edge,/parsed\.lots\.length!==parsed\.sourceRows/);
   assert.match(edge,/needsReview:true/);
   assert.match(edge,/gov\.br/);
 });
