@@ -88,3 +88,16 @@ test('ST-MNM-45A mídia privada fica limitada ao leilão que a originou',()=>{
   assert.match(app,/scope\.auctionTitle/);
   assert.match(app,/privateMediaAllowedForActiveAuction\(\)/);
 });
+
+
+test('ST-MNM-45B FIPE recebe contexto lote/item e hidrata sem depender de app-ready',()=>{
+  const media=fs.readFileSync('private-media.js','utf8');
+  const fipe=fs.readFileSync('fipe.js','utf8');
+  assert.match(media,/SISTEMA_THIAGO_FIPE_CONTEXTS/);
+  assert.match(media,/fipeContexts/);
+  assert.match(media,/scheduleMediaHydration\(\);/);
+  assert.match(fipe,/SISTEMA_THIAGO_FIPE_CONTEXTS/);
+  assert.match(fipe,/fipe-reference-context/);
+  assert.match(fipe,/Lote \$\{esc\(String\(itemContext\.lotNumber/);
+  assert.match(fipe,/media-refresh-request/);
+});
