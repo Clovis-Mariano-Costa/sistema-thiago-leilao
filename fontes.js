@@ -145,6 +145,7 @@ async function loadExistingOfficialLots(auctionId){
     const {data,error}=await supabase.from('lots')
       .select('lot_number,item_type,plate,brand_model,chassis,engine,model_year,color,fuel,extra_data')
       .eq('auction_id',auctionId)
+      .order('lot_number',{ascending:true})
       .range(from,from+size-1);
     if(error) throw error;
     for(const row of data||[]) byNumber.set(Number(row.lot_number),row);
@@ -154,17 +155,22 @@ async function loadExistingOfficialLots(auctionId){
   return byNumber;
 }
 
-async function loadOfficialLotIds(auctionId){
+async function loadOfficialLotIds(auctionId,requestedLotNumbers){
   const byNumber=new Map();
+  const requested=new Set(Array.from(requestedLotNumbers||[]).map(Number));
   let from=0;
   const size=500;
   while(true){
     const {data,error}=await supabase.from('lots')
       .select('id,lot_number')
       .eq('auction_id',auctionId)
+      .order('lot_number',{ascending:true})
       .range(from,from+size-1);
     if(error) throw error;
-    for(const row of data||[]) byNumber.set(Number(row.lot_number),row.id);
+    for(const row of data||[]){
+      const n=Number(row.lot_number);
+      if(!requested.size || requested.has(n)) byNumber.set(n,row.id);
+    }
     if(!data || data.length<size) break;
     from+=size;
   }
@@ -299,24 +305,25 @@ async function persistOfficialRelational(item){
     (data||[]).forEach(row=>lotIdByNumber.set(Number(row.lot_number),row.id));
   }
 
-  if(lotIdByNumber.size < sourceLots.length){
+  const sourceLotNumbers=sourceLots.map((lot,index)=>Number(lot?.n??lot?.lot??lot?.numero??index+1));
+  const sourceLotNumberSet=new Set(sourceLotNumbers);
+
+  if(lotIdByNumber.size < sourceLotNumberSet.size){
     try{
-      const persistedLotIds=await loadOfficialLotIds(auctionId);
+      const persistedLotIds=await loadOfficialLotIds(auctionId,sourceLotNumberSet);
       persistedLotIds.forEach((id,n)=>lotIdByNumber.set(Number(n),id));
     }catch(error){
       return {ok:false,reason:error.message||String(error),auctionId,lots:lotIdByNumber.size,items:0};
     }
   }
 
-  const unresolvedLotNumbers=sourceLots
-    .map((lot,index)=>Number(lot?.n??lot?.lot??lot?.numero??index+1))
-    .filter(n=>!lotIdByNumber.has(n));
+  const unresolvedLotNumbers=sourceLotNumbers.filter(n=>!lotIdByNumber.has(n));
   if(unresolvedLotNumbers.length){
     return {
       ok:false,
       reason:'IDs relacionais não resolvidos para '+unresolvedLotNumbers.length+' lote(s).',
       auctionId,
-      lots:lotIdByNumber.size,
+      lots:sourceLotNumbers.filter(n=>lotIdByNumber.has(n)).length,
       items:0
     };
   }
@@ -361,7 +368,13 @@ async function persistOfficialRelational(item){
     itemCount+=(data||[]).length;
   }
 
-  return {ok:true,reason:'',auctionId,lots:lotIdByNumber.size,items:itemCount};
+  return {
+    ok:true,
+    reason:'',
+    auctionId,
+    lots:sourceLotNumbers.filter(n=>lotIdByNumber.has(n)).length,
+    items:itemCount
+  };
 }
 
 function normalizeImportedLot(lot,index,item){
