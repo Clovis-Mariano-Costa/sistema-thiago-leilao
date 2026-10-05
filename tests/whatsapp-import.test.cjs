@@ -88,3 +88,17 @@ test('importador persiste candidatos FIPE por lote e item sem selecionar automat
 test('mensagem final informa vínculos FIPE por item',()=>{
   assert.match(js,/referências FIPE \(\$\{lotFipeCount\} vínculos por item\)/);
 });
+
+test('ST-MNM-37D bloqueia Base inicial ambígua antes de escrever',()=>{
+  const migration=fs.readFileSync('supabase/migrations/20261005045312_harden_ensure_owned_auction_idempotency.sql','utf8');
+  assert.match(js,/\.order\('created_at',\{ascending:true\}\)/);
+  assert.match(js,/\.limit\(3\)/);
+  assert.match(js,/\(found\|\|\[\]\)\.length>1/);
+  assert.match(js,/Integridade bloqueou a importação/);
+  assert.match(js,/DUPLICATE_OWNED_AUCTION/);
+  assert.match(migration,/pg_advisory_xact_lock/);
+  assert.match(migration,/hashtextextended/);
+  assert.match(migration,/if v_count > 1 then/);
+  assert.match(migration,/DUPLICATE_OWNED_AUCTION/);
+  assert.match(migration,/private\.is_email_confirmed\(\)/);
+});
