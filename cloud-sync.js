@@ -16,6 +16,45 @@ function auctionCount(state){ return Array.isArray(state?.auctions)?state.auctio
 function lotCount(state){ return (state?.auctions||[]).reduce((n,a)=>n+(Array.isArray(a?.lots)?a.lots.length:0),0) }
 function statesEqual(a,b){ try{return JSON.stringify(a)===JSON.stringify(b)}catch{return false} }
 
+function normalizeMoney(value){
+  const raw=String(value??'').trim();
+  if(!raw) return null;
+  const compact=raw.replace(/[^0-9,.-]/g,'');
+  const normalized=compact.includes(',')
+    ? compact.replace(/\./g,'').replace(',','.')
+    : compact;
+  const number=Number(normalized);
+  return Number.isFinite(number)?number:null;
+}
+
+function operationalPayload(lot){
+  return {
+    preference_level:Number.isFinite(Number(lot?.preferenceLevel)) ? Math.max(0,Math.min(2,Number(lot.preferenceLevel))) : 0,
+    fipe_value:normalizeMoney(lot?.fipeValue),
+    minimum_bid:normalizeMoney(lot?.minimumBid),
+    max_bid:normalizeMoney(lot?.maxBid),
+    final_value:normalizeMoney(lot?.finalValue),
+    sold:Boolean(lot?.sold),
+    result:String(lot?.result||'').trim()||null,
+    note:String(lot?.note||'').trim()||null,
+    updated_at:new Date().toISOString()
+  };
+}
+
+function operationalFingerprint(value){
+  const payload=value?.preference_level!==undefined ? value : operationalPayload(value);
+  return JSON.stringify([
+    Number(payload.preference_level||0),
+    payload.fipe_value==null?null:Number(payload.fipe_value),
+    payload.minimum_bid==null?null:Number(payload.minimum_bid),
+    payload.max_bid==null?null:Number(payload.max_bid),
+    payload.final_value==null?null:Number(payload.final_value),
+    Boolean(payload.sold),
+    payload.result||null,
+    payload.note||null
+  ]);
+}
+
 function legacyCandidate(){
   for(const key of legacyKeys){
     const parsed=parseJson(localStorage.getItem(key)||'');
@@ -41,6 +80,103 @@ async function start(){
   const app=window.SISTEMA_THIAGO_APP;
   let local=app.getState();
   const legacy=legacyCandidate();
+  const relationalAuctionCache=new Map();
+  const relationalLotCache=new Map();
+  const operationalFingerprints=new Map();
+
+  async function resolveRelationalAuction(localAuction){
+    if(!localAuction) return null;
+    if(relationalAuctionCache.has(localAuction.id)) return relationalAuctionCache.get(localAuction.id);
+
+    const hinted=String(localAuction?.extraFields?.relationalAuctionId||'').trim();
+    if(hinted){
+      const {data,error}=await supabase.from('auctions')
+        .select('id,title,reference,source_evidence')
+        .eq('id',hinted)
+        .maybeSingle();
+      if(!error && data){
+        relationalAuctionCache.set(localAuction.id,data);
+        return data;
+      }
+    }
+
+    const resultId=String(localAuction?.sourceEvidence?.officialResultId||'').trim();
+    if(resultId){
+      const {data,error}=await supabase.from('auctions')
+        .select('id,title,reference,source_evidence')
+        .contains('source_evidence',{officialResultId:resultId})
+        .limit(1);
+      if(!error && data?.length){
+        relationalAuctionCache.set(localAuction.id,data[0]);
+        return data[0];
+      }
+    }
+
+    let query=supabase.from('auctions')
+      .select('id,title,reference,source_evidence')
+      .eq('title',localAuction.title||'')
+      .limit(1);
+    if(localAuction.reference) query=query.eq('reference',localAuction.reference);
+    const {data,error}=await query;
+    if(error || !data?.length) return null;
+    relationalAuctionCache.set(localAuction.id,data[0]);
+    return data[0];
+  }
+
+  async function loadRelationalLots(auctionId){
+    if(relationalLotCache.has(auctionId)) return relationalLotCache.get(auctionId);
+    const byNumber=new Map();
+    const pageSize=500;
+    let from=0;
+
+    while(true){
+      const {data,error}=await supabase.from('lots')
+        .select('id,lot_number,preference_level,fipe_value,minimum_bid,max_bid,final_value,sold,result,note')
+        .eq('auction_id',auctionId)
+        .order('lot_number',{ascending:true})
+        .range(from,from+pageSize-1);
+      if(error) throw error;
+      for(const row of data||[]){
+        byNumber.set(Number(row.lot_number),row);
+        operationalFingerprints.set(row.id,operationalFingerprint(row));
+      }
+      if(!data || data.length<pageSize) break;
+      from+=pageSize;
+    }
+
+    relationalLotCache.set(auctionId,byNumber);
+    return byNumber;
+  }
+
+  async function syncOperationalChanges(state){
+    const localAuction=(state?.auctions||[]).find(a=>a.id===state.currentAuctionId) || null;
+    if(!localAuction) return {ok:true,changed:0};
+
+    const relationalAuction=await resolveRelationalAuction(localAuction);
+    if(!relationalAuction?.id) return {ok:true,changed:0};
+
+    let byNumber;
+    try{ byNumber=await loadRelationalLots(relationalAuction.id); }
+    catch(error){ return {ok:false,changed:0,error:error?.message||String(error)}; }
+
+    let changed=0;
+    for(const lot of localAuction.lots||[]){
+      const row=byNumber.get(Number(lot.n));
+      if(!row?.id) continue;
+
+      const payload=operationalPayload(lot);
+      const nextFingerprint=operationalFingerprint(payload);
+      const previousFingerprint=operationalFingerprints.get(row.id);
+      if(nextFingerprint===previousFingerprint) continue;
+
+      const {error}=await supabase.from('lots').update(payload).eq('id',row.id);
+      if(error) return {ok:false,changed,error:error.message||String(error)};
+      operationalFingerprints.set(row.id,nextFingerprint);
+      changed++;
+    }
+
+    return {ok:true,changed};
+  }
 
   const {data:cloud,error}=await supabase.from('user_state_snapshots').select('state,state_version,updated_at,source_origin').eq('user_id',uid).maybeSingle();
   if(error){
@@ -120,7 +256,25 @@ async function start(){
   let timer=null;
   window.addEventListener('sistema-thiago:state-saved',()=>{
     clearTimeout(timer);
-    timer=setTimeout(()=>upload(app.getState(),'Alterações salvas online'),900);
+    timer=setTimeout(async()=>{
+      const current=app.getState();
+      const snapshotOk=await upload(current,'Alterações salvas online');
+      if(!snapshotOk) return;
+      const relational=await syncOperationalChanges(current);
+      if(!relational.ok){
+        setStatus(
+          '<strong>Backup online salvo, mas o banco canônico não confirmou a última alteração operacional.</strong> '+
+          'Os dados continuam protegidos no snapshot. '+String(relational.error||''),
+          'warn'
+        );
+      }else if(relational.changed>0){
+        setStatus(
+          '<strong>Alterações salvas online.</strong> '+auctionCount(current)+' leilão(ões), '+
+          lotCount(current)+' lote(s) no snapshot e '+relational.changed+' lote(s) operacional(is) reconciliado(s) no banco canônico.',
+          'ok'
+        );
+      }
+    },900);
   });
 
   supabase.auth.onAuthStateChange((_event,nextSession)=>{
