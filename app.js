@@ -1200,6 +1200,10 @@ function showImportFeedback() {
   const pncpDocument = params.get('pncp_document') || '';
   const importSync = params.get('sync') || '';
   const importSyncError = params.get('sync_error') || '';
+  const relationalSync = params.get('relational') || '';
+  const relationalError = params.get('relational_error') || '';
+  const relationalLots = Number(params.get('relational_lots') || 0);
+  const relationalItems = Number(params.get('relational_items') || 0);
 
   const detail = pncpError
     ? `A busca automática dos lotes no PNCP foi tentada, mas não concluiu: ${escapeHtml(pncpError)}`
@@ -1216,11 +1220,19 @@ function showImportFeedback() {
         (importSyncError ? ' ' + escapeHtml(importSyncError) : '')
       : '';
 
+  const relationalDetail = relationalSync === 'online'
+    ? '<br><strong>Banco canônico:</strong> ' + relationalLots + ' lote(s) e ' + relationalItems + ' item(ns) reconciliados no Supabase.'
+    : relationalSync === 'pending'
+      ? '<br><strong>Banco canônico:</strong> reconciliação pendente; o snapshot/local continua preservado.' +
+        (relationalError ? ' ' + escapeHtml(relationalError) : '')
+      : '';
+
   box.innerHTML = `<strong>Cadastro oficial importado.</strong>
     ${auction ? escapeHtml(auction.title) + ' • ' : ''}
     ${fieldCount ? fieldCount + ' campo(s) de origem processados • ' : ''}
     ${lotCount} lote(s) disponível(is). ${detail}
     ${syncDetail}
+    ${relationalDetail}
     <br><strong>Confira os dados no edital/documento oficial antes de dar lance ou tomar decisão.</strong>`;
   box.hidden = false;
 
