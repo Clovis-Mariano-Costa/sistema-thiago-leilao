@@ -250,7 +250,7 @@ async function ensureAuction(supabase,uid){
     .limit(3);
   if(findError) throw findError;
   if((found||[]).length>1){
-    throw new Error('Integridade bloqueou a importação: existe mais de uma Base inicial relacional. Abra Integridade e reconcilie a duplicata antes de importar novamente.');
+    throw new Error('Integridade bloqueou a importação: existe mais de uma Base inicial relacional. Abra Integridade e use a Reconciliação assistida para contatar o suporte; não exclua dados manualmente.');
   }
   if(found?.[0]) return found[0];
 
@@ -267,7 +267,7 @@ async function ensureAuction(supabase,uid){
     return {id:rpcId,title:TARGET_AUCTION_TITLE,owner_id:uid};
   }
   if(rpcError && /DUPLICATE_OWNED_AUCTION/.test(String(rpcError.message||rpcError))){
-    throw new Error('Integridade bloqueou a importação: o banco encontrou mais de uma Base inicial relacional. Reconcilie a duplicata antes de importar novamente.');
+    throw new Error('Integridade bloqueou a importação: o banco encontrou mais de uma Base inicial relacional. Abra Integridade e use a Reconciliação assistida para contatar o suporte; não exclua dados manualmente.');
   }
   if(rpcError && !/function .*ensure_owned_auction.* does not exist|Could not find the function/i.test(String(rpcError.message||rpcError))){
     throw rpcError;

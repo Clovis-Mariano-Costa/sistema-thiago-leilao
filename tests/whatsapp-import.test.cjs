@@ -102,3 +102,10 @@ test('ST-MNM-37D bloqueia Base inicial ambígua antes de escrever',()=>{
   assert.match(migration,/DUPLICATE_OWNED_AUCTION/);
   assert.match(migration,/private\.is_email_confirmed\(\)/);
 });
+
+
+test('ST-MNM-40G duplicidade aponta reconciliação assistida em vez de ação impossível',()=>{
+  assert.match(js,/Reconciliação assistida/);
+  assert.match(js,/não exclua dados manualmente/);
+  assert.doesNotMatch(js,/Abra Integridade e reconcilie a duplicata antes de importar novamente/);
+});

@@ -141,3 +141,14 @@ test('ST-MNM-40E separa prova histórica do estado da execução mais recente',(
   assert.doesNotMatch(js,/const state=lifecycle\.active/);
   assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 });
+
+
+test('ST-MNM-40G Integridade oferece suporte real sem mutação automática',()=>{
+  const html=fs.readFileSync('integridade.html','utf8');
+  const js=fs.readFileSync('integridade.js','utf8');
+  assert.match(html,/id="reconciliacao-assistida"/);
+  assert.match(html,/suporte@jus9tecnologia\.com\.br/);
+  assert.match(html,/wa\.me\/5548991089206/);
+  assert.match(html,/não apague nem edite linhas manualmente/);
+  assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+});
