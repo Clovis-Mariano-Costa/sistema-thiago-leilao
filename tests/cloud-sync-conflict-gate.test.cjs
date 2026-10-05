@@ -12,7 +12,7 @@ test('ST-MNM-36D conflito local-cloud bloqueia autosync até decisão humana',()
 });
 
 test('ST-MNM-36D cada escolha libera o bloqueio de forma explícita',()=>{
-  assert.match(sync,/Dados deste navegador enviados ao backup online'[\s\S]*if\(ok\) unresolvedStateConflict=false/);
+  assert.match(sync,/data-sync-local[\s\S]*const currentLocal=app\.getState\(\)[\s\S]*upload\(currentLocal,'Dados deste navegador enviados ao backup online'\)[\s\S]*if\(ok\) unresolvedStateConflict=false/);
   assert.match(sync,/data-sync-cloud[\s\S]*unresolvedStateConflict=false;[\s\S]*app\.replaceState\(cloudState/);
 });
 
