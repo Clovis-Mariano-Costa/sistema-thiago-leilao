@@ -18,6 +18,8 @@ const supabase=(SUPABASE_CFG.url && SUPABASE_CFG.publishableKey) ? createClient(
 
 let sourceFilter='all';
 let searchQuery='';
+let protectedOfficialResultIds=new Set();
+let relationalOfficialResultIds=new Set();
 
 const $=sel=>document.querySelector(sel);
 
@@ -48,6 +50,58 @@ function loadState(){
 
 function saveState(state){
   localStorage.setItem(storageKey(),JSON.stringify(state));
+}
+
+function collectOfficialResultIdsFromState(state){
+  const ids=new Set();
+  for(const auction of Array.isArray(state?.auctions)?state.auctions:[]){
+    const id=String(auction?.sourceEvidence?.officialResultId||'').trim();
+    if(id) ids.add(id);
+  }
+  return ids;
+}
+
+async function loadReconciliationReadiness(){
+  protectedOfficialResultIds=collectOfficialResultIdsFromState(loadState());
+  relationalOfficialResultIds=new Set();
+
+  if(!supabase) return;
+  const {data:{session},error:sessionError}=await supabase.auth.getSession();
+  const uid=session?.user?.id||'';
+  if(sessionError || !uid || !session?.user?.email_confirmed_at) return;
+
+  const [snapshotResult,relationalResult]=await Promise.all([
+    supabase.from('user_state_snapshots')
+      .select('state')
+      .eq('user_id',uid)
+      .maybeSingle(),
+    supabase.from('auctions')
+      .select('source_evidence')
+      .eq('owner_id',uid)
+      .eq('source_type','official')
+  ]);
+
+  if(!snapshotResult.error && snapshotResult.data?.state){
+    protectedOfficialResultIds=collectOfficialResultIdsFromState(snapshotResult.data.state);
+  }
+  if(!relationalResult.error){
+    for(const row of relationalResult.data||[]){
+      const id=String(row?.source_evidence?.officialResultId||'').trim();
+      if(id) relationalOfficialResultIds.add(id);
+    }
+  }
+}
+
+function resultActionLabel(item){
+  const id=String(item?.id||'').trim();
+  const protectedInSnapshot=id && protectedOfficialResultIds.has(id);
+  const relational=id && relationalOfficialResultIds.has(id);
+  if(protectedInSnapshot && !relational) return 'Reconciliar no banco relacional';
+  if(relational) return 'Atualizar fonte oficial';
+  if(hasOfficialLotConnector(item)) return 'Importar cadastro + buscar lotes';
+  return Array.isArray(item?.lots) && item.lots.length
+    ? 'Importar cadastro oficial'
+    : 'Importar cadastro oficial • dados gerais';
 }
 
 async function persistOfficialStateOnline(state){
@@ -673,9 +727,7 @@ function resultCard(item){
   const extras=Object.entries(item.extraFields||{});
   const statusText=item.status || '';
   const statusClass=/suspens/i.test(statusText)?'status-badge sold':'status-badge waiting';
-  const importLabel=hasOfficialLotConnector(item)
-    ? 'Importar cadastro + buscar lotes'
-    : (Array.isArray(item.lots) && item.lots.length ? 'Importar cadastro oficial' : 'Importar cadastro oficial • dados gerais');
+  const importLabel=resultActionLabel(item);
   return `<article class="official-auction-card">
     <div class="source-row">
       <span class="source-badge official-source">Fonte oficial</span>
@@ -789,4 +841,6 @@ document.querySelectorAll('[data-source-filter]').forEach(btn=>btn.addEventListe
 const params=new URLSearchParams(location.search);
 if(params.get('mode')==='import') $('#importModeNotice').hidden=false;
 
+render();
+await loadReconciliationReadiness();
 render();

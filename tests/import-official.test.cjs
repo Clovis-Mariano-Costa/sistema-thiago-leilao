@@ -403,3 +403,18 @@ test('ST-MNM-35C hardening preserva e-mail confirmado e paginação determiníst
   assert.match(fontes,/sourceLotNumberSet/);
   assert.match(fontes,/requested\.has\(n\)/);
 });
+
+
+test('ST-MNM-39B distingue importação nova de reconciliação relacional',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  assert.match(fontes,/async function loadReconciliationReadiness/);
+  assert.match(fontes,/from\('user_state_snapshots'\)/);
+  assert.match(fontes,/from\('auctions'\)/);
+  assert.match(fontes,/function resultActionLabel/);
+  assert.match(fontes,/Reconciliar no banco relacional/);
+  assert.match(fontes,/Atualizar fonte oficial/);
+  assert.match(fontes,/collectOfficialResultIdsFromState/);
+  assert.match(fontes,/await loadReconciliationReadiness\(\)/);
+  assert.doesNotMatch(fontes,/service_role|SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEYS/);
+});
