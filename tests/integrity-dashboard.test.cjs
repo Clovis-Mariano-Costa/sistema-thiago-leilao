@@ -32,3 +32,20 @@ test('build público inclui integridade sem diretórios internos',()=>{
   assert.match(build,/integridade\.css/);
   assert.match(build,/forbidden=.*supabase/);
 });
+
+test('ST-MNM-37C compara snapshot e relacional sem promover dados',()=>{
+  const html=fs.readFileSync('integridade.html','utf8');
+  const js=fs.readFileSync('integridade.js','utf8');
+  assert.match(html,/Snapshot × banco relacional/);
+  assert.match(html,/integrityParityRows/);
+  assert.match(js,/select\('state,state_version,last_client_change,source_origin'\)/);
+  assert.match(js,/source_evidence/);
+  assert.match(js,/function renderSnapshotParity/);
+  assert.match(js,/Paridade snapshot ↔ relacional/);
+  assert.match(js,/Somente snapshot/);
+  assert.match(js,/Somente relacional/);
+  assert.match(js,/matchedRelationalIds/);
+  assert.match(js,/Divergente/);
+  assert.match(js,/Alinhado/);
+  assert.doesNotMatch(js,/\.insert\(|\.upsert\(|\.delete\(/);
+});
