@@ -186,7 +186,13 @@ function mergeLocalState(manifest){
     const item={
       ...existingItem,
       itemOrder,
-      itemIdentifier:String(imageData?.plate || existingItem.itemIdentifier || '').trim(),
+      itemIdentifier:String(
+        imageData?.plate ||
+        imageData?.serial ||
+        imageData?.chassis ||
+        existingItem.itemIdentifier ||
+        ''
+      ).trim(),
       description:String(imageData?.vehicle_source || entry.label || existingItem.description || '').trim(),
       vehicle:String(imageData?.vehicle_source || entry.label || existingItem.vehicle || '').trim(),
       plate:String(imageData?.plate || existingItem.plate || '').trim().toUpperCase(),
@@ -202,7 +208,13 @@ function mergeLocalState(manifest){
         importBatch:IMPORT_BATCH,
         sourceAssociation:entry.association || '',
         reviewRequired:true,
-        referenceMonth:imageData?.reference || ''
+        referenceMonth:imageData?.reference || '',
+        itemSerial:String(
+          imageData?.serial ||
+          imageData?.chassis ||
+          existingItem.extraFields?.itemSerial ||
+          ''
+        ).trim()
       }
     };
     if(index>=0) items[index]=item; else items.push(item);
@@ -329,6 +341,8 @@ async function upsertItems(supabase,lotIds,manifest,uid){
       lot_id:lotId,
       item_order:Math.max(1,Number(entry.item_order)||1),
       item_identifier:imageData?.plate ||
+        imageData?.serial ||
+        imageData?.chassis ||
         ('ST-L'+String(Number(entry.lot)||0).padStart(3,'0')+'-I'+String(Math.max(1,Number(entry.item_order)||1)).padStart(2,'0')),
       description:imageData?.vehicle_source || entry.label || null,
       vehicle:imageData?.vehicle_source || entry.label || null,
@@ -348,7 +362,8 @@ async function upsertItems(supabase,lotIds,manifest,uid){
         review_required:true
       },
       extra_data:{
-        ...(!imageData?.plate ? {generatedIdentifier:true,generatedIdentifierOrigin:'sistema_thiago'} : {}),
+        ...(!(imageData?.plate || imageData?.serial || imageData?.chassis) ? {generatedIdentifier:true,generatedIdentifierOrigin:'sistema_thiago'} : {}),
+        item_serial:imageData?.serial || imageData?.chassis || null,
         reference_month:imageData?.reference || null,
         fipe_candidates:imageData?.fipe_candidates || [],
         whatsapp_label:entry.label || null
@@ -452,7 +467,7 @@ async function replaceFipeReferences(supabase,auctionId,manifest,uid){
   return rows.length;
 }
 
-async function uploadImages(supabase,auctionId,zip,manifest,lotIds){
+async function uploadImages(supabase,auctionId,zip,manifest,lotIds,itemIds,uid){
   const uniqueImages=[...new Set((manifest.lots||[]).map(x=>x.image).filter(Boolean))];
   let uploaded=0;
   const paths=new Map();
@@ -482,6 +497,7 @@ async function uploadImages(supabase,auctionId,zip,manifest,lotIds){
       lotPhotoSet.add(lotId);
     }
     const itemOrder=Math.max(1,Number(entry.item_order)||1);
+    const itemId=itemIds.get(`${lotId}:${itemOrder}`) || null;
     const {error:itemError}=await supabase.from('lot_items').update({
       source_evidence:{
         import_batch:IMPORT_BATCH,
@@ -492,6 +508,24 @@ async function uploadImages(supabase,auctionId,zip,manifest,lotIds){
       }
     }).eq('lot_id',lotId).eq('item_order',itemOrder);
     if(itemError) throw itemError;
+
+    const {error:mediaError}=await supabase.from('lot_media').upsert({
+      lot_id:lotId,
+      lot_item_id:itemId,
+      storage_path:path,
+      media_kind:'user_reference',
+      source_label:entry.image || null,
+      mime_type:mimeTypeForName(entry.image || ''),
+      metadata:{
+        import_batch:IMPORT_BATCH,
+        association:entry.association || null,
+        review_required:true,
+        item_order:itemOrder,
+        item_link_method:'manifest_item_order'
+      },
+      created_by:uid
+    },{onConflict:'lot_id,storage_path'});
+    if(mediaError) throw mediaError;
   }
   return uploaded;
 }
@@ -533,9 +567,10 @@ async function runImport(file){
     const fipeCount=await replaceFipeReferences(supabase,auction.id,manifest,user.id);
 
     setStatus('Enviando as imagens ao Storage privado…');
-    const imageCount=await uploadImages(supabase,auction.id,zip,manifest,lotIds);
+    const imageCount=await uploadImages(supabase,auction.id,zip,manifest,lotIds,itemIds,user.id);
 
-    setStatus(`Importação concluída: ${lotIds.size} lotes, ${fipeCount} referências FIPE (${lotFipeCount} vínculos por item) e ${imageCount} imagens privadas vinculadas. Revise as associações marcadas antes de tratar os dados como confirmados.`,'ok');
+    window.dispatchEvent(new CustomEvent('sistema-thiago:media-refresh-request'));
+    setStatus(`Importação concluída: ${lotIds.size} lotes, ${fipeCount} referências FIPE (${lotFipeCount} vínculos por item) e ${imageCount} imagens privadas vinculadas item a item. Revise as associações marcadas antes de tratar os dados como confirmados.`,'ok');
   }catch(error){
     const message=String(error?.message||error||'');
     if(/row-level security|violates.*policy|42501/i.test(message)){

@@ -17,7 +17,7 @@ test('ST-MNM-44C pagina FIPE exibe imagem privada assinada quando houver imageNa
   const html=fs.readFileSync('fipe.html','utf8');
   const js=fs.readFileSync('fipe.js','utf8');
   const css=fs.readFileSync('styles.css','utf8');
-  assert.match(html,/private-media\.js\?v=20261005-item-media\d+/);
+  assert.match(html,/private-media\.js\?v=20261005-item45a1/);
   assert.match(js,/SISTEMA_THIAGO_FIPE_MEDIA_URLS/);
   assert.match(js,/class="fipe-reference-media"/);
   assert.match(js,/loading="lazy"/);
@@ -31,4 +31,12 @@ test('ST-MNM-44C migration vincula midia por prova exata e fallback somente com 
   assert.match(sql,/having count\(\*\)=1/);
   assert.match(sql,/lot_item_id=ue\.item_id/);
   assert.match(sql,/lot_item_id=si\.item_id/);
+});
+
+
+test('ST-MNM-45A FIPE separa serial do item de múltiplas opções de preço',()=>{
+  const js=fs.readFileSync('fipe.js','utf8');
+  assert.match(js,/Serial do item \/ chassi exibido/);
+  assert.match(js,/não representam itens adicionais do lote/);
+  assert.match(js,/Dados \/ opções FIPE deste item/);
 });

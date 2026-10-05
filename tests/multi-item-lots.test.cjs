@@ -24,3 +24,17 @@ test('schema versionado contém lot_items e vínculos de mídia FIPE',()=>{
   assert.match(sql,/add column if not exists lot_item_id/i);
   assert.match(sql,/enable row level security/i);
 });
+
+
+test('ST-MNM-45A recupera itens relacionais ausentes do snapshot e mostra serial',()=>{
+  const app=fs.readFileSync('app.js','utf8');
+  const cloud=fs.readFileSync('cloud-sync.js','utf8');
+  assert.match(cloud,/function reconcileImportedItemStructure/);
+  assert.match(cloud,/function relationalItemToLocal/);
+  assert.match(cloud,/source_media_label/);
+  assert.match(cloud,/recoveredItems/);
+  assert.match(cloud,/Estrutura de itens reconciliada/);
+  assert.match(app,/function itemSerial/);
+  assert.match(app,/Serial\/chassi/);
+  assert.match(app,/auction\?\.id\|\|''\)\+':/);
+});
