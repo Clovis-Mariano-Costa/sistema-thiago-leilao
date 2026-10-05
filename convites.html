@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07111f" />
+  <meta name="description" content="Participantes e convites do Sistema Thiago." />
+  <title>Participantes e convites • Sistema Thiago</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=20261003c" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="convites.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-logo" src="assets/sistema-thiago-logo.svg" alt="Sistema Thiago" />
+      <div>
+        <p class="eyebrow">Jus 9 • participantes e acesso</p>
+        <h1>Sistema Thiago</h1>
+      </div>
+    </div>
+    <div class="top-actions">
+      <a id="userPill" class="user-pill" href="auth.html"><span id="userPillAvatar" class="user-pill-avatar"><span>?</span></span><span id="userPillLabel">Entrar / criar conta</span></a>
+    </div>
+  </header>
+
+  <main class="invite-main">
+    <section class="dashboard-card invite-hero">
+      <div>
+        <p class="eyebrow dark">Acesso compartilhado</p>
+        <h2>Participantes e convites</h2>
+        <p class="muted">Compartilhe apenas leilões relacionais que sua conta pode administrar. O acesso continua protegido por Auth + RLS.</p>
+      </div>
+      <div class="dashboard-actions">
+        <a class="secondary-link" href="app.html">← Voltar ao painel</a>
+      </div>
+    </section>
+
+    <section class="security-warning" role="note">
+      <strong>Autoridade limitada.</strong>
+      Proprietários podem convidar administradores, participantes e observadores. Administradores podem convidar participantes e observadores. O papel de proprietário nunca é concedido por convite.
+    </section>
+
+    <section id="inviteStatus" class="sync-status" hidden aria-live="polite"></section>
+
+    <section class="invite-grid">
+      <article class="dashboard-card invite-card">
+        <div>
+          <p class="eyebrow dark">Enviar convite</p>
+          <h2>Adicionar participante</h2>
+          <p class="muted">A lista mostra somente leilões que sua sessão pode administrar.</p>
+        </div>
+
+        <form id="inviteForm" class="invite-form">
+          <label class="field-wrap">
+            <span>Leilão</span>
+            <select id="inviteAuction" required></select>
+          </label>
+          <label class="field-wrap">
+            <span>E-mail do convidado</span>
+            <input id="inviteEmail" type="email" autocomplete="email" required placeholder="nome@exemplo.com" />
+          </label>
+          <label class="field-wrap">
+            <span>Papel</span>
+            <select id="inviteRole" required></select>
+          </label>
+          <button id="inviteSubmit" class="primary-btn" type="submit">Criar convite</button>
+        </form>
+      </article>
+
+      <article class="dashboard-card invite-card">
+        <div>
+          <p class="eyebrow dark">Recebidos</p>
+          <h2>Meus convites pendentes</h2>
+          <p class="muted">O aceite só funciona quando o e-mail confirmado da sessão coincide com o e-mail do convite.</p>
+        </div>
+        <div id="incomingInvites" class="invite-list"></div>
+      </article>
+    </section>
+
+    <section class="dashboard-card invite-card">
+      <div>
+        <p class="eyebrow dark">Enviados</p>
+        <h2>Convites do leilão selecionado</h2>
+        <p class="muted">Convites aceitos, revogados ou expirados permanecem visíveis para quem administra o leilão.</p>
+      </div>
+      <div id="outgoingInvites" class="invite-list"></div>
+    </section>
+  </main>
+
+  <script src="auth-config.js"></script>
+  <script type="module" src="session-ui.js"></script>
+  <script type="module" src="convites.js"></script>
+  <script src="cookie-notice.js"></script>
+</body>
+</html>

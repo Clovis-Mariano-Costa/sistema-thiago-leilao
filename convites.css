@@ -1,0 +1,15 @@
+.invite-main{max-width:1180px;margin:0 auto;padding:24px 16px 64px}
+.invite-hero{margin-bottom:16px}
+.invite-grid{display:grid;gap:16px;margin:16px 0}
+.invite-card{display:block}
+.invite-form{display:grid;gap:14px;margin-top:18px}
+.invite-form select,.invite-form input{width:100%}
+.invite-list{display:grid;gap:10px;margin-top:16px}
+.invite-item{border:1px solid rgba(21,39,65,.14);border-radius:14px;padding:14px;background:#fff}
+.invite-item-head{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.invite-item h3{margin:0 0 6px;font-size:1rem}
+.invite-meta{margin:0;color:#5d6b7c;font-size:.92rem;line-height:1.5}
+.invite-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.invite-empty{margin:10px 0 0;color:#5d6b7c}
+.invite-role{font-weight:700}
+@media(min-width:820px){.invite-grid{grid-template-columns:1fr 1fr}.invite-main{padding-top:32px}}
