@@ -205,3 +205,12 @@ test('ST-MNM-42B distingue run ativo de run possivelmente órfão',()=>{
   assert.match(js,/Não iniciar outra execução automaticamente/);
   assert.match(js,/órfãos\?/);
 });
+
+
+test('ST-MNM-42E propaga run órfão para observabilidade por resultado',()=>{
+  const js=fs.readFileSync('integridade.js','utf8');
+  assert.match(js,/const latestStale=isStaleStartedRun\(latest\)/);
+  assert.match(js,/Prova alinhada • último run possivelmente órfão/);
+  assert.match(js,/state\+=latestStale/);
+  assert.match(js,/último run possivelmente órfão/);
+});
