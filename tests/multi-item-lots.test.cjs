@@ -38,3 +38,16 @@ test('ST-MNM-45A recupera itens relacionais ausentes do snapshot e mostra serial
   assert.match(app,/Serial\/chassi/);
   assert.match(app,/auction\?\.id\|\|''\)\+':/);
 });
+
+
+test('ST-MNM-45B separa contagem de lotes da contagem de itens e oferece seletor explícito',()=>{
+  const html=fs.readFileSync('app.html','utf8');
+  const js=fs.readFileSync('app.js','utf8');
+  assert.match(html,/id="lotCount"/);
+  assert.match(html,/<span>Lotes<\/span>/);
+  assert.match(html,/class="item-select"/);
+  assert.match(js,/\$\('#lotCount'\)\.textContent = lotTotal/);
+  assert.match(js,/Selecionar item deste lote|itemSelect/);
+  assert.match(js,/lotIndex\+1/);
+  assert.match(js,/lotTotal/);
+});

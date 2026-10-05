@@ -5,11 +5,12 @@ const TARGET_AUCTION_TITLE='Leilão Thiago — Base inicial';
 let running=false;
 let lastHydratedAt=0;
 
-function setRuntimeMaps({lotUrls={},itemUrls={},fipeUrls={},scope={}}={}){
+function setRuntimeMaps({lotUrls={},itemUrls={},fipeUrls={},fipeContexts={},scope={}}={}){
   lastHydratedAt=Date.now();
   window.SISTEMA_THIAGO_MEDIA_URLS=lotUrls;
   window.SISTEMA_THIAGO_ITEM_MEDIA_URLS=itemUrls;
   window.SISTEMA_THIAGO_FIPE_MEDIA_URLS=fipeUrls;
+  window.SISTEMA_THIAGO_FIPE_CONTEXTS=fipeContexts;
   window.SISTEMA_THIAGO_MEDIA_SCOPE={
     auctionTitle:String(scope.auctionTitle||''),
     relationalAuctionId:String(scope.relationalAuctionId||'')
@@ -19,7 +20,8 @@ function setRuntimeMaps({lotUrls={},itemUrls={},fipeUrls={},scope={}}={}){
     detail:{
       lots:Object.keys(lotUrls).length,
       items:Object.keys(itemUrls).length,
-      fipe:Object.keys(fipeUrls).length
+      fipe:Object.keys(fipeUrls).length,
+      contexts:Object.keys(fipeContexts).length
     }
   }));
 }
@@ -61,7 +63,7 @@ async function hydratePrivateLotMedia(){
 
       const [itemsResult,mediaResult]=await Promise.all([
         supabase.from('lot_items')
-          .select('id,lot_id,item_order,item_identifier,source_media_label')
+          .select('id,lot_id,item_order,item_identifier,source_media_label,chassis,plate,vehicle')
           .in('lot_id',lotIds)
           .order('item_order',{ascending:true}),
         supabase.from('lot_media')
@@ -98,6 +100,14 @@ async function hydratePrivateLotMedia(){
     const byPath=new Map((signed||[]).map(row=>[row.path,row.signedUrl]));
     const lotNumberById=new Map(lots.map(row=>[row.id,String(row.lot_number)]));
     const itemById=new Map(items.map(row=>[row.id,row]));
+    const itemsByLotId=new Map();
+    for(const item of items){
+      if(!itemsByLotId.has(item.lot_id)) itemsByLotId.set(item.lot_id,[]);
+      itemsByLotId.get(item.lot_id).push(item);
+    }
+    for(const rows of itemsByLotId.values()){
+      rows.sort((a,b)=>Number(a.item_order||1)-Number(b.item_order||1));
+    }
 
     const lotUrls={};
     for(const row of lots){
@@ -107,6 +117,27 @@ async function hydratePrivateLotMedia(){
 
     const itemUrls={};
     const fipeUrls={};
+    const fipeContexts={};
+    const putFipeContext=(label,item,lotNumber,url='')=>{
+      const key=String(label||'').trim();
+      if(!key || !item) return;
+      const siblings=itemsByLotId.get(item.lot_id)||[];
+      const itemIndex=Math.max(0,siblings.findIndex(entry=>entry.id===item.id));
+      const context={
+        auctionTitle:chosen.title,
+        lotNumber:String(lotNumber||''),
+        itemOrder:itemIndex+1,
+        itemTotal:Math.max(1,siblings.length),
+        itemIdentifier:String(item.item_identifier||''),
+        serial:String(item.chassis||''),
+        plate:String(item.plate||''),
+        vehicle:String(item.vehicle||''),
+        imageUrl:String(url||'')
+      };
+      fipeContexts[key]=context;
+      const basename=key.split(/[\\/]/).pop();
+      if(basename) fipeContexts[basename]=context;
+    };
     for(const row of media){
       const url=byPath.get(row.storage_path);
       if(!url) continue;
@@ -123,6 +154,7 @@ async function hydratePrivateLotMedia(){
 
       const lotNumber=lotNumberById.get(row.lot_id);
       if(lotNumber && !lotUrls[lotNumber]) lotUrls[lotNumber]=url;
+      if(label && item) putFipeContext(label,item,lotNumber,url);
     }
 
     // Compatibilidade: se a mídia estiver vinculada por source_media_label,
@@ -133,12 +165,17 @@ async function hydratePrivateLotMedia(){
       const label=String(item.source_media_label||'').trim();
       const url=label ? fipeUrls[label] : '';
       if(url && item.item_identifier) itemUrls[String(item.item_identifier)]=url;
+      if(label){
+        const lotNumber=lotNumberById.get(item.lot_id);
+        putFipeContext(label,item,lotNumber,url);
+      }
     }
 
     setRuntimeMaps({
       lotUrls,
       itemUrls,
       fipeUrls,
+      fipeContexts,
       scope:{auctionTitle:chosen.title,relationalAuctionId:chosen.id}
     });
   }catch(error){
@@ -157,8 +194,10 @@ function scheduleMediaHydration(){
   }
 }
 
-if(window.SISTEMA_THIAGO_APP) scheduleMediaHydration();
-else window.addEventListener('sistema-thiago:app-ready',scheduleMediaHydration,{once:true});
+scheduleMediaHydration();
+if(!window.SISTEMA_THIAGO_APP){
+  window.addEventListener('sistema-thiago:app-ready',scheduleMediaHydration,{once:true});
+}
 
 window.addEventListener('sistema-thiago:media-refresh-request',scheduleMediaHydration);
 document.addEventListener('visibilitychange',()=>{

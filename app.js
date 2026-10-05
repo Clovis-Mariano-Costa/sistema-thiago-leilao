@@ -926,10 +926,28 @@ function renderLots() {
 
     const prev=card.querySelector('.item-prev-btn');
     const next=card.querySelector('.item-next-btn');
+    const itemSelect=card.querySelector('.item-select');
+    const itemChoices=lotItems(lot);
     prev.disabled=context.index<=0;
     next.disabled=context.index>=context.total-1;
     prev.hidden=context.total<=1;
     next.hidden=context.total<=1;
+
+    if(itemSelect){
+      itemSelect.innerHTML=itemChoices.map((entry,index)=>{
+        const id=itemIdentifier(lot,entry,index);
+        const serial=itemSerial(entry);
+        const suffix=[id,serial && serial!==id ? `serial ${serial}` : ''].filter(Boolean).join(' • ');
+        return '<option value="'+index+'">Item '+(index+1)+'/'+itemChoices.length+(suffix?' • '+escapeHtml(suffix):'')+'</option>';
+      }).join('');
+      itemSelect.value=String(context.index);
+      itemSelect.hidden=context.total<=1;
+      itemSelect.addEventListener('change',()=>{
+        setActiveItemIndex(lot,Number(itemSelect.value)||0);
+        renderLots();
+      });
+    }
+
     prev.addEventListener('click',()=>{
       setActiveItemIndex(lot,context.index-1);
       renderLots();
@@ -1103,10 +1121,12 @@ function renderLots() {
 function updateSummary() {
   const a = activeAuction();
   const entries=operationalEntries(a);
+  const lotTotal=(a?.lots||[]).length;
   const sold=entries.filter(entry=>entry.item.sold).length;
   const waiting=entries.length-sold;
   const prefs=entries.filter(entry=>Number(entry.item.preferenceLevel)>0).length;
 
+  $('#lotCount').textContent = lotTotal;
   $('#totalCount').textContent = entries.length;
   $('#waitingCount').textContent = waiting;
   $('#preferenceCount').textContent = prefs;
@@ -1119,7 +1139,8 @@ function updateSummary() {
   const next=nextPendingItem(a);
   if(next){
     const {lot,item,index,total}=next;
-    $('#nextLot').textContent = `Lote ${padLot(lot.n)} • Item ${index+1}/${total}`;
+    const lotIndex=Math.max(0,(a?.lots||[]).findIndex(entry=>entry===lot || Number(entry?.n)===Number(lot.n)));
+    $('#nextLot').textContent = `Lote ${padLot(lot.n)} • ${lotIndex+1}/${lotTotal} lotes • Item ${index+1}/${total}`;
     $('#nextVehicle').textContent = `${item.vehicle || item.description || 'Item'} • ${itemIdentifier(lot,item,index)}`;
     $('#nextPreference').hidden = item.preferenceLevel === 0;
     $('#nextPreference').textContent = plainPreferenceLabel(item.preferenceLevel);
@@ -1175,7 +1196,8 @@ function updateLiveMode() {
   }
 
   const {lot,item,index:itemIndex,total}=current;
-  $('#liveLot').textContent = `Lote ${padLot(lot.n)} • Item ${itemIndex+1}/${total}`;
+  const liveLotIndex=Math.max(0,(a?.lots||[]).findIndex(entry=>entry===lot || Number(entry?.n)===Number(lot.n)));
+  $('#liveLot').textContent = `Lote ${padLot(lot.n)} • ${liveLotIndex+1}/${(a?.lots||[]).length} lotes • Item ${itemIndex+1}/${total}`;
   $('#liveVehicle').textContent = `${item.vehicle || item.description || 'Item'} • ${itemIdentifier(lot,item,itemIndex)}`;
   $('#livePreference').hidden = item.preferenceLevel === 0;
   $('#livePreference').textContent = plainPreferenceLabel(item.preferenceLevel);
