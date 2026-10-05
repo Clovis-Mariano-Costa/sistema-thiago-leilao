@@ -12,7 +12,7 @@ test('Painel usa URL assinada de foto privada quando disponível',()=>{
   assert.match(app,/function lotPhotoUrl/);
   assert.match(app,/SISTEMA_THIAGO_MEDIA_URLS/);
   assert.match(app,/lot\.photoDataUrl \|\| ''/);
-  assert.match(html,/private-media\.js\?v=20261005-item-media\d+/);
+  assert.match(html,/private-media\.js\?v=20261005-item45a1/);
 });
 
 test('hidratação consulta apenas leilão do usuário autenticado e assina URLs privadas',()=>{
@@ -78,4 +78,13 @@ test('ST-MNM-25A snapshot permanece contingência quando write-through falha',()
   assert.match(listener,/if\(!snapshotOk\) return/);
   assert.match(listener,/const relational=await syncOperationalChanges/);
   assert.match(listener,/dados continuam protegidos no snapshot/i);
+});
+
+
+test('ST-MNM-45A mídia privada fica limitada ao leilão que a originou',()=>{
+  assert.match(media,/SISTEMA_THIAGO_MEDIA_SCOPE/);
+  assert.match(media,/auctionTitle:String\(scope\.auctionTitle/);
+  assert.match(app,/function privateMediaAllowedForActiveAuction/);
+  assert.match(app,/scope\.auctionTitle/);
+  assert.match(app,/privateMediaAllowedForActiveAuction\(\)/);
 });
