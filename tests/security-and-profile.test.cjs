@@ -44,3 +44,16 @@ test('alerta exige conferência humana dos dados importados',()=>{
   assert.match(html,/confira os dados importados diretamente no edital/i);
   assert.match(app,/Confira os dados no edital\/documento oficial/i);
 });
+
+test('RPC de criação mantém wrapper público invoker e helper privilegiado privado',()=>{
+  const sql=fs.readFileSync('supabase/migrations/20261005003737_move_ensure_owned_auction_definer_to_private_schema.sql','utf8');
+  assert.match(sql,/function private\.ensure_owned_auction_impl/i);
+  assert.match(sql,/security definer/i);
+  assert.match(sql,/function public\.ensure_owned_auction/i);
+  assert.match(sql,/security invoker/i);
+  assert.match(sql,/set search_path = ''/i);
+  assert.match(sql,/revoke all on function private\.ensure_owned_auction_impl[\s\S]*from public/i);
+  assert.match(sql,/revoke all on function public\.ensure_owned_auction[\s\S]*from anon/i);
+  assert.match(sql,/v_uid uuid := auth\.uid\(\)/i);
+  assert.match(sql,/private\.is_email_confirmed\(\)/i);
+});
