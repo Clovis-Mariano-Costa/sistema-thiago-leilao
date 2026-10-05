@@ -27,6 +27,100 @@ function json(req: Request, body: unknown, status=200) {
 }
 
 
+function adminSupabase(){
+  const url=Deno.env.get("SUPABASE_URL") || "";
+  if(!url) return null;
+
+  let secret="";
+  try{
+    const secretMap=JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
+    secret=String(secretMap?.default || "");
+  }catch{}
+  if(!secret) secret=String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "");
+  if(!secret) return null;
+
+  return createClient(url,secret,{
+    auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}
+  });
+}
+
+async function startSourceRun(sourceId:string,query:string,metadata:any={}){
+  const admin=adminSupabase();
+  if(!admin || !sourceId) return {admin:null,runId:""};
+  try{
+    const {data,error}=await admin
+      .from("source_search_runs")
+      .insert({
+        source_id:sourceId,
+        query:query||null,
+        status:"started",
+        found_count:0,
+        metadata
+      })
+      .select("id")
+      .single();
+    if(error){
+      console.warn("SOURCE_RUN_START_WARN",sourceId,error.message);
+      return {admin,runId:""};
+    }
+    return {admin,runId:String(data?.id||"")};
+  }catch(error){
+    console.warn("SOURCE_RUN_START_WARN",sourceId,String(error?.message||error));
+    return {admin,runId:""};
+  }
+}
+
+async function finishSourceRun(admin:any,runId:string,status:string,foundCount:number,errorMessage="",metadata:any={}){
+  if(!admin || !runId) return;
+  try{
+    const {error}=await admin
+      .from("source_search_runs")
+      .update({
+        status,
+        found_count:Math.max(0,Number(foundCount)||0),
+        finished_at:new Date().toISOString(),
+        error_message:errorMessage||null,
+        metadata
+      })
+      .eq("id",runId);
+    if(error) console.warn("SOURCE_RUN_FINISH_WARN",runId,error.message);
+  }catch(error){
+    console.warn("SOURCE_RUN_FINISH_WARN",runId,String(error?.message||error));
+  }
+}
+
+async function recordSourceDocument(admin:any,sourceId:string,documentUsed:any,reference="",metadata:any={}){
+  if(!admin || !sourceId || !documentUsed?.url) return "";
+  try{
+    const {data,error}=await admin
+      .from("source_documents")
+      .insert({
+        source_id:sourceId,
+        title:documentUsed.name||"Documento oficial utilizado",
+        reference:reference||null,
+        document_url:documentUsed.url,
+        fetched_at:new Date().toISOString(),
+        metadata:{
+          ...metadata,
+          pageUrl:documentUsed.pageUrl||null,
+          documentSource:documentUsed.source||null,
+          sequence:documentUsed.sequence??null
+        }
+      })
+      .select("id")
+      .single();
+    if(error){
+      console.warn("SOURCE_DOCUMENT_WARN",sourceId,error.message);
+      return "";
+    }
+    return String(data?.id||"");
+  }catch(error){
+    console.warn("SOURCE_DOCUMENT_WARN",sourceId,String(error?.message||error));
+    return "";
+  }
+}
+
+
 async function requireConfirmedUser(req: Request) {
   const authHeader=req.headers.get("Authorization") || "";
   const token=authHeader.replace(/^Bearer\s+/i,"").trim();
@@ -290,24 +384,61 @@ Deno.serve(async (req:Request)=>{
   if(req.method==="OPTIONS") return new Response("ok",{headers:cors(req)});
   if(req.method!=="POST") return json(req,{error:"Use POST."},405);
 
+  let activeRun:any={admin:null,runId:"",sourceId:"",resultId:"",reference:""};
   try{
     const auth=await requireConfirmedUser(req);
     if(auth.response) return auth.response;
 
     const body=await req.json();
-    const sourceId=String(body?.sourceId||"").trim().toLowerCase();
+    const sourceId=String(body?.sourceId||"pncp").trim().toLowerCase() || "pncp";
+    const resultId=String(body?.resultId||"").trim();
+    const reference=String(body?.reference||"").trim();
     const fallbackUrl=String(body?.fallbackUrl||"").trim();
+    const run=await startSourceRun(
+      sourceId,
+      resultId || reference || fallbackUrl || "consulta oficial",
+      {
+        resultId:resultId||null,
+        reference:reference||null,
+        requestedBy:auth.user?.id||null,
+        connector:"pncp-lots"
+      }
+    );
+    activeRun={...run,sourceId,resultId,reference};
 
     if(sourceId==="prf-sc"){
-      if(!fallbackUrl) return json(req,{error:"URL oficial da PRF não informada."},400);
-      const result=await fetchPrfLots(fallbackUrl);
-      return json(req,result);
+      if(!fallbackUrl){
+        await finishSourceRun(run.admin,run.runId,"error",0,"URL oficial da PRF não informada.",{resultId});
+        return json(req,{error:"URL oficial da PRF não informada."},400);
+      }
+      try{
+        const result=await fetchPrfLots(fallbackUrl);
+        const documentId=await recordSourceDocument(
+          run.admin,sourceId,result.documentUsed,reference,
+          {resultId,lotCount:result.lotCount||0,connector:"prf-sc"}
+        );
+        await finishSourceRun(
+          run.admin,run.runId,
+          (result.lotCount||0)>0 ? "success" : "no_results",
+          result.lotCount||0,
+          "",
+          {resultId,documentId:documentId||null,documentUsed:result.documentUsed||null}
+        );
+        return json(req,{...result,sourceRunId:run.runId||null,sourceDocumentId:documentId||null});
+      }catch(error){
+        await finishSourceRun(
+          run.admin,run.runId,"error",0,String(error?.message||error),
+          {resultId,reference}
+        );
+        throw error;
+      }
     }
 
     const cnpj=digits(body?.cnpj);
     const year=safeYear(body?.year);
     const sequence=safeSeq(body?.sequence);
     if(cnpj.length!==14 || !year || !sequence){
+      await finishSourceRun(run.admin,run.runId,"error",0,"cnpj, year e sequence inválidos.",{resultId,reference});
       return json(req,{error:"cnpj, year e sequence inválidos."},400);
     }
 
@@ -412,6 +543,24 @@ Deno.serve(async (req:Request)=>{
       }
     }
 
+    const documentId=await recordSourceDocument(
+      run.admin,sourceId,documentUsed,reference,
+      {
+        resultId,
+        connector:"pncp",
+        pncpControl:`${cnpj}-1-${String(sequence).padStart(6,"0")}/${year}`,
+        lotCount:lots.length
+      }
+    );
+    const hasDiagnosticError=diagnostics.some(d=>Boolean(d?.error || (d?.status && Number(d.status)>=400)));
+    const runStatus=lots.length
+      ? (hasDiagnosticError ? "partial" : "success")
+      : (hasDiagnosticError ? "partial" : "no_results");
+    await finishSourceRun(
+      run.admin,run.runId,runStatus,lots.length,"",
+      {resultId,reference,documentId:documentId||null,documentUsed:documentUsed||null}
+    );
+
     return json(req,{
       source:"PNCP",
       official:true,
@@ -419,6 +568,8 @@ Deno.serve(async (req:Request)=>{
       itemCount:items.length,
       fileCount:files.length,
       documentUsed,
+      sourceRunId:run.runId||null,
+      sourceDocumentId:documentId||null,
       diagnosticSummary:diagnostics.map(d=>({
         file:d.file||'',
         sequence:d.sequence||null,
@@ -436,7 +587,17 @@ Deno.serve(async (req:Request)=>{
       importedAt:new Date().toISOString()
     });
   }catch(error){
-    console.error("PNCP_LOTS_ERROR",String(error?.stack||error?.message||error));
-    return json(req,{error:String(error?.message||error)},502);
+    const message=String(error?.message||error);
+    await finishSourceRun(
+      activeRun.admin,activeRun.runId,"error",0,message,
+      {
+        resultId:activeRun.resultId||null,
+        reference:activeRun.reference||null,
+        sourceId:activeRun.sourceId||null,
+        unexpected:true
+      }
+    );
+    console.error("PNCP_LOTS_ERROR",String(error?.stack||message));
+    return json(req,{error:message},502);
   }
 });

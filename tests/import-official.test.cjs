@@ -182,3 +182,35 @@ test('ST-MNM-23A migration registra todas as fontes oficiais do catálogo',()=>{
   assert.match(migration,/on conflict \(id\) do update/i);
   assert.match(migration,/public\.official_sources/);
 });
+
+
+test('ST-MNM-23B envia identidade da fonte para o conector oficial',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  assert.match(fontes,/sourceId:item\.sourceId\|\|'pncp'/);
+  assert.match(fontes,/resultId:item\.id\|\|''/);
+  assert.match(fontes,/reference:item\.reference\|\|''/);
+});
+
+test('ST-MNM-23B registra busca e documento no backend sem expor chave secreta ao frontend',()=>{
+  const fs=require('node:fs');
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  assert.match(edge,/function adminSupabase/);
+  assert.match(edge,/SUPABASE_SECRET_KEYS/);
+  assert.match(edge,/SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(edge,/from\("source_search_runs"\)/);
+  assert.match(edge,/from\("source_documents"\)/);
+  assert.match(edge,/SOURCE_RUN_START_WARN/);
+  assert.match(edge,/SOURCE_DOCUMENT_WARN/);
+  assert.doesNotMatch(fontes,/SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEYS/);
+});
+
+test('ST-MNM-23B observabilidade é best-effort e não substitui retorno da importação',()=>{
+  const fs=require('node:fs');
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(edge,/if\(!admin \|\| !sourceId\) return \{admin:null,runId:""\}/);
+  assert.match(edge,/console\.warn\("SOURCE_RUN_START_WARN"/);
+  assert.match(edge,/return json\(req,\{\.\.\.result,sourceRunId:/);
+  assert.match(edge,/sourceDocumentId:documentId\|\|null/);
+});
