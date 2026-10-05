@@ -380,7 +380,13 @@ async function persistOfficialRelational(item){
       official_url:item.officialUrl||null,
       official_payload:lot,
       source_evidence:lotEvidence,
-      extra_data:relationalLotExtra(lot),
+      extra_data:{
+        ...relationalLotExtra(lot),
+        ...(String(lot?.itemIdentifier||lot?.item_identifier||lot?.plate||lot?.placa||'').trim() ? {} : {
+          generatedIdentifier:true,
+          generatedIdentifierOrigin:'sistema_thiago'
+        })
+      },
       created_by:uid,
       updated_at:new Date().toISOString()
     };
@@ -430,7 +436,8 @@ async function persistOfficialRelational(item){
     return {
       lot_id:lotId,
       item_order:1,
-      item_identifier:String(lot?.plate||lot?.placa||'').toUpperCase()||null,
+      item_identifier:String(lot?.itemIdentifier||lot?.item_identifier||lot?.plate||lot?.placa||'').trim().toUpperCase() ||
+        ('ST-L'+String(n).padStart(3,'0')+'-I01'),
       description:vehicle||null,
       item_type:effective.item_type||null,
       vehicle:vehicle||null,
@@ -441,6 +448,14 @@ async function persistOfficialRelational(item){
       model_year:effective.model_year||null,
       color:effective.color||null,
       fuel:effective.fuel||null,
+      fipe_value:relationalMoney(lot?.fipeValue||lot?.valorFipe),
+      minimum_bid:relationalMoney(lot?.minimumBid||lot?.lanceMinimo||lot?.valorMinimo),
+      max_bid:null,
+      final_value:null,
+      preference_level:0,
+      sold:false,
+      result:null,
+      note:lot?.note||lot?.observacao||null,
       state:lot?.uf||lot?.state||null,
       source_type:'official',
       source_evidence:{...evidence,lotNumber:n},
