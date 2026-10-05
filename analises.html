@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07111f" />
+  <meta name="description" content="Análises dos leilões do Sistema Thiago com dados protegidos pela conta." />
+  <title>Análises • Sistema Thiago</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=20261003c" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="analises.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-logo" src="assets/sistema-thiago-logo.svg" alt="Sistema Thiago" />
+      <div>
+        <p class="eyebrow">Jus 9 • análise de leilões</p>
+        <h1>Sistema Thiago</h1>
+      </div>
+    </div>
+    <div class="top-actions">
+      <a class="home-top-link" href="app.html">Painel</a>
+      <a id="userPill" class="user-pill" href="auth.html"><span id="userPillAvatar" class="user-pill-avatar"><span>?</span></span><span id="userPillLabel">Entrar / criar conta</span></a>
+    </div>
+  </header>
+
+  <main class="analytics-main">
+    <section class="dashboard-card analytics-hero">
+      <div>
+        <p class="eyebrow dark">ST-MNM-26A</p>
+        <h2>Análises do leilão</h2>
+        <p class="muted">Métricas calculadas somente com dados relacionais que sua sessão pode visualizar por RLS.</p>
+      </div>
+      <label class="field-wrap analytics-selector">
+        <span>Leilão</span>
+        <select id="analyticsAuction"></select>
+      </label>
+    </section>
+
+    <section id="analyticsStatus" class="sync-status" hidden aria-live="polite"></section>
+
+    <section id="analyticsSource" class="dashboard-card analytics-source" hidden>
+      <div>
+        <p class="eyebrow dark">Proveniência</p>
+        <h2 id="analyticsTitle">Leilão</h2>
+        <p id="analyticsReference" class="muted"></p>
+      </div>
+      <div class="analytics-source-meta">
+        <span id="analyticsSourceBadge" class="source-badge"></span>
+        <a id="analyticsOfficialLink" class="secondary-link compact" href="#" target="_blank" rel="noopener" hidden>Fonte oficial</a>
+      </div>
+    </section>
+
+    <section class="analytics-stats" aria-label="Resumo do leilão">
+      <article class="analytics-stat"><span>Lotes</span><strong id="metricTotal">—</strong></article>
+      <article class="analytics-stat"><span>Aguardando</span><strong id="metricWaiting">—</strong></article>
+      <article class="analytics-stat"><span>Preferências</span><strong id="metricPreference">—</strong></article>
+      <article class="analytics-stat"><span>Leiloados</span><strong id="metricSold">—</strong></article>
+    </section>
+
+    <section class="analytics-grid">
+      <article class="dashboard-card analytics-panel">
+        <div>
+          <p class="eyebrow dark">Valores informados</p>
+          <h2>Médias do leilão</h2>
+          <p class="muted">Ausência de valor não é convertida em zero.</p>
+        </div>
+        <dl class="analytics-money-list">
+          <div><dt>FIPE</dt><dd id="avgFipe">—</dd><small id="countFipe"></small></div>
+          <div><dt>Lance mínimo</dt><dd id="avgMinimum">—</dd><small id="countMinimum"></small></div>
+          <div><dt>Nosso máximo</dt><dd id="avgMax">—</dd><small id="countMax"></small></div>
+          <div><dt>Valor final</dt><dd id="avgFinal">—</dd><small id="countFinal"></small></div>
+        </dl>
+      </article>
+
+      <article class="dashboard-card analytics-panel">
+        <div>
+          <p class="eyebrow dark">Situação</p>
+          <h2>Distribuição dos lotes</h2>
+        </div>
+        <div id="statusBars" class="analytics-bars"></div>
+      </article>
+
+      <article class="dashboard-card analytics-panel">
+        <div>
+          <p class="eyebrow dark">Qualidade dos dados</p>
+          <h2>Cobertura dos campos financeiros</h2>
+        </div>
+        <div id="coverageBars" class="analytics-bars"></div>
+      </article>
+
+      <article class="dashboard-card analytics-panel">
+        <div>
+          <p class="eyebrow dark">Mapa</p>
+          <h2>Localização</h2>
+          <p class="muted">Mapa não exibido nesta etapa. A camada geográfica só será habilitada quando cidade/pátio ou coordenadas estiverem comprovados por fonte adequada.</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="dashboard-card analytics-panel">
+      <div>
+        <p class="eyebrow dark">Amostra operacional</p>
+        <h2>Lotes com preferência</h2>
+        <p class="muted">Lista limitada aos lotes marcados como preferência/prioridade no banco canônico.</p>
+      </div>
+      <div class="analytics-table-wrap">
+        <table class="analytics-table">
+          <thead><tr><th>Lote</th><th>Veículo</th><th>FIPE</th><th>Mínimo</th><th>Nosso máximo</th><th>Situação</th></tr></thead>
+          <tbody id="preferenceRows"></tbody>
+        </table>
+      </div>
+      <p id="preferenceEmpty" class="empty-state">Nenhum lote com preferência neste leilão.</p>
+    </section>
+  </main>
+
+  <script src="auth-config.js"></script>
+  <script type="module" src="session-ui.js"></script>
+  <script type="module" src="analises.js"></script>
+  <script src="cookie-notice.js"></script>
+</body>
+</html>

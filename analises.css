@@ -1,0 +1,19 @@
+.analytics-main{width:min(100%,1120px);margin:0 auto;padding:14px 12px 100px}
+.analytics-hero{margin-bottom:12px}.analytics-selector{margin:0}.analytics-selector select{min-width:min(100%,360px)}
+.analytics-source{grid-template-columns:1fr auto;align-items:center}.analytics-source-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.analytics-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+.analytics-stat{display:grid;gap:4px;padding:14px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 4px 14px rgba(7,17,31,.04)}
+.analytics-stat span{font-size:.72rem;color:var(--muted);font-weight:750}.analytics-stat strong{font-size:1.55rem;color:var(--navy)}
+.analytics-grid{display:grid;gap:12px}.analytics-panel{align-items:start}
+.analytics-money-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}
+.analytics-money-list div{padding:11px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}
+.analytics-money-list dt{font-size:.7rem;color:var(--muted);font-weight:800;text-transform:uppercase}
+.analytics-money-list dd{margin:5px 0 2px;font-size:1.05rem;font-weight:900;color:var(--navy)}
+.analytics-money-list small{color:var(--muted);font-size:.68rem}
+.analytics-bars{display:grid;gap:12px}.analytics-bar-row{display:grid;gap:6px}.analytics-bar-head{display:flex;justify-content:space-between;gap:10px;font-size:.78rem}
+.analytics-bar-head span{color:#4e596b}.analytics-bar-track{height:12px;overflow:hidden;border-radius:999px;background:#edf1f5}
+.analytics-bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--navy-soft),var(--gold))}
+.analytics-table-wrap{overflow:auto}.analytics-table{width:100%;border-collapse:collapse;min-width:700px}
+.analytics-table th,.analytics-table td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:.76rem}
+.analytics-table th{color:var(--muted);font-size:.68rem;text-transform:uppercase}.analytics-table td:first-child{font-weight:900}
+@media(min-width:620px){.analytics-stats{grid-template-columns:repeat(4,minmax(0,1fr))}.analytics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

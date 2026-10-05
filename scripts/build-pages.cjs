@@ -10,6 +10,7 @@ const publicFiles=[
   'cookie-notice.js','cookies.html',
   'fipe.html','fipe.js',
   'fontes-oficiais.html','fontes.js','official-sources.js',
+  'analises.html','analises.js','analises.css',
   'landing.css','landing.js',
   'parceria.html','privacidade.html','termos.html',
   'session-ui.js','styles.css','user-references.js','whatsapp-import.js','private-media.js',
