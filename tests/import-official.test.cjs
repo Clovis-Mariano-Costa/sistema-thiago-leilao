@@ -405,7 +405,7 @@ test('ST-MNM-35C hardening preserva e-mail confirmado e paginação determiníst
 });
 
 
-test('ST-MNM-39A distingue importação nova de reconciliação relacional',()=>{
+test('ST-MNM-39B distingue importação nova de reconciliação relacional',()=>{
   const fs=require('node:fs');
   const fontes=fs.readFileSync('fontes.js','utf8');
   assert.match(fontes,/async function loadReconciliationReadiness/);
