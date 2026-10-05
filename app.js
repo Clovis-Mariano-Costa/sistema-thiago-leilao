@@ -1217,6 +1217,9 @@ function showImportFeedback() {
   const relationalError = params.get('relational_error') || '';
   const relationalLots = Number(params.get('relational_lots') || 0);
   const relationalItems = Number(params.get('relational_items') || 0);
+  const relationalAuctionId = params.get('relational_auction_id') || '';
+  const sourceRunId = params.get('source_run_id') || '';
+  const sourceDocumentId = params.get('source_document_id') || '';
 
   const detail = pncpError
     ? `A busca automática dos lotes no PNCP foi tentada, mas não concluiu: ${escapeHtml(pncpError)}`
@@ -1234,11 +1237,19 @@ function showImportFeedback() {
       : '';
 
   const relationalDetail = relationalSync === 'online'
-    ? '<br><strong>Banco canônico:</strong> ' + relationalLots + ' lote(s) e ' + relationalItems + ' item(ns) reconciliados no Supabase.'
+    ? '<br><strong>Banco canônico:</strong> ' + relationalLots + ' lote(s) e ' + relationalItems + ' item(ns) reconciliados no Supabase.' +
+      (relationalAuctionId ? '<br><strong>ID canônico do leilão:</strong> <code>' + escapeHtml(relationalAuctionId) + '</code>' : '')
     : relationalSync === 'pending'
       ? '<br><strong>Banco canônico:</strong> reconciliação pendente; o snapshot/local continua preservado.' +
         (relationalError ? ' ' + escapeHtml(relationalError) : '')
       : '';
+
+  const evidenceDetail = (sourceRunId || sourceDocumentId)
+    ? '<br><strong>Recibo de proveniência:</strong>' +
+      (sourceRunId ? ' execução <code>' + escapeHtml(sourceRunId) + '</code>' : '') +
+      (sourceDocumentId ? ' • documento <code>' + escapeHtml(sourceDocumentId) + '</code>' : '') +
+      ' • <a href="integridade.html">verificar integridade</a>'
+    : '<br><strong>Recibo de proveniência:</strong> ainda não confirmado nesta importação.';
 
   box.innerHTML = `<strong>Cadastro oficial importado.</strong>
     ${auction ? escapeHtml(auction.title) + ' • ' : ''}
@@ -1246,6 +1257,7 @@ function showImportFeedback() {
     ${lotCount} lote(s) disponível(is). ${detail}
     ${syncDetail}
     ${relationalDetail}
+    ${evidenceDetail}
     <br><strong>Confira os dados no edital/documento oficial antes de dar lance ou tomar decisão.</strong>`;
   box.hidden = false;
 
