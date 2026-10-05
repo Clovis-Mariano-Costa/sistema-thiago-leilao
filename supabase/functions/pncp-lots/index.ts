@@ -551,41 +551,44 @@ Deno.serve(async (req:Request)=>{
     const diagnostics:any[]=[];
     let lots:any[]=[];
     let documentUsed:any=null;
-
-    for(const file of files.slice(0,4)){
-      if(file.__score<40) continue;
-      const url=`${root}/arquivos/${file.__sequence}`;
-      try{
-        const response=await fetch(url,{headers:{"Accept":"application/pdf,*/*","User-Agent":"SistemaThiago/1.0"}});
-        if(!response.ok){
-          diagnostics.push({file:file.__name,sequence:file.__sequence,status:response.status});
-          continue;
-        }
-        const bytes=new Uint8Array(await response.arrayBuffer());
-        if(bytes.byteLength>20*1024*1024){
-          diagnostics.push({file:file.__name,sequence:file.__sequence,error:"arquivo maior que 20 MB"});
-          continue;
-        }
-        const parsedPdf=await pdf(Buffer.from(bytes));
-        const extracted=parseLots(String(parsedPdf.text||""));
-        diagnostics.push({
-          file:file.__name,sequence:file.__sequence,bytes:bytes.byteLength,
-          pages:parsedPdf.numpages||null,textChars:String(parsedPdf.text||"").length,lots:extracted.length
-        });
-        if(extracted.length>lots.length){
-          lots=extracted;
-          documentUsed={name:file.__name,sequence:file.__sequence,url};
-        }
-        if(lots.length>=5) break;
-      }catch(error){
-        diagnostics.push({file:file.__name,sequence:file.__sequence,error:String(error)});
-      }
-    }
-
-
     const expectedIndividual=Math.max(0,...items.map((x:any)=>Number(x?.quantidade)||0));
+    const preferDetranFallback=connector==="pncp-detran" && Boolean(fallbackUrl);
 
-    if(fallbackUrl && lots.length < expectedIndividual){
+    const parsePncpDocuments=async()=>{
+      for(const file of files.slice(0,4)){
+        if(file.__score<40) continue;
+        const url=`${root}/arquivos/${file.__sequence}`;
+        try{
+          const response=await fetch(url,{headers:{"Accept":"application/pdf,*/*","User-Agent":"SistemaThiago/1.0"}});
+          if(!response.ok){
+            diagnostics.push({file:file.__name,sequence:file.__sequence,status:response.status});
+            continue;
+          }
+          const bytes=new Uint8Array(await response.arrayBuffer());
+          if(bytes.byteLength>20*1024*1024){
+            diagnostics.push({file:file.__name,sequence:file.__sequence,error:"arquivo maior que 20 MB"});
+            continue;
+          }
+          const parsedPdf=await pdf(Buffer.from(bytes));
+          const extracted=parseLots(String(parsedPdf.text||""));
+          diagnostics.push({
+            file:file.__name,sequence:file.__sequence,bytes:bytes.byteLength,
+            pages:parsedPdf.numpages||null,textChars:String(parsedPdf.text||"").length,lots:extracted.length
+          });
+          if(extracted.length>lots.length){
+            lots=extracted;
+            documentUsed={name:file.__name,sequence:file.__sequence,url};
+          }
+          if(lots.length>=5) break;
+        }catch(error){
+          diagnostics.push({file:file.__name,sequence:file.__sequence,error:String(error)});
+        }
+      }
+    };
+
+    const parseDetranFallback=async()=>{
+      if(!fallbackUrl) return;
+      if(lots.length>0 && expectedIndividual>0 && lots.length>=expectedIndividual) return;
       try{
         const page=new URL(fallbackUrl);
         const allowed=page.protocol==="https:" && (page.hostname==="www.detran.sc.gov.br" || page.hostname==="detran.sc.gov.br");
@@ -634,13 +637,23 @@ Deno.serve(async (req:Request)=>{
           sourceUrl:fallbackUrl
         });
       }
+    };
+
+    if(preferDetranFallback){
+      await parseDetranFallback();
+      if(!lots.length || (expectedIndividual>0 && lots.length<expectedIndividual)){
+        await parsePncpDocuments();
+      }
+    }else{
+      await parsePncpDocuments();
+      await parseDetranFallback();
     }
 
     const documentId=await recordSourceDocument(
       run.admin,sourceId,documentUsed,reference,
       {
         resultId,
-        connector:"pncp",
+        connector:authority.connector,
         pncpControl:`${cnpj}-1-${String(sequence).padStart(6,"0")}/${year}`,
         lotCount:lots.length
       }
