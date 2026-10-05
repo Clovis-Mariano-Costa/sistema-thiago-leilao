@@ -280,6 +280,7 @@ async function start(){
 
   function hasImportedItemStructure(auction){
     if(!auction) return false;
+    if(String(auction?.title||'')==='Leilão Thiago — Base inicial') return true;
     if(auction?.extraFields?.importBatch || auction?.extraFields?.import_batch) return true;
     return (auction?.lots||[]).some(lot=>
       lot?.extraFields?.importBatch ||
