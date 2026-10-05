@@ -90,6 +90,21 @@
       <p id="integrityParityEmpty" class="empty-state">Nenhum leilão no snapshot próprio.</p>
     </section>
 
+    <section class="dashboard-card integrity-panel">
+      <div>
+        <p class="eyebrow dark">Fontes oficiais</p>
+        <h2>Observabilidade por fonte</h2>
+        <p class="muted">Runs e documentos realmente visíveis no backend. Catálogo ativo sem telemetria continua pendente até nova execução governada.</p>
+      </div>
+      <div class="integrity-table-wrap">
+        <table class="integrity-table">
+          <thead><tr><th>Fonte</th><th>Status catálogo</th><th>Runs</th><th>Documentos</th><th>Última evidência</th><th>Estado</th></tr></thead>
+          <tbody id="integritySourceRows"></tbody>
+        </table>
+      </div>
+      <p id="integritySourceEmpty" class="empty-state">Nenhuma fonte oficial ativa visível.</p>
+    </section>
+
     <section class="dashboard-card integrity-actions">
       <a class="secondary-link" href="fontes-oficiais.html">Fontes oficiais</a>
       <a class="secondary-link" href="analises.html">Análises</a>
