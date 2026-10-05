@@ -53,3 +53,24 @@ test('ST-MNM-40H chamada não autorizada falha antes de source_search_run',()=>{
   assert.match(edge,/backend não autoriza conector automático/);
   assert.match(edge,/Conector solicitado não corresponde à capability autorizada/);
 });
+
+
+test('ST-MNM-41C rejeita capability backend desconhecida antes da telemetria',()=>{
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(edge,/SUPPORTED_BACKEND_CONNECTORS=new Set\(\["pncp","pncp-detran","prf-pdf"\]\)/);
+  assert.match(edge,/!SUPPORTED_BACKEND_CONNECTORS\.has\(backendConnector\)/);
+  assert.match(edge,/capability configurada no backend não é executável/);
+  const supportGuard=edge.indexOf('!SUPPORTED_BACKEND_CONNECTORS.has(backendConnector)');
+  const run=edge.indexOf('const run=await startSourceRun');
+  assert.ok(supportGuard>=0 && run>supportGuard,'capability desconhecida deve falhar antes de startSourceRun');
+});
+
+test('ST-MNM-41C fallback DETRAN exige pncp-detran antes da telemetria',()=>{
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(edge,/backendConnector==="pncp" && fallbackUrl/);
+  assert.match(edge,/Fallback DETRAN exige capability pncp-detran autorizada no backend/);
+  assert.match(edge,/requireBackendConnectorAuthority\(req,sourceId,connector,fallbackUrl\)/);
+  const fallbackGuard=edge.indexOf('backendConnector==="pncp" && fallbackUrl');
+  const run=edge.indexOf('const run=await startSourceRun');
+  assert.ok(fallbackGuard>=0 && run>fallbackGuard,'fallback DETRAN indevido deve falhar antes de startSourceRun');
+});
