@@ -380,13 +380,7 @@ async function persistOfficialRelational(item){
       official_url:item.officialUrl||null,
       official_payload:lot,
       source_evidence:lotEvidence,
-      extra_data:{
-        ...relationalLotExtra(lot),
-        ...(String(lot?.itemIdentifier||lot?.item_identifier||lot?.plate||lot?.placa||'').trim() ? {} : {
-          generatedIdentifier:true,
-          generatedIdentifierOrigin:'sistema_thiago'
-        })
-      },
+      extra_data:relationalLotExtra(lot),
       created_by:uid,
       updated_at:new Date().toISOString()
     };
@@ -459,7 +453,13 @@ async function persistOfficialRelational(item){
       state:lot?.uf||lot?.state||null,
       source_type:'official',
       source_evidence:{...evidence,lotNumber:n},
-      extra_data:relationalLotExtra(lot),
+      extra_data:{
+        ...relationalLotExtra(lot),
+        ...(String(lot?.itemIdentifier||lot?.item_identifier||lot?.plate||lot?.placa||'').trim() ? {} : {
+          generatedIdentifier:true,
+          generatedIdentifierOrigin:'sistema_thiago'
+        })
+      },
       created_by:uid,
       updated_at:new Date().toISOString()
     };
