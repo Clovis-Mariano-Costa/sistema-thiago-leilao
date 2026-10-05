@@ -302,6 +302,7 @@ test('ST-MNM-30B executa persistência relacional com lote real e preserva campo
       eq(){return q;},
       contains(){return q;},
       limit(){return q;},
+      order(){return q;},
       range(){return q;},
       update(value){op='update';payload=value;return q;},
       insert(value){op='insert';payload=value;return q;},
@@ -317,7 +318,7 @@ test('ST-MNM-30B executa persistência relacional com lote real e preserva campo
       then(resolve,reject){
         try{
           if(table==='auctions' && op==='select') return resolve({data:[],error:null});
-          if(table==='lots' && op==='select' && selection==='id,lot_number') return resolve({data:[{id:'lot-1',lot_number:1}],error:null});
+          if(table==='lots' && op==='select' && selection==='id,lot_number') return resolve({data:[{id:'lot-1',lot_number:1},{id:'lot-stale',lot_number:99}],error:null});
           if(table==='lots' && op==='select') return resolve({data:[existingLot],error:null});
           if(table==='lots' && op==='upsert') return resolve({data:[],error:null});
           if(table==='lot_items' && op==='upsert') return resolve({data:[{id:'item-1'}],error:null});
@@ -387,6 +388,18 @@ test('ST-MNM-35B relê IDs persistidos quando upsert não devolve representaçã
   const fs=require('node:fs');
   const fontes=fs.readFileSync('fontes.js','utf8');
   assert.match(fontes,/async function loadOfficialLotIds/);
-  assert.match(fontes,/if\(lotIdByNumber\.size < sourceLots\.length\)/);
+  assert.match(fontes,/if\(lotIdByNumber\.size < sourceLotNumberSet\.size\)/);
   assert.match(fontes,/IDs relacionais não resolvidos/);
+});
+
+
+test('ST-MNM-35C hardening preserva e-mail confirmado e paginação determinística',()=>{
+  const fs=require('node:fs');
+  const migration=fs.readFileSync('supabase/migrations/20261005042123_preserve_confirmed_email_on_owner_select.sql','utf8');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  assert.match(migration,/private\.is_email_confirmed\(\).*owner_id/s);
+  assert.match(fontes,/loadOfficialLotIds\(auctionId,requestedLotNumbers\)/);
+  assert.match(fontes,/\.order\('lot_number',\{ascending:true\}\)/);
+  assert.match(fontes,/sourceLotNumberSet/);
+  assert.match(fontes,/requested\.has\(n\)/);
 });
