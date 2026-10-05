@@ -53,7 +53,7 @@
     </section>
 
     <section class="analytics-stats" aria-label="Resumo do leilão">
-      <article class="analytics-stat"><span>Lotes</span><strong id="metricTotal">—</strong></article>
+      <article class="analytics-stat"><span>Itens</span><strong id="metricTotal">—</strong></article>
       <article class="analytics-stat"><span>Aguardando</span><strong id="metricWaiting">—</strong></article>
       <article class="analytics-stat"><span>Preferências</span><strong id="metricPreference">—</strong></article>
       <article class="analytics-stat"><span>Leiloados</span><strong id="metricSold">—</strong></article>
@@ -77,7 +77,7 @@
       <article class="dashboard-card analytics-panel">
         <div>
           <p class="eyebrow dark">Situação</p>
-          <h2>Distribuição dos lotes</h2>
+          <h2>Distribuição dos itens</h2>
         </div>
         <div id="statusBars" class="analytics-bars"></div>
       </article>
@@ -94,7 +94,7 @@
         <div>
           <p class="eyebrow dark">Mapa</p>
           <h2>Localização</h2>
-          <p class="muted">Mapa não exibido nesta etapa. A camada geográfica só será habilitada quando cidade/pátio ou coordenadas estiverem comprovados por fonte adequada.</p>
+          <p class="muted">A localização do leilão é exibida no painel principal. Quando houver local físico informado, use o botão “Ver local no mapa”. Leilões exclusivamente on-line não precisam de mapa.</p>
         </div>
       </article>
     </section>
@@ -102,22 +102,22 @@
     <section class="dashboard-card analytics-panel">
       <div>
         <p class="eyebrow dark">Amostra operacional</p>
-        <h2>Lotes com preferência</h2>
-        <p class="muted">Lista limitada aos lotes marcados como preferência/prioridade no banco canônico.</p>
+        <h2>Itens com preferência</h2>
+        <p class="muted">Lista limitada aos itens marcados como preferência/prioridade no banco canônico.</p>
       </div>
       <div class="analytics-table-wrap">
         <table class="analytics-table">
-          <thead><tr><th>Lote</th><th>Veículo</th><th>FIPE</th><th>Mínimo</th><th>Nosso máximo</th><th>Situação</th></tr></thead>
+          <thead><tr><th>Lote • item</th><th>Veículo / item</th><th>FIPE</th><th>Mínimo</th><th>Nosso máximo</th><th>Situação</th></tr></thead>
           <tbody id="preferenceRows"></tbody>
         </table>
       </div>
-      <p id="preferenceEmpty" class="empty-state">Nenhum lote com preferência neste leilão.</p>
+      <p id="preferenceEmpty" class="empty-state">Nenhum item com preferência neste leilão.</p>
     </section>
   </main>
 
   <script src="auth-config.js"></script>
   <script type="module" src="session-ui.js"></script>
-  <script type="module" src="analises.js"></script>
+  <script type="module" src="analises.js?v=20261005-item-analytics1"></script>
   <script src="cookie-notice.js"></script>
 </body>
 </html>
