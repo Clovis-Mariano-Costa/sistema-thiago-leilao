@@ -50,8 +50,13 @@ test('migration audita criação e revogação sem duplicar auditoria de aceite'
 
 test('ST-MNM-36A bloqueia owner em auction_members e preserva hierarquia de convite',()=>{
   const sql=fs.readFileSync('supabase/migrations/20261005042723_harden_auction_member_role_hierarchy.sql','utf8');
+  assert.match(sql,/membership\.owner_legacy_removed/);
+  assert.match(sql,/insert into public\.audit_log/);
+  assert.match(sql,/delete from public\.auction_members[\\s\\S]*role='owner'::public\.auction_member_role/);
   assert.match(sql,/auction_members_no_owner_role/);
   assert.match(sql,/role <> 'owner'::public\.auction_member_role/);
+  assert.ok(sql.indexOf('membership.owner_legacy_removed') < sql.indexOf('add constraint auction_members_no_owner_role'));
+  assert.ok(sql.indexOf('delete from public.auction_members') < sql.indexOf('add constraint auction_members_no_owner_role'));
   assert.match(sql,/members_insert_manager/);
   assert.match(sql,/members_update_manager/);
   assert.match(sql,/members_delete_manager/);
