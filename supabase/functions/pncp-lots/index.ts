@@ -44,8 +44,8 @@ function adminSupabase(){
   });
 }
 
-async function startSourceRun(sourceId:string,query:string,metadata:any={}){
-  const admin=adminSupabase();
+async function startSourceRun(sourceId:string,query:string,metadata:any={},existingAdmin:any=null){
+  const admin=existingAdmin || adminSupabase();
   if(!admin || !sourceId) return {admin:null,runId:""};
   try{
     const {data,error}=await admin
@@ -136,6 +136,61 @@ async function requireConfirmedUser(req: Request) {
   if(error || !user) return {response:json(req,{error:"Sessão inválida ou expirada."},401),user:null};
   if(!user.email_confirmed_at) return {response:json(req,{error:"Confirme seu e-mail antes de usar a importação automática."},403),user:null};
   return {response:null,user};
+}
+
+async function requireBackendConnectorAuthority(req:Request,sourceId:string,requestedConnector:string){
+  const admin=adminSupabase();
+  if(!admin){
+    return {
+      response:json(req,{error:"Autoridade backend dos conectores indisponível."},500),
+      admin:null,
+      connector:""
+    };
+  }
+
+  const {data,error}=await admin
+    .from("official_sources")
+    .select("id,active,extra_data")
+    .eq("id",sourceId)
+    .maybeSingle();
+
+  if(error){
+    console.error("CONNECTOR_AUTHORITY_READ_ERROR",sourceId,error.message);
+    return {
+      response:json(req,{error:"Falha ao validar autoridade backend do conector."},500),
+      admin,
+      connector:""
+    };
+  }
+
+  if(!data || data.active!==true){
+    return {
+      response:json(req,{error:"Fonte oficial inexistente ou desativada para automação."},403),
+      admin,
+      connector:""
+    };
+  }
+
+  const backendConnector=String(data?.extra_data?.lotsConnector||"").trim().toLowerCase();
+  if(!backendConnector){
+    return {
+      response:json(req,{error:"O backend não autoriza conector automático para esta fonte."},403),
+      admin,
+      connector:""
+    };
+  }
+
+  if(!requestedConnector || requestedConnector!==backendConnector){
+    return {
+      response:json(req,{
+        error:"Conector solicitado não corresponde à capability autorizada no backend."
+      },403),
+      admin,
+      connector:""
+    };
+  }
+
+  return {response:null,admin,connector:backendConnector};
 }
 
 function digits(value: unknown) {
@@ -395,6 +450,10 @@ Deno.serve(async (req:Request)=>{
     const resultId=String(body?.resultId||"").trim();
     const reference=String(body?.reference||"").trim();
     const fallbackUrl=String(body?.fallbackUrl||"").trim();
+
+    const authority=await requireBackendConnectorAuthority(req,sourceId,connector);
+    if(authority.response) return authority.response;
+
     const run=await startSourceRun(
       sourceId,
       resultId || reference || fallbackUrl || "consulta oficial",
@@ -402,8 +461,9 @@ Deno.serve(async (req:Request)=>{
         resultId:resultId||null,
         reference:reference||null,
         requestedBy:auth.user?.id||null,
-        connector:"pncp-lots"
-      }
+        connector:authority.connector
+      },
+      authority.admin
     );
     activeRun={...run,sourceId,resultId,reference};
 
