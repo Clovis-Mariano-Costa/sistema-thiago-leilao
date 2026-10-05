@@ -3,8 +3,10 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const cfg=window.SUPABASE_CONFIG || {};
 const TARGET_AUCTION_TITLE='Leilão Thiago — Base inicial';
 let running=false;
+let lastHydratedAt=0;
 
 function setRuntimeMaps({lotUrls={},itemUrls={},fipeUrls={}}={}){
+  lastHydratedAt=Date.now();
   window.SISTEMA_THIAGO_MEDIA_URLS=lotUrls;
   window.SISTEMA_THIAGO_ITEM_MEDIA_URLS=itemUrls;
   window.SISTEMA_THIAGO_FIPE_MEDIA_URLS=fipeUrls;
@@ -137,9 +139,12 @@ async function hydratePrivateLotMedia(){
   }
 }
 
-hydratePrivateLotMedia();
+if(window.SISTEMA_THIAGO_APP) hydratePrivateLotMedia();
+else window.addEventListener('sistema-thiago:app-ready',hydratePrivateLotMedia,{once:true});
 
-window.addEventListener('sistema-thiago:app-ready',hydratePrivateLotMedia);
-window.addEventListener('sistema-thiago:state-saved',()=>{
-  setTimeout(hydratePrivateLotMedia,250);
+window.addEventListener('sistema-thiago:media-refresh-request',hydratePrivateLotMedia);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible' && Date.now()-lastHydratedAt>45*60*1000){
+    hydratePrivateLotMedia();
+  }
 });
