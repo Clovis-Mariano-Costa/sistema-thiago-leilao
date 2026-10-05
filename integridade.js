@@ -41,15 +41,14 @@ async function countVisible(table,apply){
   return Number(count)||0;
 }
 
-async function fetchAllLots(){
+async function fetchVisibleRows(table,columns,orderColumn){
   const rows=[];
   let from=0;
   const size=500;
   while(true){
-    const {data,error}=await client.from('lots')
-      .select('id,auction_id,lot_number,source_type')
-      .order('lot_number',{ascending:true})
-      .range(from,from+size-1);
+    let query=client.from(table).select(columns);
+    if(orderColumn) query=query.order(orderColumn,{ascending:true});
+    const {data,error}=await query.range(from,from+size-1);
     if(error) throw error;
     rows.push(...(data||[]));
     if(!data || data.length<size) break;
@@ -58,20 +57,12 @@ async function fetchAllLots(){
   return rows;
 }
 
+async function fetchAllLots(){
+  return fetchVisibleRows('lots','id,auction_id,lot_number,source_type','lot_number');
+}
+
 async function fetchAllItems(){
-  const rows=[];
-  let from=0;
-  const size=500;
-  while(true){
-    const {data,error}=await client.from('lot_items')
-      .select('id,lot_id,source_type')
-      .range(from,from+size-1);
-    if(error) throw error;
-    rows.push(...(data||[]));
-    if(!data || data.length<size) break;
-    from+=size;
-  }
-  return rows;
+  return fetchVisibleRows('lot_items','id,lot_id,source_type');
 }
 
 function renderTable(auctions,lots,items){
@@ -108,7 +99,6 @@ function renderTable(auctions,lots,items){
     rowsBox.appendChild(tr);
   }
 }
-
 
 function normalizedSignature(value){
   return String(value||'').trim().toLowerCase();
@@ -196,6 +186,33 @@ function renderSnapshotParity(snapshotState,auctions,lots){
   };
 }
 
+function roleReadiness(userId,auctions,memberships){
+  const expected=['owner','admin','participant','observer'];
+  const demonstrated=new Set();
+  if(auctions.some(a=>a.owner_id===userId)) demonstrated.add('owner');
+  for(const row of memberships){
+    if(expected.includes(row.role)) demonstrated.add(row.role);
+  }
+  return {
+    demonstrated:expected.filter(role=>demonstrated.has(role)),
+    missing:expected.filter(role=>!demonstrated.has(role))
+  };
+}
+
+function countBy(rows,key){
+  const counts={};
+  for(const row of rows){
+    const value=row?.[key]||'desconhecido';
+    counts[value]=(counts[value]||0)+1;
+  }
+  return counts;
+}
+
+function formatCounts(counts){
+  const entries=Object.entries(counts);
+  return entries.length?entries.map(([key,value])=>key+': '+value).join(' • '):'nenhum';
+}
+
 async function loadIntegrity(){
   refreshBtn.disabled=true;
   setStatus('Verificando estado relacional e evidências visíveis pela sua sessão…','info');
@@ -212,9 +229,19 @@ async function loadIntegrity(){
       return;
     }
 
-    const [auctionResult,lots,items,snapshotResult,runCount,docCount,memberCount,inviteCount]=await Promise.all([
+    const [
+      auctionResult,
+      lots,
+      items,
+      snapshotResult,
+      runCount,
+      docCount,
+      memberships,
+      invitations,
+      auditRows
+    ]=await Promise.all([
       client.from('auctions')
-        .select('id,title,reference,source_type,source_label,official_url,source_evidence,created_at')
+        .select('id,owner_id,title,reference,source_type,source_label,official_url,source_evidence,created_at')
         .order('created_at',{ascending:false}),
       fetchAllLots(),
       fetchAllItems(),
@@ -224,8 +251,9 @@ async function loadIntegrity(){
         .maybeSingle(),
       countVisible('source_search_runs'),
       countVisible('source_documents'),
-      countVisible('auction_members'),
-      countVisible('invitations')
+      fetchVisibleRows('auction_members','auction_id,user_id,role,created_at','created_at'),
+      fetchVisibleRows('invitations','auction_id,role,status,expires_at,created_at','created_at'),
+      fetchVisibleRows('audit_log','auction_id,entity_type,action,created_at','created_at')
     ]);
 
     if(auctionResult.error) throw auctionResult.error;
@@ -248,13 +276,20 @@ async function loadIntegrity(){
     setText('#officialItems',officialItemRows.length);
     setText('#sourceRuns',runCount);
     setText('#sourceDocuments',docCount);
-    setText('#memberships',memberCount);
-    setText('#invitations',inviteCount);
+    setText('#memberships',memberships.length);
+    setText('#invitations',invitations.length);
+    setText('#accessAudit',auditRows.length);
 
     renderTable(auctions,lots,items);
     const parity=renderSnapshotParity(snapshot?.state||null,auctions,lots);
     setText('#snapshotAuctions',parity.snapshotAuctions);
     setText('#snapshotLots',parity.snapshotLots);
+
+    const roles=roleReadiness(user.id,auctions,memberships);
+    const invitationStatuses=countBy(invitations,'status');
+    const auditActions=countBy(auditRows,'action');
+    const requiredAuditActions=['invitation.created','invitation.accepted','invitation.revoked'];
+    const missingAuditActions=requiredAuditActions.filter(action=>!auditActions[action]);
 
     gateBox.append(
       gate('Backup online',snapshot?'ok':'pending',snapshot?'Snapshot próprio encontrado.':'Ainda não há snapshot próprio visível.'),
@@ -269,9 +304,15 @@ async function loadIntegrity(){
       gate('Observabilidade de fonte',(runCount&&docCount)?'ok':'pending',(runCount&&docCount)
         ? runCount+' execução(ões) e '+docCount+' documento(s) visíveis.'
         : 'Ainda faltam run/documento observáveis após uma importação executada com ST-MNM-23B publicado.'),
-      gate('Participantes / convites',(memberCount||inviteCount)?'partial':'pending',(memberCount||inviteCount)
-        ? 'Há registros visíveis; o smoke de papéis ainda depende da conferência humana completa.'
-        : 'Nenhuma participação/convite visível nesta sessão; ST-MNM-24B continua sem prova humana.'),
+      gate('Matriz de papéis do P2',roles.missing.length===0?'ok':(roles.demonstrated.length?'partial':'pending'),
+        'Demonstrados nesta sessão: '+(roles.demonstrated.join(', ')||'nenhum')+
+        '. Faltam: '+(roles.missing.join(', ')||'nenhum')+
+        '. A presença automática não substitui o smoke humano de permissões.'),
+      gate('Convites / auditoria do P2',
+        invitations.length && auditRows.length && missingAuditActions.length===0?'ok':(invitations.length||auditRows.length?'partial':'pending'),
+        'Convites por estado: '+formatCounts(invitationStatuses)+
+        '. Auditoria visível: '+auditRows.length+' evento(s). Ações faltantes para a trilha mínima: '+
+        (missingAuditActions.join(', ')||'nenhuma')+'.'),
       gate('Modo ao Vivo','pending','ST-MNM-25B depende de smoke humano no celular e confirmação após refresh.')
     );
 
@@ -280,7 +321,8 @@ async function loadIntegrity(){
       parity.gaps>0,
       officialIds.size===0,
       runCount===0 || docCount===0,
-      memberCount===0 && inviteCount===0
+      roles.missing.length>0,
+      invitations.length===0 || auditRows.length===0 || missingAuditActions.length>0
     ].filter(Boolean).length;
 
     setStatus(pending
