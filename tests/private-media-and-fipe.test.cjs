@@ -41,3 +41,40 @@ test('painel mostra cada código FIPE ligado ao respectivo valor sem selecionar 
   assert.match(app,/→ R\$/);
   assert.match(app,/Referências FIPE da captura/);
 });
+
+
+test('ST-MNM-25A sincroniza somente campos operacionais alterados no lote canônico',()=>{
+  const fs=require('node:fs');
+  const cloud=fs.readFileSync('cloud-sync.js','utf8');
+  assert.match(cloud,/function operationalPayload/);
+  assert.match(cloud,/preference_level:/);
+  assert.match(cloud,/fipe_value:/);
+  assert.match(cloud,/minimum_bid:/);
+  assert.match(cloud,/max_bid:/);
+  assert.match(cloud,/final_value:/);
+  assert.match(cloud,/sold:/);
+  assert.match(cloud,/result:/);
+  assert.match(cloud,/note:/);
+  assert.match(cloud,/operationalFingerprints/);
+  assert.match(cloud,/if\(nextFingerprint===previousFingerprint\) continue/);
+  assert.match(cloud,/from\('lots'\)\.update\(payload\)\.eq\('id',row\.id\)/);
+});
+
+test('ST-MNM-25A resolve lote relacional sob RLS sem service role no navegador',()=>{
+  const fs=require('node:fs');
+  const cloud=fs.readFileSync('cloud-sync.js','utf8');
+  assert.match(cloud,/resolveRelationalAuction/);
+  assert.match(cloud,/contains\('source_evidence',\{officialResultId:resultId\}\)/);
+  assert.match(cloud,/range\(from,from\+pageSize-1\)/);
+  assert.doesNotMatch(cloud,/service[_-]?role|SUPABASE_SECRET_KEYS/i);
+});
+
+test('ST-MNM-25A snapshot permanece contingência quando write-through falha',()=>{
+  const fs=require('node:fs');
+  const cloud=fs.readFileSync('cloud-sync.js','utf8');
+  const listener=cloud.slice(cloud.indexOf("window.addEventListener('sistema-thiago:state-saved'"));
+  assert.match(listener,/const snapshotOk=await upload/);
+  assert.match(listener,/if\(!snapshotOk\) return/);
+  assert.match(listener,/const relational=await syncOperationalChanges/);
+  assert.match(listener,/dados continuam protegidos no snapshot/i);
+});
