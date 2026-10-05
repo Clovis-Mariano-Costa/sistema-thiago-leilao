@@ -451,7 +451,8 @@ function lotItems(lot){
 }
 
 function itemCursorKey(lot){
-  return String(lot?.n ?? '');
+  const auction=activeAuction();
+  return String(auction?.id||'')+':'+String(lot?.n ?? '');
 }
 
 function activeItemIndex(lot){
@@ -480,6 +481,32 @@ function itemIdentifier(lot,item,index=0){
   return String(item?.itemIdentifier || generatedItemIdentifier(lot?.n||0,item?.itemOrder||index+1));
 }
 
+function itemSerial(item){
+  return String(
+    item?.extraFields?.itemSerial ||
+    item?.extraFields?.item_serial ||
+    item?.extraFields?.serial ||
+    item?.chassis ||
+    ''
+  ).trim();
+}
+
+function itemIdentityText(lot,item,index,total){
+  const parts=[`Item ${index+1}/${total}`];
+  const serial=itemSerial(item);
+  const identifier=itemIdentifier(lot,item,index);
+  if(serial) parts.push(`Serial ${serial}`);
+  if(identifier && identifier!==serial) parts.push(identifier);
+  return parts.join(' • ');
+}
+
+function privateMediaAllowedForActiveAuction(){
+  const scope=window.SISTEMA_THIAGO_MEDIA_SCOPE;
+  const auction=activeAuction();
+  if(!scope?.auctionTitle || !auction?.title) return false;
+  return String(scope.auctionTitle)===String(auction.title);
+}
+
 function operationalEntries(auction=activeAuction()){
   const entries=[];
   for(const lot of auction?.lots||[]){
@@ -497,10 +524,12 @@ function nextPendingItem(auction=activeAuction()){
 
 function itemPhotoUrl(lot,item){
   if(item?.photoDataUrl) return item.photoDataUrl;
-  const keyed=window.SISTEMA_THIAGO_ITEM_MEDIA_URLS;
-  if(keyed){
-    const byId=keyed[itemIdentifier(lot,item)];
-    if(byId) return byId;
+  if(privateMediaAllowedForActiveAuction()){
+    const keyed=window.SISTEMA_THIAGO_ITEM_MEDIA_URLS;
+    if(keyed){
+      const byId=keyed[itemIdentifier(lot,item)];
+      if(byId) return byId;
+    }
   }
   return lotPhotoUrl(lot);
 }
@@ -598,7 +627,10 @@ function closeDialog(dialog) {
 
 function lotPhotoUrl(lot) {
   if (!lot) return '';
-  return window.SISTEMA_THIAGO_MEDIA_URLS?.[String(lot.n)] || lot.photoDataUrl || '';
+  const privateUrl=privateMediaAllowedForActiveAuction()
+    ? window.SISTEMA_THIAGO_MEDIA_URLS?.[String(lot.n)] || ''
+    : '';
+  return privateUrl || lot.photoDataUrl || '';
 }
 
 function openLotPhoto(url, caption='Foto do lote') {
@@ -890,7 +922,7 @@ function renderLots() {
 
     card.querySelector('.lot-number').textContent = `Lote ${padLot(lot.n)}`;
     const itemIdentity=card.querySelector('.item-identity');
-    itemIdentity.textContent=`Item ${context.index+1}/${context.total} • ${itemIdentifier(lot,item,context.index)}`;
+    itemIdentity.textContent=itemIdentityText(lot,item,context.index,context.total);
 
     const prev=card.querySelector('.item-prev-btn');
     const next=card.querySelector('.item-next-btn');
@@ -918,7 +950,13 @@ function renderLots() {
     lotSource.textContent = sourceLabel(item.sourceType==='official'?item:lot);
     lotSource.className = `source-badge lot-source ${item.sourceType === 'official' || lot.sourceType==='official' ? 'official-source' : 'user-source'}`;
 
-    const extras = [item.plate && `Placa ${item.plate}`, item.year, item.color].filter(Boolean);
+    const serial=itemSerial(item);
+    const extras = [
+      serial && `Serial/chassi ${serial}`,
+      item.plate && `Placa ${item.plate}`,
+      item.year,
+      item.color
+    ].filter(Boolean);
     card.querySelector('.lot-extra').textContent = extras.join(' • ');
     const reviewFlag = card.querySelector('.lot-review');
     if (reviewFlag) reviewFlag.hidden = !(item.extraFields?.reviewRequired || lot.needsReview || lot.extraFields?.needsReview);
@@ -944,7 +982,7 @@ function renderLots() {
           const label=entry.vehicle||entry.description||entry.brandModel||'Item';
           const active=index===context.index?' active':'';
           return '<button type="button" class="lot-item-tab'+active+'" data-item-index="'+index+'">'+
-            '<strong>Item '+(index+1)+' • '+escapeHtml(itemIdentifier(lot,entry,index))+'</strong>'+
+            '<strong>'+escapeHtml(itemIdentityText(lot,entry,index,items.length))+'</strong>'+
             '<span>'+escapeHtml(label)+'</span></button>';
         }).join('')+'</div>';
       itemsSummary.querySelectorAll('[data-item-index]').forEach(button=>button.addEventListener('click',()=>{
@@ -956,7 +994,8 @@ function renderLots() {
     const lotPhoto = card.querySelector('.lot-photo');
     const photoUrl = itemPhotoUrl(lot,item);
     if (photoUrl) {
-      const caption = `Lote ${padLot(lot.n)} • Item ${context.index+1} — ${item.vehicle || item.description || 'foto do item'}`;
+      const serialCaption=itemSerial(item);
+      const caption = `Lote ${padLot(lot.n)} • Item ${context.index+1}${serialCaption ? ' • Serial '+serialCaption : ''} — ${item.vehicle || item.description || 'foto do item'}`;
       lotPhoto.src = photoUrl;
       lotPhoto.alt = `Imagem do item ${context.index+1} do lote ${padLot(lot.n)}. Clique para ampliar.`;
       lotPhoto.title = 'Clique para ampliar';
