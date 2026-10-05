@@ -26,7 +26,8 @@ function finiteValues(rows,field){
   return rows.map(row=>Number(row?.[field])).filter(Number.isFinite);
 }
 function average(values){
-  return values.length ? values.reduce((sum,value)=>sum+value,0)/values.length : null;
+  if(!values.length) return null;
+  return values.reduce((sum,value)=>sum+value,0)/values.length;
 }
 function percent(value,total){ return total ? Math.round((value/total)*100) : 0; }
 function setText(id,value){
