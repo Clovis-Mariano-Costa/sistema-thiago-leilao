@@ -158,7 +158,7 @@ async function loadIncoming(){
   incomingBox.replaceChildren(emptyNode('Carregando convites…'));
   const {data,error}=await client.from('invitations')
     .select('id,auction_id,email,role,status,expires_at,created_at')
-    .eq('email',String(user.email||'').trim().toLowerCase())
+    .ilike('email',String(user.email||'').trim())
     .eq('status','pending')
     .order('created_at',{ascending:false});
   if(error) throw error;
