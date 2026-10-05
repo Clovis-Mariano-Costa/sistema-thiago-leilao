@@ -1122,24 +1122,134 @@ function exportCsv() {
 function printSummary() {
   const a = activeAuction();
   if (!a) return;
+
   const sold = a.lots.filter(l=>l.sold).length;
+  const waiting = Math.max(0,a.lots.length-sold);
+  const generatedAt = new Date().toLocaleString('pt-BR');
+  const logoUrl = new URL('assets/sistema-thiago-logo.svg',location.href).href;
+
   const rows = a.lots.map(l=>`<tr>
-    <td>${padLot(l.n)}</td><td>${escapeHtml(l.vehicle)}</td><td>${escapeHtml(l.plate||'—')}</td>
-    <td>${escapeHtml(l.fipeValue ? 'R$ '+l.fipeValue : '—')}</td><td>${escapeHtml(l.minimumBid ? 'R$ '+l.minimumBid : '—')}</td><td>${escapeHtml(l.maxBid ? 'R$ '+l.maxBid : '—')}</td>
-    <td>${l.sold?'Leiloado':'Aguardando'}</td><td>${escapeHtml(l.result||'—')}</td><td>${escapeHtml(l.finalValue ? 'R$ '+l.finalValue : '—')}</td>
+    <td class="lot-col">${padLot(l.n)}</td>
+    <td><strong>${escapeHtml(l.vehicle||'—')}</strong></td>
+    <td>${escapeHtml(l.plate||'—')}</td>
+    <td class="money">${escapeHtml(l.fipeValue ? 'R$ '+l.fipeValue : '—')}</td>
+    <td class="money">${escapeHtml(l.minimumBid ? 'R$ '+l.minimumBid : '—')}</td>
+    <td class="money">${escapeHtml(l.maxBid ? 'R$ '+l.maxBid : '—')}</td>
+    <td><span class="status ${l.sold?'sold':'waiting'}">${l.sold?'Leiloado':'Aguardando'}</span></td>
+    <td>${escapeHtml(l.result||'—')}</td>
+    <td class="money">${escapeHtml(l.finalValue ? 'R$ '+l.finalValue : '—')}</td>
   </tr>`).join('');
+
   const frame=document.createElement('iframe');
   Object.assign(frame.style,{position:'fixed',right:'0',bottom:'0',width:'0',height:'0',border:'0'});
+  frame.setAttribute('aria-hidden','true');
   document.body.appendChild(frame);
+
   const doc=frame.contentDocument;
   doc.open();
-  doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(a.title)}</title><style>
-  body{font-family:Arial,sans-serif;margin:24px;color:#111}h1{margin-bottom:5px}.meta{color:#555}table{width:100%;border-collapse:collapse;font-size:11px;margin-top:20px}th,td{border:1px solid #bbb;padding:6px;text-align:left}th{background:#eee}.warning{margin-top:18px;font-size:10px;color:#666}
-  </style></head><body><h1>${escapeHtml(a.title)}</h1><p class="meta">${escapeHtml(formatDate(a.date,a.time))} • ${escapeHtml(a.reference)} • ${a.lots.length} lotes • ${sold} leiloados</p>
-  <table><thead><tr><th>Lote</th><th>Veículo</th><th>Placa</th><th>FIPE</th><th>Lance mínimo</th><th>Nosso máximo</th><th>Status</th><th>Resultado</th><th>Valor final</th></tr></thead><tbody>${rows}</tbody></table>
-  <p class="warning">MVP em validação. A origem de cada dado deve ser conferida antes de uso externo.</p></body></html>`);
+  doc.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+  <title>${escapeHtml(a.title)} • Sistema Thiago</title>
+  <style>
+    @page{size:A4 landscape;margin:11mm 10mm 12mm}
+    *{box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;color:#14212b;background:#fff;font-size:10.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .report-header{display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:3px solid #d8a62a;padding:0 0 10px;margin-bottom:12px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .report-logo{width:56px;height:56px;object-fit:contain}
+    .brand-kicker{margin:0 0 2px;text-transform:uppercase;letter-spacing:.08em;font-size:9px;color:#5f7080}
+    h1{margin:0;color:#09293f;font-size:22px;line-height:1.08}
+    .company{font-weight:700;color:#0d5a46;font-size:11px;text-align:right}
+    .company small{display:block;font-weight:400;color:#687783;margin-top:3px}
+    .meta{display:grid;grid-template-columns:2fr 1.1fr 1.1fr 1.1fr;gap:8px;margin-bottom:12px}
+    .meta-card{border:1px solid #dfe6eb;border-radius:8px;padding:8px 10px;background:#f8fafb;min-height:48px}
+    .meta-card span{display:block;color:#71808c;font-size:8.5px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+    .meta-card strong{display:block;color:#162f41;font-size:11px;line-height:1.25}
+    .summary{display:flex;gap:8px;margin:0 0 12px}
+    .summary-badge{border-radius:999px;padding:5px 9px;background:#edf3f6;color:#17384d;font-weight:700;font-size:9px}
+    .summary-badge.gold{background:#fff3cf;color:#765600}
+    table{width:100%;border-collapse:separate;border-spacing:0;font-size:9px;border:1px solid #ccd7de;border-radius:8px;overflow:hidden}
+    thead{display:table-header-group}
+    th{background:#09293f;color:#fff;text-align:left;padding:7px 6px;font-size:8.4px;text-transform:uppercase;letter-spacing:.025em}
+    td{border-top:1px solid #e2e8ec;padding:6px;vertical-align:middle}
+    tbody tr:nth-child(even){background:#f8fafb}
+    tr{break-inside:avoid;page-break-inside:avoid}
+    .lot-col{font-weight:800;color:#09293f;text-align:center;width:42px}
+    .money{white-space:nowrap}
+    .status{display:inline-block;border-radius:999px;padding:3px 6px;font-weight:700;font-size:8px;white-space:nowrap}
+    .status.sold{background:#e4f4ec;color:#176642}
+    .status.waiting{background:#eef2f5;color:#536674}
+    .report-footer{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;margin-top:14px;padding-top:10px;border-top:1px solid #dce4e9}
+    .notice{font-size:8.5px;line-height:1.45;color:#61717e}
+    .signature{justify-self:end;text-align:right;min-width:230px}
+    .signature-line{border-top:1px solid #82919c;padding-top:7px;margin-top:10px}
+    .signature strong{display:block;color:#09293f;font-size:11px}
+    .signature span{display:block;color:#0d5a46;font-size:9px;margin-top:2px}
+    .signature small{display:block;color:#71808c;font-size:8px;margin-top:3px}
+  </style></head><body>
+    <header class="report-header">
+      <div class="brand">
+        <img class="report-logo" src="${escapeHtml(logoUrl)}" alt="Logo do Sistema Thiago">
+        <div>
+          <p class="brand-kicker">Jus 9 • acompanhamento de leilões</p>
+          <h1>Sistema Thiago</h1>
+        </div>
+      </div>
+      <div class="company">Jus 9 Tecnologia Jurídica
+        <small>Documento gerado pelo Sistema Thiago</small>
+      </div>
+    </header>
+
+    <section class="meta">
+      <div class="meta-card"><span>Leilão</span><strong>${escapeHtml(a.title)}</strong></div>
+      <div class="meta-card"><span>Data / hora</span><strong>${escapeHtml(formatDate(a.date,a.time)||'Não informada')}</strong></div>
+      <div class="meta-card"><span>Referência</span><strong>${escapeHtml(a.reference||'Não informada')}</strong></div>
+      <div class="meta-card"><span>Gerado em</span><strong>${escapeHtml(generatedAt)}</strong></div>
+    </section>
+
+    <div class="summary">
+      <span class="summary-badge">Total: ${a.lots.length} lotes</span>
+      <span class="summary-badge gold">Aguardando: ${waiting}</span>
+      <span class="summary-badge">Leiloados: ${sold}</span>
+    </div>
+
+    <table>
+      <thead><tr>
+        <th>Lote</th><th>Veículo</th><th>Placa</th><th>FIPE</th><th>Lance mínimo</th><th>Nosso máximo</th><th>Status</th><th>Resultado</th><th>Valor final</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <footer class="report-footer">
+      <div class="notice">
+        <strong>Nota de conferência:</strong> este relatório organiza os dados disponíveis no Sistema Thiago. Antes de lance, compra, venda ou uso externo, confira edital, documento oficial e dados de origem correspondentes.
+      </div>
+      <div class="signature">
+        <div class="signature-line">
+          <strong>Jus 9 Tecnologia Jurídica</strong>
+          <span>Assinatura institucional do relatório</span>
+          <small>jus9tecnologia.com.br</small>
+        </div>
+      </div>
+    </footer>
+  </body></html>`);
   doc.close();
-  setTimeout(()=>{frame.contentWindow.focus();frame.contentWindow.print();setTimeout(()=>frame.remove(),1000)},150);
+
+  let printed=false;
+  const launchPrint=()=>{
+    if(printed) return;
+    printed=true;
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+    setTimeout(()=>frame.remove(),1200);
+  };
+  const logo=doc.querySelector('.report-logo');
+  if(logo && !logo.complete){
+    logo.addEventListener('load',launchPrint,{once:true});
+    logo.addEventListener('error',launchPrint,{once:true});
+    setTimeout(launchPrint,1200);
+  }else{
+    setTimeout(launchPrint,180);
+  }
 }
 
 const FIPE_USER_KEY = 'sistema-thiago-fipe-user-v1';
