@@ -40,3 +40,12 @@ test('ST-MNM-45A FIPE separa serial do item de múltiplas opções de preço',()
   assert.match(js,/não representam itens adicionais do lote/);
   assert.match(js,/Dados \/ opções FIPE deste item/);
 });
+
+
+test('ST-MNM-45B mostra a referência do leilão, lote e item na página FIPE',()=>{
+  const js=fs.readFileSync('fipe.js','utf8');
+  assert.match(js,/auctionTitle/);
+  assert.match(js,/itemTotal/);
+  assert.match(js,/itemIdentifier/);
+  assert.match(js,/imageUrl=itemContext\?\.imageUrl/);
+});
