@@ -88,3 +88,13 @@ test('ST-MNM-42A pncp-detran prioriza edital DETRAN antes do parsing PNCP',()=>{
   assert.match(edge,/expectedIndividual>0 && lots\.length<expectedIndividual/);
   assert.match(edge,/connector:authority\.connector/);
 });
+
+
+test('ST-MNM-42C preserva metadata inicial ao finalizar source_search_run',()=>{
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(edge,/select\("metadata"\)/);
+  assert.match(edge,/SOURCE_RUN_METADATA_READ_WARN/);
+  assert.match(edge,/mergedMetadata=\{\.\.\.\(current\?\.metadata\|\|\{\}\),\.\.\.\(metadata\|\|\{\}\)\}/);
+  assert.match(edge,/metadata:mergedMetadata/);
+  assert.match(edge,/connector:authority\.connector/);
+});
