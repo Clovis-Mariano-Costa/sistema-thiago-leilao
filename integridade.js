@@ -138,7 +138,8 @@ function renderSnapshotParity(snapshotState,auctions,lots){
   }
 
   let gaps=0;
-  parityEmptyBox.hidden=snapshotAuctions.length>0;
+  const matchedRelationalIds=new Set();
+  parityEmptyBox.hidden=snapshotAuctions.length===0 && auctions.length===0;
 
   for(const snapshotAuction of snapshotAuctions){
     const hinted=String(snapshotAuction?.extraFields?.relationalAuctionId||'').trim();
@@ -152,6 +153,7 @@ function renderSnapshotParity(snapshotState,auctions,lots){
     const snapshotLots=Array.isArray(snapshotAuction?.lots)?snapshotAuction.lots.length:0;
     const relationalLots=relational ? (lotsByAuction.get(relational.id)||0) : null;
     const aligned=relational && relationalLots===snapshotLots;
+    if(relational?.id) matchedRelationalIds.add(relational.id);
     if(!aligned) gaps++;
 
     const tr=document.createElement('tr');
@@ -166,7 +168,24 @@ function renderSnapshotParity(snapshotState,auctions,lots){
       td.textContent=value;
       tr.appendChild(td);
     }
-    rowsBox.dataset.parityChecked='true';
+    parityRowsBox.appendChild(tr);
+  }
+
+  for(const relational of auctions){
+    if(matchedRelationalIds.has(relational.id)) continue;
+    gaps++;
+    const tr=document.createElement('tr');
+    const values=[
+      relational.title||relational.reference||'Leilão',
+      '—',
+      String(lotsByAuction.get(relational.id)||0),
+      'Somente relacional'
+    ];
+    for(const value of values){
+      const td=document.createElement('td');
+      td.textContent=value;
+      tr.appendChild(td);
+    }
     parityRowsBox.appendChild(tr);
   }
 
