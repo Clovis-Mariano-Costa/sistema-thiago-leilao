@@ -264,7 +264,7 @@ async function start(){
     for(let i=0;i<lotIds.length;i+=chunkSize){
       const ids=lotIds.slice(i,i+chunkSize);
       const {data,error}=await supabase.from('lot_items')
-        .select('id,lot_id,item_order,item_identifier,description,item_type,vehicle,plate,brand_model,chassis,engine,model_year,color,fuel,licensing,city,state,fipe_value,minimum_bid,max_bid,final_value,preference_level,sold,result,note,extra_data')
+        .select('id,lot_id,item_order,item_identifier,source_media_label,description,item_type,vehicle,plate,brand_model,chassis,engine,model_year,color,fuel,licensing,city,state,fipe_value,minimum_bid,max_bid,final_value,preference_level,sold,result,note,extra_data')
         .in('lot_id',ids)
         .order('item_order',{ascending:true});
       if(error) throw error;
@@ -276,6 +276,164 @@ async function start(){
     }
     relationalItemCache.set(auctionId,byKey);
     return byKey;
+  }
+
+  function hasImportedItemStructure(auction){
+    if(!auction) return false;
+    if(auction?.extraFields?.importBatch || auction?.extraFields?.import_batch) return true;
+    return (auction?.lots||[]).some(lot=>
+      lot?.extraFields?.importBatch ||
+      lot?.extraFields?.import_batch ||
+      (lot?.items||[]).some(item=>item?.extraFields?.importBatch || item?.extraFields?.import_batch)
+    );
+  }
+
+  function stableLocalIdentifier(item){
+    const id=String(item?.itemIdentifier||'').trim();
+    if(!id) return '';
+    if(item?.extraFields?.generatedIdentifier || /^ST-L\d+-I\d+$/i.test(id)) return '';
+    return id;
+  }
+
+  function relationalItemToLocal(row,existing={}){
+    const existed=existing && Object.keys(existing).length>0;
+    const remoteExtra=row?.extra_data && typeof row.extra_data==='object' ? row.extra_data : {};
+    const localExtra=existing?.extraFields && typeof existing.extraFields==='object' ? existing.extraFields : {};
+    const pickText=(local,remote)=>{
+      const localText=String(local??'').trim();
+      return localText ? local : (remote??'');
+    };
+    const operational=(localKey,remoteValue,fallback='')=>{
+      if(existed && Object.prototype.hasOwnProperty.call(existing,localKey)) return existing[localKey];
+      return remoteValue==null ? fallback : remoteValue;
+    };
+    const serial=String(
+      localExtra.itemSerial ||
+      localExtra.item_serial ||
+      remoteExtra.itemSerial ||
+      remoteExtra.item_serial ||
+      existing?.chassis ||
+      row?.chassis ||
+      ''
+    ).trim();
+    const remoteCandidates=Array.isArray(remoteExtra.fipe_candidates) ? remoteExtra.fipe_candidates : [];
+    const localCandidates=Array.isArray(existing?.fipeCandidates) ? existing.fipeCandidates : [];
+
+    return {
+      ...existing,
+      itemOrder:Math.max(1,Number(row?.item_order)||Number(existing?.itemOrder)||1),
+      itemIdentifier:pickText(existing?.itemIdentifier,row?.item_identifier),
+      description:pickText(existing?.description,row?.description||row?.vehicle),
+      vehicle:pickText(existing?.vehicle,row?.vehicle||row?.description),
+      type:pickText(existing?.type,row?.item_type),
+      plate:String(pickText(existing?.plate,row?.plate)||'').toUpperCase(),
+      brandModel:pickText(existing?.brandModel,row?.brand_model),
+      chassis:pickText(existing?.chassis,row?.chassis),
+      engine:pickText(existing?.engine,row?.engine),
+      year:pickText(existing?.year,row?.model_year),
+      color:pickText(existing?.color,row?.color),
+      fuel:pickText(existing?.fuel,row?.fuel),
+      licensing:pickText(existing?.licensing,row?.licensing),
+      city:pickText(existing?.city,row?.city),
+      state:pickText(existing?.state,row?.state),
+      fipeValue:String(operational('fipeValue',row?.fipe_value,'')??''),
+      minimumBid:String(operational('minimumBid',row?.minimum_bid,'')??''),
+      maxBid:String(operational('maxBid',row?.max_bid,'')??''),
+      finalValue:String(operational('finalValue',row?.final_value,'')??''),
+      preferenceLevel:Number(operational('preferenceLevel',row?.preference_level,0))||0,
+      sold:Boolean(operational('sold',row?.sold,false)),
+      result:String(operational('result',row?.result,'')??''),
+      note:String(operational('note',row?.note,'')??''),
+      fipeCandidates:localCandidates.length ? localCandidates : remoteCandidates,
+      sourceMediaLabel:pickText(existing?.sourceMediaLabel,row?.source_media_label),
+      sourceType:existing?.sourceType || 'user',
+      extraFields:{
+        ...remoteExtra,
+        ...localExtra,
+        ...(serial ? {itemSerial:serial} : {})
+      }
+    };
+  }
+
+  async function reconcileImportedItemStructure(state){
+    let changed=false;
+    let recoveredItems=0;
+
+    for(const auction of state?.auctions||[]){
+      if(!hasImportedItemStructure(auction)) continue;
+
+      const relationalAuction=await resolveRelationalAuction(auction);
+      if(!relationalAuction?.id) continue;
+
+      let byNumber;
+      let itemsByKey;
+      try{
+        byNumber=await loadRelationalLots(relationalAuction.id);
+        itemsByKey=await loadRelationalItems(relationalAuction.id,byNumber);
+      }catch(error){
+        return {ok:false,state,changed,recoveredItems,error:error?.message||String(error)};
+      }
+
+      const itemsByLotId=new Map();
+      for(const row of itemsByKey.values()){
+        if(!itemsByLotId.has(row.lot_id)) itemsByLotId.set(row.lot_id,[]);
+        itemsByLotId.get(row.lot_id).push(row);
+      }
+
+      for(const lot of auction.lots||[]){
+        const relationalLot=byNumber.get(Number(lot.n));
+        if(!relationalLot?.id) continue;
+        const rows=(itemsByLotId.get(relationalLot.id)||[])
+          .slice()
+          .sort((a,b)=>Number(a.item_order||1)-Number(b.item_order||1));
+        if(!rows.length) continue;
+
+        const localItems=Array.isArray(lot.items)?lot.items:[];
+        const used=new Set();
+        const merged=[];
+
+        for(const row of rows){
+          let match=-1;
+          const remoteId=String(row.item_identifier||'').trim();
+          const remoteMedia=String(row.source_media_label||'').trim();
+
+          if(remoteId){
+            match=localItems.findIndex((item,index)=>
+              !used.has(index) && stableLocalIdentifier(item)===remoteId
+            );
+          }
+          if(match<0 && remoteMedia){
+            match=localItems.findIndex((item,index)=>
+              !used.has(index) && String(item?.sourceMediaLabel||'').trim()===remoteMedia
+            );
+          }
+          if(match<0){
+            match=localItems.findIndex((item,index)=>{
+              if(used.has(index)) return false;
+              if(stableLocalIdentifier(item) || String(item?.sourceMediaLabel||'').trim()) return false;
+              return Math.max(1,Number(item?.itemOrder)||index+1)===Math.max(1,Number(row.item_order)||1);
+            });
+          }
+
+          const existing=match>=0 ? localItems[match] : {};
+          if(match>=0) used.add(match);
+          else recoveredItems++;
+          merged.push(relationalItemToLocal(row,existing));
+        }
+
+        localItems.forEach((item,index)=>{
+          if(!used.has(index)) merged.push(item);
+        });
+        merged.sort((a,b)=>Number(a?.itemOrder||1)-Number(b?.itemOrder||1));
+
+        if(JSON.stringify(localItems)!==JSON.stringify(merged)){
+          lot.items=merged;
+          changed=true;
+        }
+      }
+    }
+
+    return {ok:true,state,changed,recoveredItems};
   }
 
   async function syncOperationalChanges(state,change={}){
@@ -316,7 +474,7 @@ async function start(){
         const lotIds=(lotRows||[]).map(row=>row.id).filter(Boolean);
         if(lotIds.length){
           const {data:itemRows,error:itemError}=await supabase.from('lot_items')
-            .select('id,lot_id,item_order,item_identifier,description,item_type,vehicle,plate,brand_model,chassis,engine,model_year,color,fuel,licensing,city,state,fipe_value,minimum_bid,max_bid,final_value,preference_level,sold,result,note,extra_data')
+            .select('id,lot_id,item_order,item_identifier,source_media_label,description,item_type,vehicle,plate,brand_model,chassis,engine,model_year,color,fuel,licensing,city,state,fipe_value,minimum_bid,max_bid,final_value,preference_level,sold,result,note,extra_data')
             .in('lot_id',lotIds)
             .order('item_order',{ascending:true});
           if(itemError) throw itemError;
@@ -485,6 +643,25 @@ async function start(){
     offerLegacyRecovery(legacy);
   }else{
     await upload(local,'Conta iniciada com backup online vazio');
+  }
+
+  if(!unresolvedStateConflict){
+    const reconciliation=await reconcileImportedItemStructure(app.getState());
+    if(!reconciliation.ok){
+      setStatus(
+        '<strong>Sincronização ativa, mas a reconciliação estrutural de itens ficou pendente.</strong> '+
+        String(reconciliation.error||''),
+        'warn'
+      );
+    }else if(reconciliation.changed){
+      app.replaceState(reconciliation.state,{save:true});
+      local=app.getState();
+      await upload(
+        local,
+        'Estrutura de itens reconciliada'+
+        (reconciliation.recoveredItems ? ' — '+reconciliation.recoveredItems+' item(ns) recuperado(s)' : '')
+      );
+    }
   }
 
   let timer=null;
