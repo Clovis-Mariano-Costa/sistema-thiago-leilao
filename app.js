@@ -280,6 +280,11 @@ const newAuctionDialog = $('#newAuctionDialog');
 const newLotDialog = $('#newLotDialog');
 const bulkLotsDialog = $('#bulkLotsDialog');
 const liveDialog = $('#liveDialog');
+const photoViewerDialog = $('#photoViewerDialog');
+const photoViewerImage = $('#photoViewerImage');
+const photoViewerCaption = $('#photoViewerCaption');
+const livePhotoButton = $('#livePhotoButton');
+const livePhoto = $('#livePhoto');
 
 function syncPrimaryItemFromLegacy(lot) {
   if (!lot || !Array.isArray(lot.items) || !lot.items.length) return;
@@ -388,6 +393,19 @@ function closeDialog(dialog) {
   if (typeof dialog.close === 'function') {
     try { dialog.close(); } catch {}
   } else dialog.removeAttribute('open');
+}
+
+function lotPhotoUrl(lot) {
+  if (!lot) return '';
+  return window.SISTEMA_THIAGO_MEDIA_URLS?.[String(lot.n)] || lot.photoDataUrl || '';
+}
+
+function openLotPhoto(url, caption='Foto do lote') {
+  if (!url || !photoViewerDialog || !photoViewerImage) return;
+  photoViewerImage.src = url;
+  photoViewerImage.alt = caption;
+  if (photoViewerCaption) photoViewerCaption.textContent = caption;
+  openDialog(photoViewerDialog);
 }
 
 function sourceBadgeHtml(item) {
@@ -624,15 +642,27 @@ function renderLots() {
     }
 
     const lotPhoto = card.querySelector('.lot-photo');
-    const runtimePhoto = window.SISTEMA_THIAGO_MEDIA_URLS?.[String(lot.n)] || '';
-    const lotPhotoUrl = runtimePhoto || lot.photoDataUrl || '';
-    if (lotPhotoUrl) {
-      lotPhoto.src = lotPhotoUrl;
-      lotPhoto.alt = `Imagem do lote ${padLot(lot.n)}`;
+    const photoUrl = lotPhotoUrl(lot);
+    if (photoUrl) {
+      const caption = `Lote ${padLot(lot.n)} — ${lot.vehicle || lot.items?.[0]?.description || 'foto do lote'}`;
+      lotPhoto.src = photoUrl;
+      lotPhoto.alt = `Imagem do lote ${padLot(lot.n)}. Clique para ampliar.`;
+      lotPhoto.title = 'Clique para ampliar';
+      lotPhoto.tabIndex = 0;
+      lotPhoto.setAttribute('role','button');
       lotPhoto.hidden = false;
+      lotPhoto.addEventListener('click',()=>openLotPhoto(photoUrl,caption));
+      lotPhoto.addEventListener('keydown',event=>{
+        if(event.key==='Enter' || event.key===' '){
+          event.preventDefault();
+          openLotPhoto(photoUrl,caption);
+        }
+      });
     } else {
       lotPhoto.hidden = true;
       lotPhoto.removeAttribute('src');
+      lotPhoto.removeAttribute('role');
+      lotPhoto.removeAttribute('tabindex');
     }
 
     const resultChip = card.querySelector('.result-chip');
@@ -778,6 +808,8 @@ function updateLiveMode() {
     $('#liveSkipBtn').disabled = true;
     $('#liveBackBtn').disabled = true;
     $('#liveVehicleLink').href = 'fipe.html';
+    if (livePhotoButton) livePhotoButton.hidden = true;
+    if (livePhoto) livePhoto.removeAttribute('src');
     return;
   }
 
@@ -787,6 +819,22 @@ function updateLiveMode() {
   $('#livePreference').textContent = plainPreferenceLabel(current.preferenceLevel);
   $('#liveMaxBid').hidden = !current.maxBid;
   $('#liveMaxBid').textContent = current.maxBid ? `Nosso máximo: R$ ${current.maxBid}` : '';
+
+  const currentPhotoUrl = lotPhotoUrl(current);
+  if (livePhotoButton && livePhoto) {
+    if (currentPhotoUrl) {
+      const caption = `Lote ${padLot(current.n)} — ${current.vehicle || current.items?.[0]?.description || 'foto do lote'}`;
+      livePhoto.src = currentPhotoUrl;
+      livePhoto.alt = `Foto do lote ${padLot(current.n)}`;
+      livePhotoButton.hidden = false;
+      livePhotoButton.onclick = ()=>openLotPhoto(currentPhotoUrl,caption);
+    } else {
+      livePhotoButton.hidden = true;
+      livePhotoButton.onclick = null;
+      livePhoto.removeAttribute('src');
+    }
+  }
+
   $('#livePreferenceBtn').disabled = false;
   $('#livePreferenceBtn').textContent = preferenceLabel(current.preferenceLevel);
   $('#liveBackBtn').disabled = index <= 0;
@@ -1296,4 +1344,9 @@ window.addEventListener('storage',event=>{
     liveCursorByAuction.clear();
     renderAll();
   }catch{}
+});
+
+$('#closePhotoViewerBtn')?.addEventListener('click',()=>closeDialog(photoViewerDialog));
+photoViewerDialog?.addEventListener('click',event=>{
+  if(event.target===photoViewerDialog) closeDialog(photoViewerDialog);
 });
