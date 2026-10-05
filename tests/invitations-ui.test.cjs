@@ -47,3 +47,20 @@ test('migration audita criação e revogação sem duplicar auditoria de aceite'
   assert.doesNotMatch(sql,/new\.status in \([^\)]*accepted/);
   assert.match(sql,/trg_audit_invitation_lifecycle/);
 });
+
+test('ST-MNM-36A bloqueia owner em auction_members e preserva hierarquia de convite',()=>{
+  const sql=fs.readFileSync('supabase/migrations/20261005042723_harden_auction_member_role_hierarchy.sql','utf8');
+  assert.match(sql,/membership\.owner_legacy_removed/);
+  assert.match(sql,/insert into public\.audit_log/);
+  assert.match(sql,/delete from public\.auction_members\s+where role='owner'::public\.auction_member_role;/);
+  assert.match(sql,/auction_members_no_owner_role/);
+  assert.match(sql,/role <> 'owner'::public\.auction_member_role/);
+  assert.ok(sql.indexOf('membership.owner_legacy_removed') < sql.indexOf('add constraint auction_members_no_owner_role'));
+  assert.ok(sql.indexOf('delete from public.auction_members') < sql.indexOf('add constraint auction_members_no_owner_role'));
+  assert.match(sql,/members_insert_manager/);
+  assert.match(sql,/members_update_manager/);
+  assert.match(sql,/members_delete_manager/);
+  assert.match(sql,/private\.is_email_confirmed\(\)/);
+  assert.match(sql,/private\.can_invite_role\(auction_id, role\)/);
+  assert.doesNotMatch(sql,/with check \(private\.can_manage_auction\(auction_id\)\)/);
+});
