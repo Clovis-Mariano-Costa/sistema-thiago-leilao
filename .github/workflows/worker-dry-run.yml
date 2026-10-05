@@ -1,0 +1,25 @@
+name: Validar Worker Cloudflare
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wrangler-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validar empacotamento Worker sem publicar
+        run: npx --yes wrangler@4.147.0 deploy --dry-run --outdir .wrangler-dry-run
