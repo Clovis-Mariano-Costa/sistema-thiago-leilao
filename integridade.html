@@ -28,7 +28,7 @@
   <main class="integrity-main">
     <section class="dashboard-card integrity-hero">
       <div>
-        <p class="eyebrow dark">ST-MNM-29A / 37C / 38A / 39D / 40A / 40C / 40D / 40E</p>
+        <p class="eyebrow dark">ST-MNM-29A / 37C / 38A / 39D / 40A / 40C / 40D / 40E / 41A</p>
         <h2>Integridade do estado</h2>
         <p class="muted">Leitura autenticada e somente leitura. Esta tela não corrige, não promove e não apaga dados.</p>
       </div>
@@ -103,6 +103,21 @@
         </table>
       </div>
       <p id="integritySourceEmpty" class="empty-state">Nenhuma fonte oficial ativa visível.</p>
+    </section>
+
+    <section class="dashboard-card integrity-panel">
+      <div>
+        <p class="eyebrow dark">Proveniência por resultado</p>
+        <h2>Evidência por resultado oficial</h2>
+        <p class="muted">Cada processo/leilão é reconciliado separadamente pelo resultId. Reexecuções da mesma fonte não são somadas como se fossem resultados diferentes.</p>
+      </div>
+      <div class="integrity-table-wrap">
+        <table class="integrity-table">
+          <thead><tr><th>Resultado</th><th>Fonte</th><th>Runs</th><th>Prova success</th><th>Documento</th><th>Lotes relacionais</th><th>Estado</th></tr></thead>
+          <tbody id="integrityResultRows"></tbody>
+        </table>
+      </div>
+      <p id="integrityResultEmpty" class="empty-state">Nenhum run com resultId visível.</p>
     </section>
 
     <section class="dashboard-card integrity-panel" id="reconciliacao-assistida">
