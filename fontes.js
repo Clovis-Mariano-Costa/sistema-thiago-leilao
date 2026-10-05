@@ -109,6 +109,51 @@ function chunkRows(rows,size=150){
   return chunks;
 }
 
+const HUMAN_FIELD_DB_MAP={
+  type:'item_type',
+  plate:'plate',
+  brandModel:'brand_model',
+  chassis:'chassis',
+  engine:'engine',
+  year:'model_year',
+  color:'color',
+  fuel:'fuel'
+};
+
+function preserveHumanConfirmedFields(existing,incoming){
+  const fields=Array.isArray(existing?.extra_data?.humanConfirmedFields) ? existing.extra_data.humanConfirmedFields : [];
+  if(!fields.length) return incoming;
+  const next={...incoming};
+  for(const field of fields){
+    const dbField=HUMAN_FIELD_DB_MAP[field];
+    if(dbField && Object.prototype.hasOwnProperty.call(existing,dbField)) next[dbField]=existing[dbField];
+  }
+  next.extra_data={
+    ...(incoming?.extra_data||{}),
+    ...(existing?.extra_data||{}),
+    humanConfirmedFields:[...new Set(fields)],
+    humanConfirmedAt:existing?.extra_data?.humanConfirmedAt || null
+  };
+  return next;
+}
+
+async function loadExistingOfficialLots(auctionId){
+  const byNumber=new Map();
+  let from=0;
+  const size=500;
+  while(true){
+    const {data,error}=await supabase.from('lots')
+      .select('lot_number,item_type,plate,brand_model,chassis,engine,model_year,color,fuel,extra_data')
+      .eq('auction_id',auctionId)
+      .range(from,from+size-1);
+    if(error) throw error;
+    for(const row of data||[]) byNumber.set(Number(row.lot_number),row);
+    if(!data || data.length<size) break;
+    from+=size;
+  }
+  return byNumber;
+}
+
 async function persistOfficialRelational(item){
   if(!supabase) return {ok:false,reason:'Supabase não configurado.',auctionId:'',lots:0,items:0};
 
@@ -190,12 +235,16 @@ async function persistOfficialRelational(item){
   }
 
   const sourceLots=Array.isArray(item.lots)?item.lots.filter(lot=>Number(lot?.n??lot?.lot??lot?.numero)>0):[];
+  let existingLotsByNumber=new Map();
+  try{ existingLotsByNumber=await loadExistingOfficialLots(auctionId); }
+  catch(error){ return {ok:false,reason:error.message||String(error),auctionId,lots:0,items:0}; }
+
   const lotRows=sourceLots.map((lot,index)=>{
     const n=Number(lot?.n??lot?.lot??lot?.numero??index+1);
     const vehicle=lot?.vehicle||lot?.item||lot?.description||lot?.descricao||lot?.brandModel||lot?.marcaModelo||'';
     const brandModel=lot?.brandModel||lot?.marcaModelo||lot?.['marca/modelo']||'';
     const lotEvidence={...evidence,lotNumber:n};
-    return {
+    const incoming={
       auction_id:auctionId,
       lot_number:n,
       vehicle:vehicle||null,
@@ -212,10 +261,11 @@ async function persistOfficialRelational(item){
       official_url:item.officialUrl||null,
       official_payload:lot,
       source_evidence:lotEvidence,
-      extra_data:relationalLotExtra(lot),
+      extra_data:{...relationalLotExtra(lot),...(effective.extra_data||{})},
       created_by:uid,
       updated_at:new Date().toISOString()
     };
+    return preserveHumanConfirmedFields(existingLotsByNumber.get(n),incoming);
   });
 
   const lotIdByNumber=new Map();
@@ -228,26 +278,27 @@ async function persistOfficialRelational(item){
     (data||[]).forEach(row=>lotIdByNumber.set(Number(row.lot_number),row.id));
   }
 
+  const effectiveLotByNumber=new Map(lotRows.map(row=>[Number(row.lot_number),row]));
   const itemRows=sourceLots.map((lot,index)=>{
     const n=Number(lot?.n??lot?.lot??lot?.numero??index+1);
     const lotId=lotIdByNumber.get(n);
     if(!lotId) return null;
-    const vehicle=lot?.vehicle||lot?.item||lot?.description||lot?.descricao||lot?.brandModel||lot?.marcaModelo||'';
-    const brandModel=lot?.brandModel||lot?.marcaModelo||lot?.['marca/modelo']||'';
+    const effective=effectiveLotByNumber.get(n)||{};
+    const vehicle=effective.vehicle||lot?.vehicle||lot?.item||lot?.description||lot?.descricao||lot?.brandModel||lot?.marcaModelo||'';
     return {
       lot_id:lotId,
       item_order:1,
       item_identifier:String(lot?.plate||lot?.placa||'').toUpperCase()||null,
       description:vehicle||null,
-      item_type:lot?.type||lot?.tipo||null,
+      item_type:effective.item_type||null,
       vehicle:vehicle||null,
-      plate:String(lot?.plate||lot?.placa||'').toUpperCase()||null,
-      brand_model:brandModel||null,
-      chassis:lot?.chassis||lot?.chassi||null,
-      engine:lot?.engine||lot?.motor||null,
-      model_year:String(lot?.year||lot?.ano||'')||null,
-      color:lot?.color||lot?.cor||null,
-      fuel:lot?.fuel||lot?.combustivel||null,
+      plate:effective.plate||null,
+      brand_model:effective.brand_model||null,
+      chassis:effective.chassis||null,
+      engine:effective.engine||null,
+      model_year:effective.model_year||null,
+      color:effective.color||null,
+      fuel:effective.fuel||null,
       state:lot?.uf||lot?.state||null,
       source_type:'official',
       source_evidence:{...evidence,lotNumber:n},
