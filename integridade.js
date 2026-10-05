@@ -266,23 +266,40 @@ function sourceCapability(source){
   };
 }
 
+const STALE_RUN_MS=10*60*1000;
+
+function isStaleStartedRun(run,nowMs=Date.now()){
+  if(!run || run.status!=='started' || run.finished_at) return false;
+  const startedMs=Date.parse(String(run.started_at||''));
+  return Number.isFinite(startedMs) && nowMs-startedMs>STALE_RUN_MS;
+}
+
 function runLifecycle(rows){
   const sourceRuns=Array.isArray(rows)?rows:[];
   const ordered=[...sourceRuns].sort((a,b)=>
     String(a?.started_at||'').localeCompare(String(b?.started_at||'')));
   const latest=ordered.at(-1)||null;
+  const latestStale=isStaleStartedRun(latest);
   return {
     latest,
     latestStatus:String(latest?.status||''),
-    latestActive:Boolean(latest && latest.status==='started' && !latest.finished_at),
+    latestStale,
+    latestActive:Boolean(latest && latest.status==='started' && !latest.finished_at && !latestStale),
     success:sourceRuns.filter(row=>row.status==='success').length,
-    active:sourceRuns.filter(row=>row.status==='started' && !row.finished_at).length,
+    active:sourceRuns.filter(row=>row.status==='started' && !row.finished_at && !isStaleStartedRun(row)).length,
+    stale:sourceRuns.filter(row=>isStaleStartedRun(row)).length,
     error:sourceRuns.filter(row=>row.status==='error').length,
     partial:sourceRuns.filter(row=>row.status==='partial').length
   };
 }
 
 function sourceEvidenceState(lifecycle,historicalProof,capability){
+  if(lifecycle.latestStale){
+    return {
+      state:historicalProof?'Prova histórica válida • execução possivelmente órfã':'Execução possivelmente órfã',
+      next:'Não iniciar outra execução automaticamente. Revisar logs e reconciliar a telemetria antes de repetir.'
+    };
+  }
   if(lifecycle.latestActive){
     return {
       state:historicalProof?'Prova histórica válida • execução em andamento':'Execução em andamento',
@@ -344,6 +361,7 @@ function renderSourceObservability(sources,runs,documents){
     const runSummary=String(sourceRuns.length)
       +' • ok '+lifecycle.success
       +' • ativos '+lifecycle.active
+      +(lifecycle.stale ? ' • órfãos? '+lifecycle.stale : '')
       +(lifecycle.error ? ' • erro '+lifecycle.error : '')
       +(lifecycle.partial ? ' • parcial '+lifecycle.partial : '');
     const evidenceState=sourceEvidenceState(lifecycle,historicalProof,capability);
