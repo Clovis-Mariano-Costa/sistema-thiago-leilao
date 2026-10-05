@@ -57,3 +57,16 @@ test('RPC de criação mantém wrapper público invoker e helper privilegiado pr
   assert.match(sql,/v_uid uuid := auth\.uid\(\)/i);
   assert.match(sql,/private\.is_email_confirmed\(\)/i);
 });
+
+test('convites aplicam hierarquia de papel e aceite autenticado',()=>{
+  const sql=fs.readFileSync('supabase/migrations/20261005004644_secure_auction_invitation_roles_and_acceptance.sql','utf8');
+  assert.match(sql,/function private\.can_invite_role/i);
+  assert.match(sql,/when 'owner'::public\.auction_member_role/i);
+  assert.match(sql,/when 'admin'::public\.auction_member_role/i);
+  assert.match(sql,/OWNER_ROLE_CANNOT_BE_GRANTED_BY_INVITATION/);
+  assert.match(sql,/INVITATION_EMAIL_MISMATCH/);
+  assert.match(sql,/function public\.accept_auction_invitation/i);
+  assert.match(sql,/security invoker/i);
+  assert.match(sql,/invitation\.accepted/);
+  assert.match(sql,/status in \('pending','revoked','expired'\)/);
+});
