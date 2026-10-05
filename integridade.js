@@ -259,10 +259,45 @@ function runLifecycle(rows){
   const latest=ordered.at(-1)||null;
   return {
     latest,
+    latestStatus:String(latest?.status||''),
+    latestActive:Boolean(latest && latest.status==='started' && !latest.finished_at),
     success:sourceRuns.filter(row=>row.status==='success').length,
     active:sourceRuns.filter(row=>row.status==='started' && !row.finished_at).length,
     error:sourceRuns.filter(row=>row.status==='error').length,
     partial:sourceRuns.filter(row=>row.status==='partial').length
+  };
+}
+
+function sourceEvidenceState(lifecycle,historicalProof,capability){
+  if(lifecycle.latestActive){
+    return {
+      state:historicalProof?'Prova histórica válida • execução em andamento':'Execução em andamento',
+      next:'Aguardar finalizar a execução em andamento; não iniciar outra para a mesma fonte.'
+    };
+  }
+  if(lifecycle.latestStatus==='error'){
+    return {
+      state:historicalProof?'Prova histórica válida • última execução falhou':'Sem prova backend • última execução falhou',
+      next:'Revisar o erro da última execução antes de repetir ou promover qualquer resultado.'
+    };
+  }
+  if(lifecycle.latestStatus==='partial'){
+    return {
+      state:historicalProof?'Prova histórica válida • última execução parcial':'Sem prova backend • última execução parcial',
+      next:'Revisar a execução parcial e a proveniência antes de repetir ou promover qualquer resultado.'
+    };
+  }
+  if(lifecycle.latestStatus==='success' && historicalProof){
+    return {
+      state:'Com prova backend',
+      next:'Manter evidência atualizada quando houver nova execução oficial.'
+    };
+  }
+  return {
+    state:historicalProof?'Prova histórica válida • estado atual não conclusivo':'Sem telemetria',
+    next:historicalProof
+      ? 'Revisar o estado da execução mais recente antes de nova ação.'
+      : capability.next
   };
 }
 
@@ -280,10 +315,10 @@ function renderSourceObservability(sources,runs,documents){
     const sourceRuns=(runs||[]).filter(row=>row.source_id===source.id);
     const sourceDocs=(documents||[]).filter(row=>row.source_id===source.id);
     const lifecycle=runLifecycle(sourceRuns);
-    const complete=lifecycle.success>0 && sourceDocs.length>0;
+    const historicalProof=lifecycle.success>0 && sourceDocs.length>0;
     const capability=sourceCapability(source);
-    if(complete) coverage.add(source.id);
-    if(!complete && capability.key==='connector') connectorPending++;
+    if(historicalProof) coverage.add(source.id);
+    if(!historicalProof && capability.key==='connector') connectorPending++;
     if(capability.key==='drift') capabilityDrift++;
     activeRuns+=lifecycle.active;
     if(lifecycle.error>0) sourcesWithErrors++;
@@ -297,18 +332,7 @@ function renderSourceObservability(sources,runs,documents){
       +' • ativos '+lifecycle.active
       +(lifecycle.error ? ' • erro '+lifecycle.error : '')
       +(lifecycle.partial ? ' • parcial '+lifecycle.partial : '');
-    const state=lifecycle.active
-      ? (complete?'Com prova backend • execução em andamento':'Execução em andamento')
-      : complete
-        ? 'Com prova backend'
-        : lifecycle.error
-          ? 'Sem prova backend • houve erro'
-          : 'Sem telemetria';
-    const next=lifecycle.active
-      ? 'Aguardar finalizar a execução em andamento; não iniciar outra para a mesma fonte.'
-      : complete
-        ? 'Manter evidência atualizada quando houver nova execução oficial.'
-        : capability.next;
+    const evidenceState=sourceEvidenceState(lifecycle,historicalProof,capability);
     const values=[
       source.name||source.id,
       source.status||'—',
@@ -316,8 +340,8 @@ function renderSourceObservability(sources,runs,documents){
       runSummary,
       String(sourceDocs.length),
       latest,
-      state,
-      next
+      evidenceState.state,
+      evidenceState.next
     ];
     for(const value of values){
       const td=document.createElement('td');
