@@ -50,6 +50,34 @@ function saveState(state){
   localStorage.setItem(storageKey(),JSON.stringify(state));
 }
 
+async function persistOfficialStateOnline(state){
+  if(!supabase) return {ok:false,reason:'Supabase não configurado nesta publicação.'};
+
+  const {data:{session},error:sessionError}=await supabase.auth.getSession();
+  if(sessionError || !session?.user?.id){
+    return {ok:false,reason:'Sessão autenticada não disponível para proteger a importação online.'};
+  }
+  if(!session.user.email_confirmed_at){
+    return {ok:false,reason:'E-mail ainda não confirmado para gravação online.'};
+  }
+
+  const payload={
+    user_id:session.user.id,
+    state_version:Number(state?.version)||4,
+    state,
+    source_origin:location.origin,
+    last_client_change:new Date().toISOString()
+  };
+
+  const {error}=await supabase
+    .from('user_state_snapshots')
+    .upsert(payload,{onConflict:'user_id'});
+
+  if(error) return {ok:false,reason:error.message || String(error)};
+  localStorage.setItem('sistema-thiago-sync-last:'+session.user.id,new Date().toISOString());
+  return {ok:true,reason:''};
+}
+
 function normalizeImportedLot(lot,index,item){
   const n=Number(lot?.n ?? lot?.lot ?? lot?.numero ?? index+1);
   const known=new Set(['n','lot','numero','vehicle','item','description','descricao','type','tipo','plate','placa','brandModel','marcaModelo','marca/modelo','chassis','chassi','engine','motor','year','ano','color','cor','fuel','combustivel','fipeValue','valorFipe','minimumBid','lanceMinimo','valorMinimo','note','observacao','sourceType','needsReview','extraFields']);
@@ -285,11 +313,15 @@ async function importAuction(item,button){
 
   state.currentAuctionId=auctionId;
   saveState(state);
+
+  const online=await persistOfficialStateOnline(state);
   const params=new URLSearchParams({
     imported:item.id,
     fields:String(Object.keys(item||{}).length),
-    lots:String(importedLots.length)
+    lots:String(importedLots.length),
+    sync:online.ok?'online':'local'
   });
+  if(!online.ok && online.reason) params.set('sync_error',online.reason);
   if(item.__pncpAttempted) params.set('pncp','1');
   if(item.__pncpError) params.set('pncp_error',item.__pncpError);
   if(item.__pncpDocument) params.set('pncp_document',item.__pncpDocument);
