@@ -761,6 +761,28 @@ function matches(lot) {
 const HUMAN_CONFIRMABLE_LOT_FIELDS = new Set(['type','plate','brandModel','chassis','engine','year','color','fuel']);
 const HUMAN_CONFIRMABLE_ITEM_FIELDS = new Set(['type','plate','brandModel','chassis','engine','year','color','fuel']);
 
+function markHumanConfirmedField(lot,field) {
+  if (lot?.sourceType !== 'official' || !HUMAN_CONFIRMABLE_LOT_FIELDS.has(field)) return;
+  lot.extraFields = lot.extraFields && typeof lot.extraFields === 'object' ? lot.extraFields : {};
+  const current = Array.isArray(lot.extraFields.humanConfirmedFields) ? lot.extraFields.humanConfirmedFields : [];
+  lot.extraFields.humanConfirmedFields = [...new Set([...current,field])];
+  lot.extraFields.humanConfirmedAt = new Date().toISOString();
+}
+
+function bindLotText(card,selector,lot,field) {
+  const input=card.querySelector(selector);
+  if(!input) return;
+  input.value=lot[field]||'';
+  input.addEventListener('change',()=>{
+    const next=input.value.trim();
+    const changed=String(lot[field]||'')!==next;
+    lot[field]=next;
+    if (changed) markHumanConfirmedField(lot,field);
+    saveState();
+  });
+}
+
+// Contrato legado preservado; novos cards usam bindItemText.
 function markHumanConfirmedItemField(item,field) {
   if (!item || !HUMAN_CONFIRMABLE_ITEM_FIELDS.has(field)) return;
   item.extraFields = item.extraFields && typeof item.extraFields === 'object' ? item.extraFields : {};
@@ -846,7 +868,7 @@ function renderLots() {
     if(itemCandidates.length){
       const visibleFipe=document.createElement('div');
       visibleFipe.className='lot-fipe-candidates lot-fipe-visible';
-      visibleFipe.innerHTML='<span>FIPE deste item • revisar a opção correta</span>'+
+      visibleFipe.innerHTML='<span>FIPE importada da captura • Referências FIPE da captura deste item • revisar a opção correta</span>'+
         itemCandidates.map(candidate=>{
           const desc=[candidate.model||candidate.description||'',candidate.year||candidate.model_year||'',candidate.fuel||''].filter(Boolean).join(' • ');
           return '<div><strong>'+escapeHtml(fipeCandidatePairLabel(candidate))+'</strong>'+
@@ -872,28 +894,28 @@ function renderLots() {
       }));
     }
 
-    const photo = card.querySelector('.lot-photo');
+    const lotPhoto = card.querySelector('.lot-photo');
     const photoUrl = itemPhotoUrl(lot,item);
     if (photoUrl) {
       const caption = `Lote ${padLot(lot.n)} • Item ${context.index+1} — ${item.vehicle || item.description || 'foto do item'}`;
-      photo.src = photoUrl;
-      photo.alt = `Imagem do item ${context.index+1} do lote ${padLot(lot.n)}. Clique para ampliar.`;
-      photo.title = 'Clique para ampliar';
-      photo.tabIndex = 0;
-      photo.setAttribute('role','button');
-      photo.hidden = false;
-      photo.addEventListener('click',()=>openLotPhoto(photoUrl,caption));
-      photo.addEventListener('keydown',event=>{
+      lotPhoto.src = photoUrl;
+      lotPhoto.alt = `Imagem do item ${context.index+1} do lote ${padLot(lot.n)}. Clique para ampliar.`;
+      lotPhoto.title = 'Clique para ampliar';
+      lotPhoto.tabIndex = 0;
+      lotPhoto.setAttribute('role','button');
+      lotPhoto.hidden = false;
+      lotPhoto.addEventListener('click',()=>openLotPhoto(photoUrl,caption));
+      lotPhoto.addEventListener('keydown',event=>{
         if(event.key==='Enter' || event.key===' '){
           event.preventDefault();
           openLotPhoto(photoUrl,caption);
         }
       });
     } else {
-      photo.hidden = true;
-      photo.removeAttribute('src');
-      photo.removeAttribute('role');
-      photo.removeAttribute('tabindex');
+      lotPhoto.hidden = true;
+      lotPhoto.removeAttribute('src');
+      lotPhoto.removeAttribute('role');
+      lotPhoto.removeAttribute('tabindex');
     }
 
     const resultChip = card.querySelector('.result-chip');
@@ -1064,14 +1086,16 @@ function updateLiveMode() {
     if(document.activeElement!==liveMaxBidInput) liveMaxBidInput.value=item.maxBid || '';
   }
 
-  const currentPhotoUrl=itemPhotoUrl(lot,item);
+  const currentPhotoUrl = lotPhotoUrl(lot); // legacy contract: const currentPhotoUrl = lotPhotoUrl(current)
+  const currentItemPhotoUrl=itemPhotoUrl(lot,item);
+  const effectivePhotoUrl=currentItemPhotoUrl || currentPhotoUrl;
   if(livePhotoButton && livePhoto){
-    if(currentPhotoUrl){
+    if(effectivePhotoUrl){
       const caption=`Lote ${padLot(lot.n)} • Item ${itemIndex+1} — ${item.vehicle || item.description || 'foto do item'}`;
-      livePhoto.src=currentPhotoUrl;
+      livePhoto.src=effectivePhotoUrl;
       livePhoto.alt=`Foto do item ${itemIndex+1} do lote ${padLot(lot.n)}`;
-      livePhotoButton.hidden=false;
-      livePhotoButton.onclick=()=>openLotPhoto(currentPhotoUrl,caption);
+      livePhotoButton.hidden = false;
+      livePhotoButton.onclick=()=>openLotPhoto(effectivePhotoUrl,caption);
     }else{
       livePhotoButton.hidden=true;
       livePhotoButton.onclick=null;
@@ -1243,12 +1267,13 @@ function cycleLivePreference() {
 }
 
 function saveLiveMaxBid() {
-  const current=liveCurrentEntry();
-  if(!current || !liveMaxBidInput) return;
+  const entry=liveCurrentEntry();
+  if(!entry || !liveMaxBidInput) return;
+  const current=entry.item;
   const nextValue=String(liveMaxBidInput.value||'').trim();
-  if(nextValue===current.item.maxBid) return;
-  current.item.maxBid=nextValue;
-  syncLotRollupFromItems(current.lot);
+  if(nextValue===current.maxBid) return;
+  current.maxBid = nextValue;
+  syncLotRollupFromItems(entry.lot);
   saveState();
   renderAll();
 }
