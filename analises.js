@@ -144,6 +144,59 @@ function renderPreferences(items){
   }
 }
 
+function renderLocations(items,auction){
+  const box=document.querySelector('#analyticsLocations');
+  const map=document.querySelector('#analyticsMapFrame');
+  const mapLink=document.querySelector('#analyticsMapLink');
+  if(!box || !map || !mapLink) return;
+
+  const unique=[];
+  const seen=new Set();
+  for(const item of items){
+    const city=String(item?.city||'').trim();
+    const state=String(item?.state||'').trim();
+    if(!city) continue;
+    const label=[city,state].filter(Boolean).join(' / ');
+    const key=label.toLowerCase();
+    if(seen.has(key)) continue;
+    seen.add(key);
+    unique.push(label);
+  }
+
+  const auctionLocation=String(auction?.location||'').trim();
+  if(auctionLocation && !/^(on-?line|online|virtual)$/i.test(auctionLocation)){
+    const key=auctionLocation.toLowerCase();
+    if(!seen.has(key)) unique.unshift(auctionLocation);
+  }
+
+  if(!unique.length){
+    box.innerHTML='<p class="muted">Nenhuma localização física comprovada para os itens deste leilão. Se o leilão for on-line, use o botão do leiloeiro.</p>';
+    map.hidden=true;
+    mapLink.hidden=true;
+    return;
+  }
+
+  box.innerHTML=unique.slice(0,20).map((label,index)=>
+    '<button type="button" class="location-chip'+(index===0?' active':'')+'" data-location="'+
+    String(label).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;')+'">'+
+    String(label).replaceAll('&','&amp;').replaceAll('<','&lt;')+'</button>'
+  ).join('');
+
+  const showLocation=label=>{
+    const q=encodeURIComponent(label);
+    map.src='https://www.google.com/maps?q='+q+'&output=embed';
+    map.title='Mapa de '+label;
+    map.hidden=false;
+    mapLink.href='https://www.google.com/maps/search/?api=1&query='+q;
+    mapLink.textContent='Abrir '+label+' no mapa';
+    mapLink.hidden=false;
+    box.querySelectorAll('.location-chip').forEach(btn=>btn.classList.toggle('active',btn.dataset.location===label));
+  };
+
+  box.querySelectorAll('.location-chip').forEach(btn=>btn.addEventListener('click',()=>showLocation(btn.dataset.location)));
+  showLocation(unique[0]);
+}
+
 function renderMetrics(items){
   const total=items.length;
   const sold=items.filter(item=>Boolean(item.sold)).length;
@@ -216,7 +269,7 @@ async function fetchItems(auctionId){
   for(let i=0;i<lotIds.length;i+=chunkSize){
     const ids=lotIds.slice(i,i+chunkSize);
     const {data,error}=await client.from('lot_items')
-      .select('lot_id,item_order,item_identifier,description,vehicle,brand_model,preference_level,sold,result,fipe_value,minimum_bid,max_bid,final_value,extra_data')
+      .select('lot_id,item_order,item_identifier,description,vehicle,brand_model,city,state,preference_level,sold,result,fipe_value,minimum_bid,max_bid,final_value,extra_data')
       .in('lot_id',ids)
       .order('item_order',{ascending:true});
     if(error) throw error;
@@ -234,12 +287,14 @@ async function loadAuction(){
   renderSource(auction);
   if(!auction){
     renderMetrics([]);
+    renderLocations([],null);
     return;
   }
   setStatus('Carregando dados relacionais protegidos pela sua conta…','info');
   try{
     const items=await fetchItems(auction.id);
     renderMetrics(items);
+    renderLocations(items,auction);
     setStatus(items.length ? items.length+' item(ns) analisado(s) a partir do banco canônico.' : 'Este leilão ainda não possui itens relacionais.','ok');
   }catch(error){
     console.error(error);
