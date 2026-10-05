@@ -154,6 +154,23 @@ async function loadExistingOfficialLots(auctionId){
   return byNumber;
 }
 
+async function loadOfficialLotIds(auctionId){
+  const byNumber=new Map();
+  let from=0;
+  const size=500;
+  while(true){
+    const {data,error}=await supabase.from('lots')
+      .select('id,lot_number')
+      .eq('auction_id',auctionId)
+      .range(from,from+size-1);
+    if(error) throw error;
+    for(const row of data||[]) byNumber.set(Number(row.lot_number),row.id);
+    if(!data || data.length<size) break;
+    from+=size;
+  }
+  return byNumber;
+}
+
 async function persistOfficialRelational(item){
   if(!supabase) return {ok:false,reason:'Supabase não configurado.',auctionId:'',lots:0,items:0};
 
@@ -280,6 +297,28 @@ async function persistOfficialRelational(item){
       .select('id,lot_number');
     if(error) return {ok:false,reason:error.message||String(error),auctionId,lots:lotIdByNumber.size,items:0};
     (data||[]).forEach(row=>lotIdByNumber.set(Number(row.lot_number),row.id));
+  }
+
+  if(lotIdByNumber.size < sourceLots.length){
+    try{
+      const persistedLotIds=await loadOfficialLotIds(auctionId);
+      persistedLotIds.forEach((id,n)=>lotIdByNumber.set(Number(n),id));
+    }catch(error){
+      return {ok:false,reason:error.message||String(error),auctionId,lots:lotIdByNumber.size,items:0};
+    }
+  }
+
+  const unresolvedLotNumbers=sourceLots
+    .map((lot,index)=>Number(lot?.n??lot?.lot??lot?.numero??index+1))
+    .filter(n=>!lotIdByNumber.has(n));
+  if(unresolvedLotNumbers.length){
+    return {
+      ok:false,
+      reason:'IDs relacionais não resolvidos para '+unresolvedLotNumbers.length+' lote(s).',
+      auctionId,
+      lots:lotIdByNumber.size,
+      items:0
+    };
   }
 
   const effectiveLotByNumber=new Map(lotRows.map(row=>[Number(row.lot_number),row]));
