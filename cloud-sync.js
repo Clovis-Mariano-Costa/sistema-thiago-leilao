@@ -126,6 +126,7 @@ async function start(){
   const relationalAuctionCache=new Map();
   const relationalLotCache=new Map();
   const operationalFingerprints=new Map();
+  let unresolvedStateConflict=false;
 
   async function resolveRelationalAuction(localAuction){
     if(!localAuction) return null;
@@ -251,14 +252,19 @@ async function start(){
   }
 
   function offerConflict(cloudState,localState){
+    unresolvedStateConflict=true;
     setStatus(
       '<strong>Encontramos dados em dois lugares.</strong> Para evitar perda, escolha qual cópia deve prevalecer.<div class="sync-actions">'+
       '<button type="button" data-sync-local>Manter dados deste navegador</button>'+
       '<button type="button" data-sync-cloud>Usar backup online</button></div>',
       'warn'
     );
-    statusBox.querySelector('[data-sync-local]')?.addEventListener('click',()=>upload(localState,'Dados deste navegador enviados ao backup online'));
+    statusBox.querySelector('[data-sync-local]')?.addEventListener('click',async()=>{
+      const ok=await upload(localState,'Dados deste navegador enviados ao backup online');
+      if(ok) unresolvedStateConflict=false;
+    });
     statusBox.querySelector('[data-sync-cloud]')?.addEventListener('click',()=>{
+      unresolvedStateConflict=false;
       app.replaceState(cloudState,{save:true});
       setStatus('<strong>Backup online restaurado neste navegador.</strong> Confira os leilões antes de continuar.','ok');
     });
@@ -308,6 +314,13 @@ async function start(){
   window.addEventListener('sistema-thiago:state-saved',()=>{
     clearTimeout(timer);
     timer=setTimeout(async()=>{
+      if(unresolvedStateConflict){
+        setStatus(
+          '<strong>Conflito ainda não resolvido.</strong> As alterações deste navegador permanecem locais e não substituirão o backup online até você escolher qual cópia deve prevalecer.',
+          'warn'
+        );
+        return;
+      }
       const current=app.getState();
       const snapshotOk=await upload(current,'Alterações salvas online');
       if(!snapshotOk) return;
