@@ -66,3 +66,20 @@ test('ST-MNM-38A expõe readiness do P2 sem ampliar permissões',()=>{
   assert.match(js,/renderSnapshotParity/);
   assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 });
+
+
+test('ST-MNM-39D mede observabilidade por fonte e não apenas por total global',()=>{
+  const fs=require('node:fs');
+  const html=fs.readFileSync('integridade.html','utf8');
+  const js=fs.readFileSync('integridade.js','utf8');
+  assert.match(html,/Observabilidade por fonte/);
+  assert.match(html,/integritySourceRows/);
+  assert.match(js,/function renderSourceObservability/);
+  assert.match(js,/fetchVisibleRows\('official_sources'/);
+  assert.match(js,/fetchVisibleRows\('source_search_runs'/);
+  assert.match(js,/fetchVisibleRows\('source_documents'/);
+  assert.match(js,/Com prova backend/);
+  assert.match(js,/Sem telemetria/);
+  assert.match(js,/sourceCoverage\.covered<sourceCoverage\.active/);
+  assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+});
