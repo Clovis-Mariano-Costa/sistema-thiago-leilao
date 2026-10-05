@@ -202,6 +202,9 @@ function latestIso(rows,field){
 const sourceCatalogById=new Map(
   (window.SISTEMA_THIAGO_OFFICIAL_SOURCES||[]).map(source=>[source.id,source])
 );
+const resultCatalogById=new Map(
+  (window.SISTEMA_THIAGO_OFFICIAL_RESULTS||[]).map(result=>[result.id,result])
+);
 
 function sourceCapability(source){
   const declared=sourceCatalogById.get(source.id)||{};
@@ -363,20 +366,31 @@ function renderSourceObservability(sources,runs,documents){
   };
 }
 
-function renderResultObservability(runs,documents,auctions,lots){
+function renderResultObservability(runs,documents,auctions,lots,sources){
   resultRowsBox.innerHTML='';
   const groups=new Map();
+  const catalogResults=Array.from(resultCatalogById.values());
+  for(const result of catalogResults){
+    const resultId=String(result?.id||'').trim();
+    if(resultId && !groups.has(resultId)) groups.set(resultId,[]);
+  }
+
   let unidentified=0;
+  let runOnly=0;
   for(const run of runs||[]){
     const resultId=String(run?.metadata?.resultId||'').trim();
     if(!resultId){
       unidentified++;
       continue;
     }
-    if(!groups.has(resultId)) groups.set(resultId,[]);
+    if(!groups.has(resultId)){
+      groups.set(resultId,[]);
+      runOnly++;
+    }
     groups.get(resultId).push(run);
   }
 
+  const sourceById=new Map((sources||[]).map(source=>[String(source.id||''),source]));
   const documentsById=new Map((documents||[]).map(doc=>[String(doc.id||''),doc]));
   const auctionsByResult=new Map();
   for(const auction of auctions||[]){
@@ -391,8 +405,10 @@ function renderResultObservability(runs,documents,auctions,lots){
   resultEmptyBox.hidden=groups.size>0;
   let aligned=0;
   let gaps=0;
+  let catalogMissing=0;
 
   for(const [resultId,resultRuns] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){
+    const catalogResult=resultCatalogById.get(resultId)||null;
     const ordered=[...resultRuns].sort((a,b)=>
       String(a?.started_at||'').localeCompare(String(b?.started_at||'')));
     const latest=ordered.at(-1)||null;
@@ -405,9 +421,24 @@ function renderResultObservability(runs,documents,auctions,lots){
     const latestStatus=String(latest?.status||'sem run');
     const proofComplete=Boolean(latestSuccess && document);
     const countAligned=proofComplete && relational && relationalLots===provenLots;
+    const sourceId=String(latest?.source_id||latestSuccess?.source_id||catalogResult?.sourceId||'').trim();
+    const source=sourceById.get(sourceId)||{id:sourceId,status:'',extra_data:{}};
+    const capability=sourceCapability(source);
 
     let state='';
-    if(countAligned){
+    if(!resultRuns.length && catalogResult){
+      gaps++;
+      catalogMissing++;
+      if(relational){
+        state='Relacional sem prova backend';
+      }else if(capability.key==='connector'){
+        state='Sem run backend • execução governada pendente';
+      }else if(capability.key==='drift'){
+        state='Sem run backend • capability divergente';
+      }else{
+        state='Sem run backend • sem automação autorizada';
+      }
+    }else if(countAligned){
       state=latestStatus==='success'
         ? 'Alinhado'
         : 'Prova alinhada • último run '+latestStatus;
@@ -425,8 +456,8 @@ function renderResultObservability(runs,documents,auctions,lots){
 
     const tr=document.createElement('tr');
     const values=[
-      resultId,
-      String(latest?.source_id||latestSuccess?.source_id||'—'),
+      catalogResult?.title ? catalogResult.title+' • '+resultId : resultId,
+      sourceId||'—',
       String(resultRuns.length)+' • último '+latestStatus,
       latestSuccess ? String(provenLots) : '—'
     ];
@@ -459,7 +490,15 @@ function renderResultObservability(runs,documents,auctions,lots){
     resultRowsBox.appendChild(tr);
   }
 
-  return {results:groups.size,aligned,gaps,unidentified};
+  return {
+    results:groups.size,
+    catalogExpected:catalogResults.length,
+    catalogMissing,
+    aligned,
+    gaps,
+    unidentified,
+    runOnly
+  };
 }
 
 function roleReadiness(userId,auctions,memberships){
@@ -568,7 +607,7 @@ async function loadIntegrity(){
     setText('#snapshotLots',parity.snapshotLots);
 
     const sourceCoverage=renderSourceObservability(sourceRows,sourceRunRows,sourceDocumentRows);
-    const resultCoverage=renderResultObservability(sourceRunRows,sourceDocumentRows,auctions,lots);
+    const resultCoverage=renderResultObservability(sourceRunRows,sourceDocumentRows,auctions,lots,sourceRows);
     const roles=roleReadiness(user.id,auctions,memberships);
     const invitationStatuses=countBy(invitations,'status');
     const auditActions=countBy(auditRows,'action');
@@ -600,9 +639,11 @@ async function loadIntegrity(){
       gate('Evidência por resultado oficial',
         resultCoverage.results>0 && resultCoverage.gaps===0?'ok':(resultCoverage.aligned?'partial':'pending'),
         resultCoverage.results
-          ? resultCoverage.aligned+'/'+resultCoverage.results+' resultado(s) com success + documento + contagem relacional alinhada. '
-            +resultCoverage.gaps+' gap(s); '+resultCoverage.unidentified+' run(s) sem resultId.'
-          : 'Nenhum run com resultId visível para reconciliar individualmente.'),
+          ? resultCoverage.aligned+'/'+resultCoverage.results+' resultado(s) observados/almejados com success + documento + contagem relacional alinhada. '
+            +resultCoverage.catalogMissing+' resultado(s) do catálogo sem run backend; '
+            +resultCoverage.gaps+' gap(s); '+resultCoverage.unidentified+' run(s) sem resultId; '
+            +resultCoverage.runOnly+' resultId(s) backend fora do catálogo.'
+          : 'Nenhum resultado catalogado ou run com resultId visível para reconciliar individualmente.'),
       gate('Matriz de papéis do P2',roles.missing.length===0?'ok':(roles.demonstrated.length?'partial':'pending'),
         'Demonstrados nesta sessão: '+(roles.demonstrated.join(', ')||'nenhum')+
         '. Faltam: '+(roles.missing.join(', ')||'nenhum')+
