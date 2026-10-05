@@ -28,7 +28,7 @@
   <main class="integrity-main">
     <section class="dashboard-card integrity-hero">
       <div>
-        <p class="eyebrow dark">ST-MNM-29A</p>
+        <p class="eyebrow dark">ST-MNM-29A / ST-MNM-38A</p>
         <h2>Integridade do estado</h2>
         <p class="muted">Leitura autenticada e somente leitura. Esta tela não corrige, não promove e não apaga dados.</p>
       </div>
@@ -46,13 +46,14 @@
       <article class="integrity-card"><span>Documentos observados</span><strong id="sourceDocuments">—</strong><small>source_documents visíveis por RLS</small></article>
       <article class="integrity-card"><span>Participações</span><strong id="memberships">—</strong><small>auction_members visíveis</small></article>
       <article class="integrity-card"><span>Convites</span><strong id="invitations">—</strong><small>invitations visíveis</small></article>
+      <article class="integrity-card"><span>Auditoria de acesso</span><strong id="accessAudit">—</strong><small>audit_log visível por RLS</small></article>
     </section>
 
     <section class="dashboard-card integrity-panel">
       <div>
         <p class="eyebrow dark">Reconciliação</p>
         <h2>Gates ainda não demonstrados</h2>
-        <p class="muted">A lista é derivada somente do estado que a sua sessão consegue ler.</p>
+        <p class="muted">A lista é derivada somente do estado que a sua sessão consegue ler. ST-MNM-38A não cria usuários, convites ou permissões.</p>
       </div>
       <div id="integrityGates" class="integrity-gates"></div>
     </section>
