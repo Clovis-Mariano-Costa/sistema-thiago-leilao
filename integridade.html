@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07111f" />
+  <meta name="description" content="Integridade e observabilidade do Sistema Thiago sob a conta autenticada." />
+  <title>Integridade • Sistema Thiago</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=20261003c" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="integridade.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-logo" src="assets/sistema-thiago-logo.svg" alt="Sistema Thiago" />
+      <div>
+        <p class="eyebrow">Jus 9 • integridade e observabilidade</p>
+        <h1>Sistema Thiago</h1>
+      </div>
+    </div>
+    <div class="top-actions">
+      <a class="home-top-link" href="app.html">Painel</a>
+      <a id="userPill" class="user-pill" href="auth.html"><span id="userPillAvatar" class="user-pill-avatar"><span>?</span></span><span id="userPillLabel">Entrar / criar conta</span></a>
+    </div>
+  </header>
+
+  <main class="integrity-main">
+    <section class="dashboard-card integrity-hero">
+      <div>
+        <p class="eyebrow dark">ST-MNM-29A</p>
+        <h2>Integridade do estado</h2>
+        <p class="muted">Leitura autenticada e somente leitura. Esta tela não corrige, não promove e não apaga dados.</p>
+      </div>
+      <button id="refreshIntegrity" class="secondary-btn strong" type="button">Atualizar verificação</button>
+    </section>
+
+    <section id="integrityStatus" class="sync-status" hidden aria-live="polite"></section>
+
+    <section class="integrity-grid" aria-label="Resumo de integridade">
+      <article class="integrity-card"><span>Backup online</span><strong id="snapshotState">—</strong><small id="snapshotMeta">aguardando</small></article>
+      <article class="integrity-card"><span>Leilões oficiais canônicos</span><strong id="officialAuctions">—</strong><small>auctions / source_type=official</small></article>
+      <article class="integrity-card"><span>Lotes oficiais canônicos</span><strong id="officialLots">—</strong><small>lots sob leilões oficiais visíveis</small></article>
+      <article class="integrity-card"><span>Itens oficiais canônicos</span><strong id="officialItems">—</strong><small>lot_items sob lotes oficiais visíveis</small></article>
+      <article class="integrity-card"><span>Buscas observadas</span><strong id="sourceRuns">—</strong><small>source_search_runs visíveis por RLS</small></article>
+      <article class="integrity-card"><span>Documentos observados</span><strong id="sourceDocuments">—</strong><small>source_documents visíveis por RLS</small></article>
+      <article class="integrity-card"><span>Participações</span><strong id="memberships">—</strong><small>auction_members visíveis</small></article>
+      <article class="integrity-card"><span>Convites</span><strong id="invitations">—</strong><small>invitations visíveis</small></article>
+    </section>
+
+    <section class="dashboard-card integrity-panel">
+      <div>
+        <p class="eyebrow dark">Reconciliação</p>
+        <h2>Gates ainda não demonstrados</h2>
+        <p class="muted">A lista é derivada somente do estado que a sua sessão consegue ler.</p>
+      </div>
+      <div id="integrityGates" class="integrity-gates"></div>
+    </section>
+
+    <section class="dashboard-card integrity-panel">
+      <div>
+        <p class="eyebrow dark">Leilões relacionais</p>
+        <h2>Estado canônico visível</h2>
+        <p class="muted">Contagens por leilão, separando dados oficiais e dados inseridos pelo usuário.</p>
+      </div>
+      <div class="integrity-table-wrap">
+        <table class="integrity-table">
+          <thead><tr><th>Leilão</th><th>Origem</th><th>Lotes</th><th>Itens</th><th>Referência</th></tr></thead>
+          <tbody id="integrityAuctionRows"></tbody>
+        </table>
+      </div>
+      <p id="integrityAuctionEmpty" class="empty-state">Nenhum leilão relacional visível.</p>
+    </section>
+
+    <section class="dashboard-card integrity-actions">
+      <a class="secondary-link" href="fontes-oficiais.html">Fontes oficiais</a>
+      <a class="secondary-link" href="analises.html">Análises</a>
+      <a class="secondary-link" href="convites.html">Participantes / convites</a>
+    </section>
+  </main>
+
+  <script src="auth-config.js"></script>
+  <script type="module" src="session-ui.js"></script>
+  <script type="module" src="integridade.js"></script>
+  <script src="cookie-notice.js"></script>
+</body>
+</html>
