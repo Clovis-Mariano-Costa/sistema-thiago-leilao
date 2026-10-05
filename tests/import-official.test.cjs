@@ -116,3 +116,22 @@ test('PRF/SC possui adaptador de lotes oficial sem depender de coordenadas PNCP'
   assert.match(edge,/needsReview:true/);
   assert.match(edge,/gov\.br/);
 });
+
+
+test('importação oficial protege snapshot online antes do redirecionamento',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  assert.match(fontes,/async function persistOfficialStateOnline/);
+  assert.match(fontes,/from\('user_state_snapshots'\)/);
+  assert.match(fontes,/onConflict:'user_id'/);
+  assert.match(fontes,/const online=await persistOfficialStateOnline\(state\)/);
+  assert.match(fontes,/sync:online\.ok\?'online':'local'/);
+});
+
+test('painel informa se a importação oficial ficou protegida online',()=>{
+  const fs=require('node:fs');
+  const app=fs.readFileSync('app.js','utf8');
+  assert.match(app,/params\.get\('sync'\)/);
+  assert.match(app,/Backup online:<\/strong> atualizado antes de abrir o painel/);
+  assert.match(app,/não confirmado nesta importação/);
+});
