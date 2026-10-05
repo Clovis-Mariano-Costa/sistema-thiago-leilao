@@ -853,7 +853,6 @@ function updateLiveMode() {
     $('#liveLot').textContent = 'Sem lotes';
     $('#liveVehicle').textContent = 'Cadastre lotes antes de iniciar';
     $('#livePreference').hidden = true;
-    $('#liveMaxBid').hidden = true;
     if (liveMaxBidInput) {
       liveMaxBidInput.value = '';
       liveMaxBidInput.disabled = true;
@@ -872,8 +871,6 @@ function updateLiveMode() {
   $('#liveVehicle').textContent = current.vehicle;
   $('#livePreference').hidden = current.preferenceLevel === 0;
   $('#livePreference').textContent = plainPreferenceLabel(current.preferenceLevel);
-  $('#liveMaxBid').hidden = !current.maxBid;
-  $('#liveMaxBid').textContent = current.maxBid ? `Nosso máximo: R$ ${current.maxBid}` : '';
   if (liveMaxBidInput) {
     liveMaxBidInput.disabled = false;
     if (document.activeElement !== liveMaxBidInput) liveMaxBidInput.value = current.maxBid || '';
