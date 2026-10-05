@@ -651,7 +651,28 @@ function resultCard(item){
   </article>`;
 }
 
+function connectorLabel(source){
+  const connector=String(source?.lotsConnector||'').trim();
+  if(connector==='prf-pdf') return 'Importação de lotes: adaptador PRF/PDF disponível';
+  if(connector==='pncp-detran') return 'Importação de lotes: PNCP + documento DETRAN disponível';
+  if(connector==='pncp') return 'Importação de lotes: PNCP disponível quando o processo possuir coordenadas válidas';
+  return 'Importação de lotes: não automatizada nesta fonte';
+}
+
+function sourceFreshness(source){
+  const raw=String(source?.lastVerified||'').trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return {label:'Última verificação não informada',state:'unknown'};
+  const checked=new Date(raw+'T00:00:00Z');
+  const now=new Date();
+  const days=Math.max(0,Math.floor((now-checked)/86400000));
+  if(days<=7) return {label:'Verificada há '+days+' dia(s)',state:'fresh'};
+  if(days<=30) return {label:'Verificação com '+days+' dias',state:'aging'};
+  return {label:'Verificação antiga: '+days+' dias',state:'stale'};
+}
+
 function sourceCard(source){
+  const freshness=sourceFreshness(source);
+  const connector=connectorLabel(source);
   return `<article class="source-registry-card">
     <div class="source-row">
       <span class="source-badge official-source">Fonte oficial cadastrada</span>
@@ -662,7 +683,8 @@ function sourceCard(source){
     <p><strong>Abrangência:</strong> ${esc(source.scope)}</p>
     <p><strong>Conteúdo:</strong> ${esc(source.kind)}</p>
     <p><strong>Método:</strong> ${esc(source.method)}</p>
-    <p><strong>Última verificação:</strong> ${esc(formatDate(source.lastVerified))}</p>
+    <p><strong>Capacidade:</strong> ${esc(connector)}</p>
+    <p><strong>Última verificação:</strong> ${esc(formatDate(source.lastVerified))} • <span class="source-freshness ${esc(freshness.state)}">${esc(freshness.label)}</span></p>
     <div class="found-source"><strong>Local cadastrado:</strong> ${esc(source.url)}</div>
     <div class="official-card-actions">
       <a class="secondary-link compact" href="${esc(source.searchUrl||source.url)}" target="_blank" rel="noopener">Pesquisar nesta fonte</a>
