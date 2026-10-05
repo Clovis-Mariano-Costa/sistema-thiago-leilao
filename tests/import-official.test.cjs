@@ -214,3 +214,35 @@ test('ST-MNM-23B observabilidade é best-effort e não substitui retorno da impo
   assert.match(edge,/return json\(req,\{\.\.\.result,sourceRunId:/);
   assert.match(edge,/sourceDocumentId:documentId\|\|null/);
 });
+
+
+test('ST-MNM-31A catálogo declara conectores de lotes sem rota genérica',()=>{
+  const fs=require('node:fs');
+  const sources=fs.readFileSync('official-sources.js','utf8');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(sources,/lotsConnector:'prf-pdf'/);
+  assert.match(sources,/lotsConnector:'pncp-detran'/);
+  assert.match(sources,/lotsConnector:'pncp'/);
+  assert.match(fontes,/SUPPORTED_LOT_CONNECTORS/);
+  assert.match(fontes,/lotConnectorFor/);
+  assert.doesNotMatch(fontes,/item\?\.sourceId==='prf-sc'/);
+  assert.match(edge,/connector==="prf-pdf"/);
+  assert.match(edge,/sourceId!=="prf-sc"/);
+  assert.match(edge,/Conector oficial não reconhecido/);
+});
+
+test('ST-MNM-31A PRF permanece restrito à fonte oficial já cadastrada',()=>{
+  const fs=require('node:fs');
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(edge,/PRF_HOSTS/);
+  assert.match(edge,/page\.pathname\.startsWith\("\/prf\/"\)/);
+  assert.match(edge,/Conector PRF permitido somente para a fonte PRF\/SC cadastrada/);
+});
+
+test('ST-MNM-31A fonte sem capacidade declarada não recebe importador automático',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  assert.match(fontes,/if\(!SUPPORTED_LOT_CONNECTORS\.has\(declared\)\) return ''/);
+  assert.match(fontes,/if\(\(declared==='pncp' \|\| declared==='pncp-detran'\) && !item\?\.pncp\) return ''/);
+});
