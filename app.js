@@ -364,6 +364,17 @@ const liveMaxBidInput = $('#liveMaxBidInput');
 function syncLotRollupFromItems(lot) {
   if (!lot || !Array.isArray(lot.items) || !lot.items.length) return;
   const items=lot.items;
+  items.forEach((item,index)=>{
+    item.itemOrder=Math.max(1,Number(item.itemOrder)||index+1);
+    if(!String(item.itemIdentifier||'').trim()){
+      item.itemIdentifier=generatedItemIdentifier(lot.n,item.itemOrder);
+      item.extraFields={
+        ...(item.extraFields||{}),
+        generatedIdentifier:true,
+        generatedIdentifierOrigin:'sistema_thiago'
+      };
+    }
+  });
   lot.preferenceLevel=Math.max(...items.map(item=>Number(item.preferenceLevel)||0));
   lot.sold=items.every(item=>Boolean(item.sold));
 
