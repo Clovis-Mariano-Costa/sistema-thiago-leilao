@@ -62,11 +62,22 @@ function cardHtml(item){
     ? `<a class="secondary-link compact" href="${esc(item.sourceUrl)}" target="_blank" rel="noopener">Abrir URL informada</a>`
     : '';
 
+  const mediaRuntime=window.SISTEMA_THIAGO_FIPE_MEDIA_URLS || {};
+  const imageKey=String(item.imageName||'').trim();
+  const imageUrl=imageKey ? (mediaRuntime[imageKey] || mediaRuntime[imageKey.split(/[\\/]/).pop()] || '') : '';
+  const imageHtml=imageUrl
+    ? `<figure class="fipe-reference-media">
+        <img src="${esc(imageUrl)}" alt="Imagem de referência de ${esc(item.vehicle || item.plate || 'veículo')}" loading="lazy" />
+        <figcaption>${esc(imageKey)}</figcaption>
+      </figure>`
+    : '';
+
   return `<article class="reference-card">
     <div class="source-row">
       <span class="source-badge user-source">Dados inseridos pelo usuário</span>
       ${flags}
     </div>
+    ${imageHtml}
     <div class="reference-title-row">
       <div>
         <h2>${esc(item.vehicle || 'Referência veicular')}</h2>
@@ -304,3 +315,8 @@ const initial = params.get('q') || '';
 input.value = initial;
 input.addEventListener('input',render);
 render();
+
+
+window.addEventListener('sistema-thiago:media-ready',()=>{
+  render();
+});
