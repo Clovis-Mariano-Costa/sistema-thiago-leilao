@@ -8,7 +8,6 @@ window.SISTEMA_THIAGO_OFFICIAL_SOURCES = [
     url:'https://www.detran.sc.gov.br/leiloes/',
     searchUrl:'https://www.detran.sc.gov.br/download-category/leiloes/',
     method:'Página e editais oficiais',
-    lotsConnector:'detran-pdf',
     status:'ATIVA',
     lastVerified:'2026-10-02'
   },
