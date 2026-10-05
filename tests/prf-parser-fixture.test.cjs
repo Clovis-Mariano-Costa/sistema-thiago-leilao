@@ -73,3 +73,11 @@ test('renderizador PRF recompõe células pela coordenada Y',async()=>{
   assert.equal(text.split('\n')[0],'1 05/10/26');
   assert.equal(text.split('\n')[1],'MDO2849 SC PEUGEOT/206');
 });
+
+
+test('Edge Function não contém escapes literais entre declarações PRF',()=>{
+  const fs=require('node:fs');
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.doesNotMatch(edge,/PRF_HOSTS=.*;\\\\n\\\\nasync function fetchPrfLots/);
+  assert.match(edge,/PRF_HOSTS=.*;\n\nasync function fetchPrfLots/);
+});
