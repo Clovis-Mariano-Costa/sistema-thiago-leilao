@@ -774,21 +774,27 @@ function renderActiveAuctionHeader() {
 
 function matches(lot) {
   const items=lotItems(lot);
-  const itemSearch = items.flatMap(item => [
-    item.itemIdentifier, item.description, item.vehicle, item.plate, item.brandModel, item.chassis,
-    item.year, item.color, item.fuel, item.fipeValue, item.minimumBid, item.maxBid, item.finalValue,
-    item.result,item.note
-  ]);
-  const fipeSearch = lotFipeCandidates(lot).flatMap(({candidate}) => [
-    candidate.code, candidate.fipe_code, candidate.value, candidate.value_brl, candidate.fipe_value,
-    candidate.model, candidate.description, candidate.year, candidate.model_year, candidate.fuel, candidate.brand
-  ]);
-  const text = [
-    lot.n, padLot(lot.n), lot.vehicle, lot.type, lot.plate, lot.brandModel, lot.chassis, lot.engine,
-    lot.year, lot.color, lot.fuel, lot.fipeValue, lot.minimumBid, lot.maxBid, lot.finalValue, lot.result, lot.note,
-    ...itemSearch, ...fipeSearch
-  ].join(' ').toLowerCase();
-  if (query && !text.includes(query)) return false;
+
+  // Caminho rápido: filtros de situação não precisam montar o índice textual
+  // completo de item + FIPE. Em leilões grandes isso evita milhares de
+  // concatenações a cada renderização quando a busca está vazia.
+  if (query) {
+    const itemSearch = items.flatMap(item => [
+      item.itemIdentifier, item.description, item.vehicle, item.plate, item.brandModel, item.chassis,
+      item.year, item.color, item.fuel, item.fipeValue, item.minimumBid, item.maxBid, item.finalValue,
+      item.result,item.note
+    ]);
+    const fipeSearch = lotFipeCandidates(lot).flatMap(({candidate}) => [
+      candidate.code, candidate.fipe_code, candidate.value, candidate.value_brl, candidate.fipe_value,
+      candidate.model, candidate.description, candidate.year, candidate.model_year, candidate.fuel, candidate.brand
+    ]);
+    const text = [
+      lot.n, padLot(lot.n), lot.vehicle, lot.type, lot.plate, lot.brandModel, lot.chassis, lot.engine,
+      lot.year, lot.color, lot.fuel, lot.fipeValue, lot.minimumBid, lot.maxBid, lot.finalValue, lot.result, lot.note,
+      ...itemSearch, ...fipeSearch
+    ].join(' ').toLowerCase();
+    if (!text.includes(query)) return false;
+  }
 
   const anyWaiting=items.length ? items.some(item=>!item.sold) : !lot.sold;
   const anyPreference=items.length ? items.some(item=>Number(item.preferenceLevel)>0) : Number(lot.preferenceLevel)>0;
