@@ -39,7 +39,7 @@ test('convites expirados não oferecem aceite e pendentes podem ser revogados',(
 });
 
 test('migration audita criação e revogação sem duplicar auditoria de aceite',()=>{
-  const sql=fs.readFileSync('supabase/migrations/20261005033000_audit_invitation_lifecycle.sql','utf8');
+  const sql=fs.readFileSync('supabase/migrations/20261005025827_audit_invitation_lifecycle.sql','utf8');
   assert.match(sql,/invitation\.created/);
   assert.match(sql,/invitation\.revoked/);
   assert.match(sql,/invitation\.expired/);
