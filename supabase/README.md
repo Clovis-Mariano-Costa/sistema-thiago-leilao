@@ -79,3 +79,17 @@ Após criar/conectar um projeto Supabase de teste:
 5. criar adapter do frontend;
 6. migrar **uma cópia** de um leilão de teste;
 7. somente depois avaliar migração dos dados reais atuais.
+
+## Grants explícitos da Data API
+
+Desde 20261005044030_explicit_data_api_grants_for_future_public_objects.sql, novas tabelas e sequences criadas por postgres no schema public não recebem automaticamente os grants de Data API que o frontend precisaria.
+
+Regra para toda nova migration:
+
+1. criar a tabela/sequence;
+2. habilitar RLS quando o objeto estiver em schema exposto;
+3. declarar somente os GRANT necessários para anon, authenticated e/ou service_role;
+4. criar as policies RLS correspondentes;
+5. verificar Security Advisor e o fluxo real do cliente.
+
+Falta de GRANT deve falhar fechado. Nunca corrigir erro de acesso concedendo privilégios amplos sem revisar RLS e o papel real do cliente.
