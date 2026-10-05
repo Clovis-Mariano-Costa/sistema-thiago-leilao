@@ -1,154 +1,155 @@
-# Cronograma — Sistema Thiago
+# Cronograma operacional — Sistema Thiago
 
-Atualização: 02/10/2026  
-Objetivo imediato: deixar o sistema operacional para Thiago acompanhar leilões até segunda-feira, sem perder a arquitetura para evolução multiusuário.
+Atualização canônica: 05/10/2026  
+Modo de execução: **Mão na Massa Seriado / event-driven**  
+Regra: **fato comprovado != plano; merge != deploy; snapshot != banco relacional; CI != gate humano**.
 
-## Regra de origem dos dados
+## Estado executivo
 
-1. **Fonte oficial**: informação acompanhada da URL de origem governamental/oficial.
-2. **Dados inseridos pelo usuário**: tudo que vier de conversa, imagem, digitação, anotação ou associação ainda não confirmada.
-3. Uma informação nunca muda de "usuário" para "oficial" apenas porque parece plausível.
-4. Valor FIPE, lance mínimo, nosso limite e valor final são campos diferentes.
+O MVP já ultrapassou o cronograma original de 02/10. O sistema possui autenticação real, RLS, snapshot online, banco relacional, Storage privado, importadores oficiais, proveniência por run/documento, Integridade, participantes/convites e Modo ao Vivo. O trabalho atual é de **endurecimento, prova de produção e gates humanos**.
 
-## Cronograma até segunda-feira
+### Evidência oficial canônica atual
 
-### Módulo 01 — Base multi-leilão e agenda
-**Janela:** 02/10  
-**Estado:** IMPLEMENTADO NO MVP
+| Resultado oficial | Snapshot | Lots relacionais | Lot items | Proveniência |
+| --- | ---: | ---: | ---: | --- |
+| PRF/SC 02/2026 | 1.331 | 1.331 | 1.331 | success + documento |
+| DETRAN/SC 1500/2026 | 740 | 740 | 740 | success + documento |
+| DETRAN/SC 1600/2026 | 822 | 822 | 822 | success + documento |
+| **Total** | **2.893** | **2.893** | **2.893** | alinhado por resultId |
 
-- escolher qual leilão acompanhar;
-- exibir data e referência;
-- agenda de leilões;
-- cadastrar novo leilão;
-- foto/capa opcional;
-- fonte e URL oficial;
-- primeiro usuário operacional: Thiago;
-- migração da versão antiga do navegador.
+A tela Integridade mede evidência por resultado oficial, sem somar processos distintos de uma mesma fonte.
 
-### Módulo 02 — Cadastro completo do lote
-**Janela:** 02/10–03/10  
-**Estado:** IMPLEMENTADO NO MVP / DADOS A REVISAR
+## Fases concluídas com evidência
 
-Campos:
+### Fase A — Autenticação, isolamento e persistência
+**Estado: CLOSED_WITH_EVIDENCE técnico**
 
-- lote;
-- tipo;
-- veículo/item;
-- placa;
-- marca/modelo;
-- chassi;
-- motor;
-- ano;
-- cor;
-- combustível;
-- valor FIPE;
-- imagem do lote/veículo;
-- lance mínimo;
-- nosso máximo;
-- resultado;
-- valor final;
-- observação;
-- origem do dado e URL oficial quando houver.
+- autenticação real Supabase;
+- e-mail confirmado exigido nas superfícies protegidas;
+- contas começam isoladas;
+- snapshot online por usuário;
+- modelo relacional auctions → lots → lot_items;
+- RLS e grants de menor privilégio;
+- recuperação local/cloud com bloqueio de autosync em conflito;
+- migrations Git ↔ Supabase reconciliadas.
 
-### Módulo 03 — Veículo e FIPE em tela separada
-**Janela:** 03/10  
-**Estado:** IMPLEMENTADO NO MVP / VALIDAÇÃO EM ANDAMENTO
+### Fase B — Importação oficial e proveniência
+**Estado: CLOSED_WITH_EVIDENCE para os três resultados acima**
 
-- catálogo das imagens fornecidas pelo usuário;
-- selo "Dados inseridos pelo usuário";
-- placa, chassi parcial, ano, cor, licenciamento e referência mostrada;
-- lista das opções FIPE exibidas nas capturas;
-- link exclusivo para consulta FIPE oficial;
-- cadastro unitário de novas referências;
-- importação em massa CSV/JSON;
-- colunas adicionais preservadas;
-- nenhuma opção é escolhida automaticamente como "a correta".
+- PRF/PDF comprovado;
+- PNCP + documento DETRAN comprovado;
+- source_search_runs e source_documents;
+- idempotência relacional;
+- preservação de campos confirmados pelo humano;
+- recibo da importação com IDs de evidência;
+- reconciliação snapshot-only → banco relacional concluída para DETRAN 1500 e 1600.
 
-### Módulo 04 — Fontes oficiais de leilões
-**Janela:** 03/10–04/10  
-**Estado:** PRIMEIRA INTEGRAÇÃO IMPLEMENTADA
+### Fase C — Governança de conectores
+**Estado: CLOSED_WITH_EVIDENCE técnico**
 
-Fontes iniciais:
+- capabilities persistidas em official_sources.extra_data;
+- backend é autoridade da capability;
+- UI falha fechado quando backend está ausente ou diverge do catálogo;
+- Edge pncp-lots também valida fonte ativa + capability antes da telemetria;
+- chamada direta à Edge não contorna a governança;
+- PNCP continua exigindo coordenadas compatíveis;
+- PRF/PDF permanece restrito à fonte PRF/SC.
 
-- DETRAN/SC;
-- Calendário DETRAN/SC;
-- Editais DETRAN/SC;
-- Portal de Compras de Santa Catarina.
+### Fase D — Observabilidade e Integridade
+**Estado: ACTIVE / maturidade crescente**
 
-Próximo passo: extrair lotes dos editais descritivos e preparar importação para revisão humana antes do salvamento.
+- paridade snapshot × relacional;
+- contagem canônica por leilão;
+- cobertura de runs/documentos por fonte;
+- ciclo de vida do último run separado da prova histórica;
+- evidência por resultId;
+- capability backend × catálogo;
+- readiness de papéis/convites/auditoria;
+- Reconciliação assistida para duplicidade de Base inicial.
 
-### Módulo 05 — Modo ao vivo
-**Janela:** 04/10  
-**Estado:** VERSÃO 2 IMPLEMENTADA / TESTE COM THIAGO PENDENTE
+### Fase E — Infraestrutura pública
+**Estado: CLOSED_WITH_EVIDENCE para produção**
 
-Inclui:
+- GitHub CI;
+- build público sanitizado;
+- Cloudflare Pages;
+- Worker dry-run;
+- Workers Builds de produção;
+- domínio oficial respondendo;
+- preview de branch não é critério de saúde da produção.
 
-- seletor do leilão;
-- data e referência;
-- lote atual;
-- preferência/prioridade;
-- nosso máximo;
-- botão LEILOADO reversível;
-- botão Voltar;
-- botão Preferência/Prioridade;
-- botão Próximo;
-- acesso aos dados do veículo/FIPE.
+## Gates que continuam abertos
 
-### Módulo 06 — Exportação e fechamento do leilão
-**Janela:** 04/10  
-**Estado:** IMPLEMENTADO NO MVP
+### P2 — ST-MNM-24B: matriz multiusuário real
+**Estado: HUMAN_GATE**
 
-- CSV por leilão;
-- PDF/impressão;
-- resultado opcional;
-- histórico local.
+Executar com identidades reais e e-mail confirmado:
+1. owner;
+2. admin;
+3. participant;
+4. observer;
+5. outsider.
 
-### Módulo 07 — Teste de aceitação com Thiago
-**Janela:** 05/10  
-**Estado:** PENDENTE
+Provar:
+- convite;
+- aceite;
+- revogação;
+- leitura autorizada/negada;
+- edição autorizada/negada;
+- audit_log correspondente.
 
-Roteiro:
+**Regra:** não fabricar contas para declarar o gate concluído.
 
-1. abrir o site no celular;
-2. escolher leilão;
-3. cadastrar leilão e lote;
-4. testar foto;
-5. testar preferência/prioridade;
-6. testar modo ao vivo;
-7. marcar leiloado;
-8. preencher resultado opcional;
-9. exportar CSV e PDF;
-10. registrar ajustes necessários.
+### P3 — ST-MNM-25B: Modo ao Vivo no celular
+**Estado: PHYSICAL_MOBILE_GATE**
 
-## Evolução logo após o MVP
+No aparelho real:
+1. abrir o sistema;
+2. selecionar leilão;
+3. editar preferência/prioridade;
+4. editar nosso máximo;
+5. avançar/voltar/pular;
+6. marcar e desfazer leiloado;
+7. consultar veículo/FIPE/foto;
+8. recarregar;
+9. confirmar snapshot + banco relacional;
+10. validar conflito local/cloud quando aplicável.
 
-### Módulo 08 — Login verdadeiro
-**Estado:** PENDENTE DE CONFIGURAÇÃO EXTERNA
+**Regra:** emulação não substitui o smoke físico.
 
-- Google;
-- e-mail e senha;
-- autenticação real;
-- substituição do usuário local fixo.
+### P5 — proteção contra senhas vazadas
+**Estado: EXTERNAL_PLAN_GATE**
 
-### Módulo 09 — Participantes, convites e autorização
-**Estado:** DEPENDE DO MÓDULO 08
+Security Advisor aponta apenas `Leaked Password Protection Disabled`. A organização Supabase está no plano Free e essa proteção exige plano compatível. Não substituir por mudança arbitrária de senha mínima nem por migration de banco.
 
-Regra planejada:
+### Base inicial duplicada
+**Estado: ASSISTED_RECONCILIATION**
 
-- usuário autenticado não recebe acesso automático aos leilões anteriores;
-- só enxerga leilões de que participa ou para os quais foi convidado;
-- quem não participa de nenhum recebe um sistema em branco;
-- funções: proprietário, administrador, participante e observador.
+- novas duplicações são bloqueadas de forma idempotente/fail-closed;
+- duplicatas históricas não devem ser apagadas por antiguidade;
+- Integridade oferece Reconciliação assistida por suporte;
+- antes de consolidar: escolher survivor com prova campo a campo, preservar lot_items/mídias, registrar auditoria e vincular snapshot ao relationalAuctionId canônico.
 
-### Módulo 10 — Banco compartilhado e sincronização
-**Estado:** DEPENDE DO MÓDULO 08
+## Próxima ordem técnica enquanto gates humanos aguardam
 
-- vários celulares;
-- persistência central;
-- histórico;
-- regras de acesso;
-- auditoria mínima.
+1. manter CI, Worker dry-run e advisors como sentinelas;
+2. corrigir findings pós-merge antes de ampliar capacidade;
+3. não criar conector novo sem fonte oficial delimitada, parser específico, proveniência e caso real;
+4. melhorar observabilidade e recuperação sem mutação automática destrutiva;
+5. atualizar este cronograma sempre que um pacote alterar o estado material.
 
-## Observação sobre segurança
+## Regra de Harmonia Perfeita
 
-A versão local atual não deve ser tratada como ambiente seguro. O login verdadeiro e as regras de acesso só serão considerados implementados depois que autenticação, banco e regras forem configurados e testados.
+- exatamente uma cabeça primária por objeto/superfície;
+- outra trilha pode auditar e produzir evidência, mas não mutar os mesmos arquivos/objetos simultaneamente;
+- quando o main avançar durante um pacote, reconciliar ou recriar sobre o main; nunca force-merge;
+- dependência externa bloqueia somente o pacote dependente;
+- documentação de continuidade deve refletir o estado real após cada espira material.
+
+## Referências operacionais
+
+- Produção: https://sistema.thiago.jus9verde.jus9tecnologia.com.br/
+- Integridade: /integridade.html
+- Fontes oficiais: /fontes-oficiais.html
+- Participantes e convites: /convites.html
+- Recuperação legada: /recuperar-legado.html
