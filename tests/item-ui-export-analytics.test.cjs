@@ -92,3 +92,16 @@ test('ST-MNM-44F busca vazia usa caminho rapido sem montar FIPE textual',()=>{
   assert.ok(gate>=0 && itemSearch>gate && fipeSearch>itemSearch && status>fipeSearch);
   assert.doesNotMatch(block.slice(0,gate),/lotFipeCandidates|flatMap/);
 });
+
+
+test('ST-MNM-44G prioriza pintura da tela antes de sync e midia',()=>{
+  const cloud=fs.readFileSync('cloud-sync.js','utf8');
+  const media=fs.readFileSync('private-media.js','utf8');
+  assert.match(cloud,/function scheduleCloudStart\(\)/);
+  assert.match(cloud,/requestIdleCallback/);
+  assert.match(cloud,/timeout:1200/);
+  assert.match(media,/function scheduleMediaHydration\(\)/);
+  assert.match(media,/requestIdleCallback/);
+  assert.match(media,/timeout:1500/);
+  assert.match(media,/media-refresh-request',scheduleMediaHydration/);
+});
