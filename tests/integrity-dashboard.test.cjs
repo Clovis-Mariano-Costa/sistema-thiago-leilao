@@ -43,6 +43,8 @@ test('ST-MNM-37C compara snapshot e relacional sem promover dados',()=>{
   assert.match(js,/function renderSnapshotParity/);
   assert.match(js,/Paridade snapshot ↔ relacional/);
   assert.match(js,/Somente snapshot/);
+  assert.match(js,/Somente relacional/);
+  assert.match(js,/matchedRelationalIds/);
   assert.match(js,/Divergente/);
   assert.match(js,/Alinhado/);
   assert.doesNotMatch(js,/\.insert\(|\.upsert\(|\.delete\(/);
