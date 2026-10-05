@@ -48,3 +48,14 @@ test('ST-MNM-44E mantem PDF e CSV itemizados',()=>{
   assert.match(js,/Item \/ ID/);
   assert.match(js,/Identificador do item/);
 });
+
+
+test('ST-MNM-44E mapa usa cidade e estado dos itens sem inventar coordenadas',()=>{
+  const js=fs.readFileSync('analises.js','utf8');
+  const html=fs.readFileSync('analises.html','utf8');
+  assert.match(js,/city,state/);
+  assert.match(js,/function renderLocations\(items,auction\)/);
+  assert.match(js,/google\.com\/maps\?q=/);
+  assert.match(html,/id="analyticsMapFrame"/);
+  assert.match(html,/id="analyticsLocations"/);
+});
