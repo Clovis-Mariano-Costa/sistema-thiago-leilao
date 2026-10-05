@@ -57,7 +57,8 @@ test('ST-MNM-25A sincroniza somente campos operacionais alterados no lote canôn
   assert.match(cloud,/note:/);
   assert.match(cloud,/operationalFingerprints/);
   assert.match(cloud,/if\(nextFingerprint===previousFingerprint\) continue/);
-  assert.match(cloud,/from\('lots'\)\.update\(payload\)\.eq\('id',row\.id\)/);
+  assert.match(cloud,/\.from\('lots'\)[\s\S]*\.update\(payload\)[\s\S]*\.eq\('id',row\.id\)[\s\S]*\.select\('id'\)[\s\S]*\.maybeSingle\(\)/);
+  assert.match(cloud,/A política de acesso não confirmou edição deste lote/);
 });
 
 test('ST-MNM-25A resolve lote relacional sob RLS sem service role no navegador',()=>{
