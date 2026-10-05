@@ -44,3 +44,12 @@ test('ST-MNM-34A prévia legada permite reconhecer cópia sem mutação',()=>{
   assert.doesNotMatch(js,/localStorage\.clear/);
   assert.doesNotMatch(js,/fetch\s*\(/);
 });
+
+
+test('ST-MNM-34A informa itens omitidos e separa título da metadata',()=>{
+  const js=fs.readFileSync('legacy-recovery.js','utf8');
+  assert.match(js,/omitted:Math\.max\(0,auctions\.length-visible\.length\)/);
+  assert.match(js,/leilão\(ões\) adicional\(is\) não exibido\(s\) nesta prévia/);
+  assert.match(js,/A lista acima mostra apenas os 8 primeiros/);
+  assert.match(js,/meta\.textContent=' — '/);
+});
