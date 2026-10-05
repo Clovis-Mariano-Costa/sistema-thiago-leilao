@@ -193,7 +193,9 @@ function parseLots(text:string) {
 }
 
 
-const PRF_HOSTS=new Set(["www.gov.br","gov.br"]);\n\nasync function fetchPrfLots(pageUrl:string){
+const PRF_HOSTS=new Set(["www.gov.br","gov.br"]);
+
+async function fetchPrfLots(pageUrl:string){
   const page=new URL(pageUrl);
   if(page.protocol!=="https:" || !PRF_HOSTS.has(page.hostname) || !page.pathname.startsWith("/prf/")){
     throw new Error("fonte PRF fora do domínio oficial gov.br/prf");
