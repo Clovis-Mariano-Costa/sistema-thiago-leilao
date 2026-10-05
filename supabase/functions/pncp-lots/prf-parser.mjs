@@ -56,72 +56,91 @@ export function parsePrfLots(rawText){
     const block=text.slice(blockStart,blockEnd).replace(/\s+/g," ").trim();
     const lotNumber=Number(match[1]);
     const auctionDate=String(match[2]||"");
+    const warnings=[];
+
+    let plate="";
+    let uf="";
+    let brandModel="";
+    let type="";
+    let chassis="";
+    let renavam="";
+    let year="";
+    let color="";
+    let statusAvaliacao="";
+    let minimumBid="";
+    let entryDate="";
+    let context="";
 
     const plateMatch=block.match(PRF_PLATE);
-    if(!plateMatch || plateMatch.index==null){
-      failures.push({lot:lotNumber,reason:"placa/UF não localizados"});
-      continue;
+    if(plateMatch && plateMatch.index!=null){
+      plate=plateMatch[1].replace(/\s+/g,"").toUpperCase();
+      uf=plateMatch[2].toUpperCase();
+
+      const prefix=block.slice(0,plateMatch.index).trim();
+      context=prefix.replace(/^\d{1,4}\s*\d{2}\/\d{2}\/\d{2}\s*/,"").slice(0,500);
+      const dates=[...prefix.matchAll(/\b\d{2}\/\d{2}\/\d{2}\b/g)].map(x=>x[0]);
+      entryDate=dates.length>1 ? dates[dates.length-1] : "";
+
+      const afterPlate=block.slice(plateMatch.index+plateMatch[0].length).trim();
+      const statusMatch=afterPlate.match(PRF_STATUS);
+      if(statusMatch && statusMatch.index!=null){
+        statusAvaliacao=statusMatch[0].replace(/\s+/g," ").trim();
+        const beforeStatus=afterPlate.slice(0,statusMatch.index).trim();
+        const technicalMatch=beforeStatus.match(/^(.*)\s+(\S+)\s+(\d{1,14})\s+(\d{4})\s+(.+)$/);
+
+        if(technicalMatch){
+          let modelAndType=technicalMatch[1].trim();
+          chassis=technicalMatch[2];
+          renavam=technicalMatch[3];
+          year=technicalMatch[4];
+          color=technicalMatch[5].trim();
+
+          const typeMatch=modelAndType.match(PRF_TYPE_END);
+          type=typeMatch ? typeMatch[0].trim() : "";
+          brandModel=typeMatch
+            ? modelAndType.slice(0,modelAndType.length-typeMatch[0].length).trim()
+            : modelAndType;
+          if(!type) warnings.push("tipo de veículo não identificado separadamente");
+        }else{
+          warnings.push("campos técnicos não totalmente reconciliados");
+        }
+
+        const afterStatus=afterPlate.slice((statusMatch.index||0)+statusMatch[0].length);
+        const bidMatch=afterStatus.match(/R\$\s*([0-9.]+,[0-9]{2})/i);
+        minimumBid=prfMoney(bidMatch?.[1]||"");
+        if(!minimumBid) warnings.push("valor avaliado não localizado");
+      }else{
+        warnings.push("status de avaliação não localizado");
+      }
+    }else{
+      warnings.push("placa/UF não localizados");
+      context=block.slice(0,500);
     }
 
-    const plate=plateMatch[1].replace(/\s+/g,"").toUpperCase();
-    const uf=plateMatch[2].toUpperCase();
-    const afterPlate=block.slice(plateMatch.index+plateMatch[0].length).trim();
-    const statusMatch=afterPlate.match(PRF_STATUS);
-    if(!statusMatch || statusMatch.index==null){
-      failures.push({lot:lotNumber,reason:"status de avaliação não localizado",plate});
-      continue;
-    }
-
-    const beforeStatus=afterPlate.slice(0,statusMatch.index).trim();
-    const technicalMatch=beforeStatus.match(/^(.*)\s+(\S+)\s+(\d{5,14})\s+(\d{4})\s+(.+)$/);
-    if(!technicalMatch){
-      failures.push({lot:lotNumber,reason:"marca-modelo/chassi/renavam/ano/cor não reconciliados",plate});
-      continue;
-    }
-
-    let modelAndType=technicalMatch[1].trim();
-    const chassis=technicalMatch[2];
-    const renavam=technicalMatch[3];
-    const year=technicalMatch[4];
-    const color=technicalMatch[5].trim();
-
-    const typeMatch=modelAndType.match(PRF_TYPE_END);
-    const type=typeMatch ? typeMatch[0].trim() : "";
-    const brandModel=typeMatch
-      ? modelAndType.slice(0,modelAndType.length-typeMatch[0].length).trim()
-      : modelAndType;
-
-    if(!brandModel){
-      failures.push({lot:lotNumber,reason:"marca/modelo vazio após reconciliação",plate});
-      continue;
-    }
-
-    const afterStatus=afterPlate.slice((statusMatch.index||0)+statusMatch[0].length);
-    const bidMatch=afterStatus.match(/R\$\s*([0-9.]+,[0-9]{2})/i);
-    const prefix=block.slice(0,plateMatch.index).trim();
-    const dates=[...prefix.matchAll(/\b\d{2}\/\d{2}\/\d{2}\b/g)].map(x=>x[0]);
-    const entryDate=dates.length>1 ? dates[dates.length-1] : "";
-
-    lots.push({
+    const lot={
       n:lotNumber,
       auctionDate,
       entryDate,
       plate,
       uf,
       brandModel,
-      vehicle:brandModel,
+      vehicle:brandModel || `Lote oficial ${lotNumber}`,
       type,
       chassis,
       renavam,
       year,
       color,
-      statusAvaliacao:statusMatch[0].replace(/\s+/g," ").trim(),
-      minimumBid:prfMoney(bidMatch?.[1]||""),
-      context:prefix.replace(/^\d{1,4}\s*\d{2}\/\d{2}\/\d{2}\s*/,"").slice(0,500),
+      statusAvaliacao,
+      minimumBid,
+      context,
       sourceType:"official",
       needsReview:true,
-      parserWarnings:type ? [] : ["tipo de veículo não identificado separadamente"]
-    });
+      parserWarnings:warnings,
+      rawOfficialRow:block
+    };
+
+    lots.push(lot);
+    if(warnings.length) failures.push({lot:lotNumber,plate,reason:warnings.join("; ")});
   }
 
   const unique=new Map();

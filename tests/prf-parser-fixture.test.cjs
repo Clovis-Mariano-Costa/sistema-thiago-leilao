@@ -81,3 +81,25 @@ test('Edge Function não contém escapes literais entre declarações PRF',()=>{
   assert.doesNotMatch(edge,/PRF_HOSTS=.*;\\\\n\\\\nasync function fetchPrfLots/);
   assert.match(edge,/PRF_HOSTS=.*;\n\nasync function fetchPrfLots/);
 });
+
+
+test('parser PRF preserva lote mesmo quando uma linha tem campos incompletos',async()=>{
+  const {parsePrfLots}=await parser();
+  const sample=`
+1332 07/10/26
+DEL 8/6
+MAFRA
+PATIO EXEMPLO Cidade 01/01/26 ABC1D23 SC MODELO INCOMUM SEM CAMPOS SUFICIENTES Sucata inservível R$ 1,00
+1333 07/10/26
+DEL 8/6
+MAFRA
+PATIO EXEMPLO Cidade 01/01/26 XYZ9Z99 SC VW/GOL Automóvel 9BWZZZ12345678901 123456789 2000 PRETA Sucata inservível R$ 180,00
+`;
+  const parsed=parsePrfLots(sample);
+  assert.equal(parsed.sourceRows,2);
+  assert.equal(parsed.lots.length,2);
+  assert.equal(parsed.lots[0].n,1332);
+  assert.equal(parsed.lots[0].needsReview,true);
+  assert.ok(parsed.lots[0].rawOfficialRow);
+  assert.equal(parsed.lots[1].n,1333);
+});

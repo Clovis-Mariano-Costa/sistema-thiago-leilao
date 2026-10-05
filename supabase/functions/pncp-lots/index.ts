@@ -240,12 +240,21 @@ async function fetchPrfLots(pageUrl:string){
 
   const parsedPdf=await pdf(Buffer.from(bytes),{pagerender:renderPdfRows});
   const parsed=parsePrfLots(String(parsedPdf.text||""));
-  const parsedRatio=parsed.sourceRows ? parsed.lots.length/parsed.sourceRows : 0;
+  console.log("PRF_PARSE_DIAG",JSON.stringify({
+    pages:parsedPdf.numpages||null,
+    textChars:String(parsedPdf.text||"").length,
+    sourceRows:parsed.sourceRows,
+    lots:parsed.lots.length,
+    warnings:parsed.failures.length,
+    firstLot:parsed.lots[0]?.n||null,
+    lastLot:parsed.lots.at(-1)?.n||null,
+    sampleText:String(parsedPdf.text||"").slice(0,500)
+  }));
   if(!parsed.sourceRows){
     throw new Error("Nenhuma linha de lote foi localizada no Anexo I da PRF após reconstrução por linhas.");
   }
-  if(parsedRatio<0.98){
-    throw new Error(`Parser PRF extraiu apenas ${parsed.lots.length} de ${parsed.sourceRows} linhas candidatas; importação bloqueada para evitar dados parciais.`);
+  if(parsed.lots.length!==parsed.sourceRows){
+    throw new Error(`Inconsistência interna PRF: ${parsed.lots.length} lotes montados para ${parsed.sourceRows} linhas detectadas.`);
   }
 
   return {
@@ -427,6 +436,7 @@ Deno.serve(async (req:Request)=>{
       importedAt:new Date().toISOString()
     });
   }catch(error){
+    console.error("PNCP_LOTS_ERROR",String(error?.stack||error?.message||error));
     return json(req,{error:String(error?.message||error)},502);
   }
 });
