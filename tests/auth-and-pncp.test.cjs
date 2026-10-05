@@ -26,3 +26,30 @@ test('fontes carrega configuração e conector PNCP',()=>{
   assert.match(js,/Buscando lotes no edital oficial/);
   assert.match(js,/pncp_error/);
 });
+
+
+test('ST-MNM-40G Edge valida capability backend antes de iniciar telemetria',()=>{
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(edge,/async function requireBackendConnectorAuthority/);
+  assert.match(edge,/from\("official_sources"\)/);
+  assert.match(edge,/select\("id,active,extra_data"\)/);
+  assert.match(edge,/data\.active!==true/);
+  assert.match(edge,/extra_data\?\.lotsConnector/);
+  assert.match(edge,/requestedConnector!==backendConnector/);
+  const authorityPos=edge.indexOf('const authority=await requireBackendConnectorAuthority');
+  const runPos=edge.indexOf('const run=await startSourceRun');
+  assert.ok(authorityPos>=0 && runPos>authorityPos,'authority backend deve anteceder startSourceRun');
+  assert.match(edge,/if\(authority\.response\) return authority\.response/);
+  assert.match(edge,/authority\.admin/);
+});
+
+test('ST-MNM-40G chamada não autorizada falha antes de source_search_run',()=>{
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  const body=edge.slice(edge.indexOf('Deno.serve'));
+  const guard=body.indexOf('if(authority.response) return authority.response');
+  const start=body.indexOf('startSourceRun');
+  assert.ok(guard>=0 && start>guard,'guard server-side deve ocorrer antes da telemetria');
+  assert.match(edge,/Fonte oficial inexistente ou desativada para automação/);
+  assert.match(edge,/backend não autoriza conector automático/);
+  assert.match(edge,/Conector solicitado não corresponde à capability autorizada/);
+});
