@@ -270,3 +270,16 @@ test('ST-MNM-32A ids de auditoria ficam fora do payload oficial bruto',()=>{
   assert.match(fontes,/delete officialPayload\.__sourceRunId/);
   assert.match(fontes,/delete officialPayload\.__sourceDocumentId/);
 });
+
+
+test('ST-MNM-33A mostra capacidade e frescor sem habilitar conectores novos',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  const html=fs.readFileSync('fontes-oficiais.html','utf8');
+  assert.match(fontes,/function connectorLabel/);
+  assert.match(fontes,/function sourceFreshness/);
+  assert.match(fontes,/não automatizada nesta fonte/);
+  assert.match(fontes,/source\.lotsConnector/);
+  assert.match(html,/catálogo informa quando a extração de lotes é automatizada/);
+  assert.doesNotMatch(fontes,/fetch\(source\.url/);
+});
