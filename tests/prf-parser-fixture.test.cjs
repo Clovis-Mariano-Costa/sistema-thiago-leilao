@@ -103,3 +103,20 @@ PATIO EXEMPLO Cidade 01/01/26 XYZ9Z99 SC VW/GOL Automóvel 9BWZZZ12345678901 123
   assert.ok(parsed.lots[0].rawOfficialRow);
   assert.equal(parsed.lots[1].n,1333);
 });
+
+
+test('ST-MNM-44D recupera valor mínimo das linhas OCR reais da PRF',async()=>{
+  const {extractPrfMinimumBid,parsePrfLots}=await parser();
+  const rows=[
+    ['1 05/10/26 MAFRA CANOINHAS Canoinhas 02/02/26 MDO2849 SC PEUGE OT/206 14 PRE SENC Aut omó vel 9362AKFW95B007060 840516290 2004 PRET A Cir culaç ão 2.900,00 DEL 8/6 DOCA - R$','2.900,00'],
+    ['7 05/10/26 CHAPE CÓ XANXERÊ Chapec ó 26/07/25 HQO1D42 SC HOND A/C G 125 T OD AY Mot ocicle ta 9C2JC1801MR584066 132015277 1991 VERMELHA Cir culaç ão R$ 930,00 DEL 8/6 CALDERAN R$','930,00'],
+    ['334 05/10/26 CHAPE CÓ MARA VILHA Mar avilha 14/11/25 MBB1268 SC HOND A/C100 BIZ Mot one ta 9C2HA070XWR002748 708693032 1998 AZUL Cir culaç ão 1080 DEL 8/6 SUDE STE -','1080'],
+    ['757 06/10/26 CHAPE CÓ XANXERÊ Chapec ó 24/05/23 AOF6093 SC VW/GOL 1.0 Aut omó vel 9B WCA05W17T020389 901351849 2006 PRA TA apr oveit ável 850 DEL 8/6 CALDERAN Suc ata','850'],
+    ['1000 06/10/26 CHAPE CÓ XANXERÊ Chapec ó 12/10/23 MA C9F86 SC VW/GOL 16V Aut omó vel 9B WZZZ373WT129364 703522680 1998 VERDE inser vív el R$ 700,00 Suc ata apr oveit ável DEL 8/6 CALDERAN - mot or','700,00']
+  ];
+  for(const [row,expected] of rows) assert.equal(extractPrfMinimumBid(row),expected);
+
+  const parsed=parsePrfLots(rows.map(([row])=>row).join('\n'));
+  assert.equal(parsed.lots.length,rows.length);
+  assert.deepEqual(parsed.lots.map(lot=>lot.minimumBid),rows.map(([,expected])=>expected));
+});
