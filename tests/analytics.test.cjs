@@ -23,15 +23,18 @@ test('análises não convertem ausência de valor em média zero',()=>{
   const js=fs.readFileSync('analises.js','utf8');
   assert.match(js,/if\(!values\.length\) return null/);
   assert.match(js,/avg==null\?'—':money\(avg\)/);
-  assert.match(js,/nenhum valor informado/);
+  assert.match(js,/nenhum valor definido/);
 });
 
-test('mapa fica bloqueado enquanto localização não estiver comprovada',()=>{
+test('mapa usa somente localização comprovada e mantém vazio quando não houver dado',()=>{
   const html=fs.readFileSync('analises.html','utf8');
   const js=fs.readFileSync('analises.js','utf8');
-  assert.match(html,/Mapa não exibido nesta etapa/);
-  assert.match(html,/localização estruturada|cidade\/pátio ou coordenadas/);
-  assert.doesNotMatch(js,/google\.maps|leaflet|mapbox/i);
+  assert.match(html,/id="analyticsLocations"/);
+  assert.match(html,/id="analyticsMapFrame"/);
+  assert.match(js,/function renderLocations\(items,auction\)/);
+  assert.match(js,/if\(!unique\.length\)/);
+  assert.match(js,/Nenhuma localização física comprovada/);
+  assert.match(js,/google\.com\/maps\?q=/);
 });
 
 test('ST-MNM-26A separa FIPE, mínimo, nosso máximo e valor final',()=>{
