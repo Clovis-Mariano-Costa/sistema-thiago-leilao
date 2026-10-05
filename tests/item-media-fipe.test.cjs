@@ -4,7 +4,8 @@ const fs=require('node:fs');
 
 test('ST-MNM-44C private-media funciona no app e na pagina FIPE',()=>{
   const media=fs.readFileSync('private-media.js','utf8');
-  assert.doesNotMatch(media,/!window\.SISTEMA_THIAGO_APP/);
+  assert.match(media,/scheduleMediaHydration\(\);/);
+  assert.match(media,/if\(!window\.SISTEMA_THIAGO_APP\)/);
   assert.match(media,/SISTEMA_THIAGO_MEDIA_URLS/);
   assert.match(media,/SISTEMA_THIAGO_ITEM_MEDIA_URLS/);
   assert.match(media,/SISTEMA_THIAGO_FIPE_MEDIA_URLS/);
@@ -17,7 +18,7 @@ test('ST-MNM-44C pagina FIPE exibe imagem privada assinada quando houver imageNa
   const html=fs.readFileSync('fipe.html','utf8');
   const js=fs.readFileSync('fipe.js','utf8');
   const css=fs.readFileSync('styles.css','utf8');
-  assert.match(html,/private-media\.js\?v=20261005-item45a1/);
+  assert.match(html,/private-media\.js\?v=20261005-item45b1/);
   assert.match(js,/SISTEMA_THIAGO_FIPE_MEDIA_URLS/);
   assert.match(js,/class="fipe-reference-media"/);
   assert.match(js,/loading="lazy"/);
