@@ -107,7 +107,8 @@ test('PRF/SC possui adaptador de lotes oficial sem depender de coordenadas PNCP'
   const fs=require('node:fs');
   const fontes=fs.readFileSync('fontes.js','utf8');
   const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
-  assert.match(fontes,/sourceId==='prf-sc'/);
+  assert.match(fontes,/lotsConnector/);
+  assert.match(fontes,/lotConnectorFor/);
   assert.match(fontes,/enrichOfficialLots/);
   assert.match(edge,/sourceId==="prf-sc"/);
   assert.match(edge,/fetchPrfLots/);
