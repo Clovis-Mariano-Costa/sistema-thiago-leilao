@@ -74,3 +74,17 @@ test('ST-MNM-41C fallback DETRAN exige pncp-detran antes da telemetria',()=>{
   const run=edge.indexOf('const run=await startSourceRun');
   assert.ok(fallbackGuard>=0 && run>fallbackGuard,'fallback DETRAN indevido deve falhar antes de startSourceRun');
 });
+
+
+test('ST-MNM-42A pncp-detran prioriza edital DETRAN antes do parsing PNCP',()=>{
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(edge,/preferDetranFallback=connector==="pncp-detran" && Boolean\(fallbackUrl\)/);
+  assert.match(edge,/const parseDetranFallback=async\(\)=>/);
+  assert.match(edge,/const parsePncpDocuments=async\(\)=>/);
+  const gate=edge.indexOf('if(preferDetranFallback)');
+  const fallback=edge.indexOf('await parseDetranFallback();',gate);
+  const pncp=edge.indexOf('await parsePncpDocuments();',fallback);
+  assert.ok(gate>=0 && fallback>gate && pncp>fallback,'DETRAN deve ser tentado antes dos PDFs PNCP no pncp-detran');
+  assert.match(edge,/expectedIndividual>0 && lots\.length<expectedIndividual/);
+  assert.match(edge,/connector:authority\.connector/);
+});
