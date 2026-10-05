@@ -369,6 +369,10 @@
       <p id="liveVehicle" class="live-vehicle"></p>
       <p id="livePreference" class="live-preference" hidden></p>
       <p id="liveMaxBid" class="live-max-bid" hidden></p>
+      <button id="livePhotoButton" class="live-photo-button" type="button" hidden aria-label="Ampliar foto do lote atual">
+        <img id="livePhoto" class="live-photo" alt="" />
+        <span>Ver foto maior</span>
+      </button>
       <div class="live-actions-grid live-actions-three">
         <button id="liveBackBtn" class="live-utility-btn" type="button">← Voltar</button>
         <button id="livePreferenceBtn" class="live-utility-btn" type="button">★ Preferência</button>
@@ -380,6 +384,13 @@
     </div>
   </dialog>
 
+  <dialog id="photoViewerDialog" class="photo-viewer-dialog" aria-label="Foto ampliada do lote">
+    <div class="photo-viewer-shell">
+      <button id="closePhotoViewerBtn" class="photo-viewer-close" type="button" aria-label="Fechar foto ampliada">×</button>
+      <img id="photoViewerImage" class="photo-viewer-image" alt="" />
+      <p id="photoViewerCaption" class="photo-viewer-caption"></p>
+    </div>
+  </dialog>
 
   <button class="charlie-launcher" data-system-chat-launcher type="button" aria-label="Conversar com Charlie Echo">✦ Charlie Echo</button>
   <section class="charlie-panel" data-system-chat-panel hidden aria-label="Conversa com Charlie Echo">
