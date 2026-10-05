@@ -52,7 +52,7 @@ test('ST-MNM-36A bloqueia owner em auction_members e preserva hierarquia de conv
   const sql=fs.readFileSync('supabase/migrations/20261005042723_harden_auction_member_role_hierarchy.sql','utf8');
   assert.match(sql,/membership\.owner_legacy_removed/);
   assert.match(sql,/insert into public\.audit_log/);
-  assert.ok(sql.includes("delete from public.auction_members\\nwhere role='owner'::public.auction_member_role;"));
+  assert.match(sql,/delete from public\.auction_members\s+where role='owner'::public\.auction_member_role;/);
   assert.match(sql,/auction_members_no_owner_role/);
   assert.match(sql,/role <> 'owner'::public\.auction_member_role/);
   assert.ok(sql.indexOf('membership.owner_legacy_removed') < sql.indexOf('add constraint auction_members_no_owner_role'));
