@@ -126,7 +126,7 @@ async function enrichOfficialLots(item,button){
     return {
       item,
       connectorAttempted:true,
-      connectorError:'Configuração do conector PNCP/Supabase não encontrada nesta publicação.',
+      connectorError:'Configuração do conector oficial/Supabase não encontrada nesta publicação.',
       connectorData:null
     };
   }
@@ -369,9 +369,9 @@ function render(){
     const enriched=await enrichOfficialLots(base,btn);
     const item={
       ...enriched.item,
-      __pncpAttempted:enriched.pncpAttempted,
-      __connectorError:enriched.pncpError || '',
-      __pncpDocument:enriched.pncpData?.documentUsed?.name || ''
+      __pncpAttempted:enriched.connectorAttempted,
+      __pncpError:enriched.connectorError || '',
+      __pncpDocument:enriched.connectorData?.documentUsed?.name || ''
     };
     await importAuction(item,btn);
   }));
