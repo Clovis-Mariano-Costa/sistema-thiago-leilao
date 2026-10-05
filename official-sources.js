@@ -8,6 +8,7 @@ window.SISTEMA_THIAGO_OFFICIAL_SOURCES = [
     url:'https://www.detran.sc.gov.br/leiloes/',
     searchUrl:'https://www.detran.sc.gov.br/download-category/leiloes/',
     method:'Página e editais oficiais',
+    lotsConnector:'detran-pdf',
     status:'ATIVA',
     lastVerified:'2026-10-02'
   },
@@ -20,6 +21,7 @@ window.SISTEMA_THIAGO_OFFICIAL_SOURCES = [
     url:'https://sistemas.sc.gov.br/sea/portaldecompras/',
     searchUrl:'https://sistemas.sc.gov.br/sea/portaldecompras/processos_publicados_portal.asp',
     method:'Portal oficial de processos publicados',
+    lotsConnector:'pncp-detran',
     status:'ATIVA',
     lastVerified:'2026-10-02'
   },
@@ -32,6 +34,7 @@ window.SISTEMA_THIAGO_OFFICIAL_SOURCES = [
     url:'https://pncp.gov.br/',
     searchUrl:'https://pncp.gov.br/app/editais',
     method:'Portal oficial nacional',
+    lotsConnector:'pncp',
     status:'ATIVA',
     lastVerified:'2026-10-02'
   },
@@ -44,6 +47,7 @@ window.SISTEMA_THIAGO_OFFICIAL_SOURCES = [
     url:'https://www.gov.br/prf/pt-br/assuntos/leiloes-prf/santa-catarina',
     searchUrl:'https://www.gov.br/prf/search?SearchableText=Leil%C3%A3o&origem=keyword',
     method:'Páginas e editais oficiais GOV.BR',
+    lotsConnector:'prf-pdf',
     status:'ATIVA',
     lastVerified:'2026-10-02'
   },
@@ -132,6 +136,7 @@ window.SISTEMA_THIAGO_OFFICIAL_RESULTS = [
     foundAt:'gov.br/prf — página oficial PRF/SC',
     publishedAt:'2026-09-09',
     lastChecked:'2026-10-02',
+    lotsConnector:'prf-pdf',
     extraFields:{
       'Data circulação':'05/10/2026',
       'Data sucata aproveitável':'06/10/2026',
@@ -143,6 +148,7 @@ window.SISTEMA_THIAGO_OFFICIAL_RESULTS = [
     sourceId:'compras-sc',
     status:'NOVA DATA PUBLICADA',
     statusNote:'O DETRAN/SC publicou suspensão anterior e posteriormente um edital do Leilão 13/2026 com “NOVA DATA”. O Portal de Compras lista 13/10/2026 às 09:00; conferir o edital vigente antes do acompanhamento.',
+    lotsConnector:'pncp-detran',
     pncp:{cnpj:'34060183000152',year:2026,sequence:40,control:'34060183000152-1-000040/2026'},
     detranDownloadPage:'https://www.detran.sc.gov.br/download/edital-descritivo-leilao-13-2026-blumenau-e-regioes-nova-data/',
     sourceName:'Portal de Compras SC',
@@ -164,6 +170,7 @@ window.SISTEMA_THIAGO_OFFICIAL_RESULTS = [
     id:'detran-sc-1500-2026',
     sourceId:'compras-sc',
     status:'EM RECEBIMENTO DE PROPOSTA',
+    lotsConnector:'pncp-detran',
     pncp:{cnpj:'34060183000152',year:2026,sequence:41,control:'34060183000152-1-000041/2026'},
     detranDownloadPage:'https://www.detran.sc.gov.br/download/edital-descritivo-do-leilao-publico-15-2026-fpolis-serra-e-regioes/',
     sourceName:'Portal de Compras SC',
@@ -185,6 +192,7 @@ window.SISTEMA_THIAGO_OFFICIAL_RESULTS = [
     id:'detran-sc-1600-2026',
     sourceId:'compras-sc',
     status:'EM RECEBIMENTO DE PROPOSTA',
+    lotsConnector:'pncp-detran',
     pncp:{cnpj:'34060183000152',year:2026,sequence:44,control:'34060183000152-1-000044/2026'},
     detranDownloadPage:'https://www.detran.sc.gov.br/download/edital-descritivo-do-leilao-publico-16-2026-criciuma-e-outras-regioes/',
     sourceName:'Portal de Compras SC',
