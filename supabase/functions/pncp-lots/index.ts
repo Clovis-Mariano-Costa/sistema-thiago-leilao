@@ -73,6 +73,15 @@ async function startSourceRun(sourceId:string,query:string,metadata:any={},exist
 async function finishSourceRun(admin:any,runId:string,status:string,foundCount:number,errorMessage="",metadata:any={}){
   if(!admin || !runId) return;
   try{
+    const {data:current,error:readError}=await admin
+      .from("source_search_runs")
+      .select("metadata")
+      .eq("id",runId)
+      .maybeSingle();
+    if(readError){
+      console.warn("SOURCE_RUN_METADATA_READ_WARN",runId,readError.message);
+    }
+    const mergedMetadata={...(current?.metadata||{}),...(metadata||{})};
     const {error}=await admin
       .from("source_search_runs")
       .update({
@@ -80,7 +89,7 @@ async function finishSourceRun(admin:any,runId:string,status:string,foundCount:n
         found_count:Math.max(0,Number(foundCount)||0),
         finished_at:new Date().toISOString(),
         error_message:errorMessage||null,
-        metadata
+        metadata:mergedMetadata
       })
       .eq("id",runId);
     if(error) console.warn("SOURCE_RUN_FINISH_WARN",runId,error.message);
