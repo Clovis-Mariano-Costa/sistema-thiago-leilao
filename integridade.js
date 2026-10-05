@@ -197,17 +197,63 @@ function latestIso(rows,field){
   return latest;
 }
 
+const sourceCatalogById=new Map(
+  (window.SISTEMA_THIAGO_OFFICIAL_SOURCES||[]).map(source=>[source.id,source])
+);
+
+function sourceCapability(source){
+  const declared=sourceCatalogById.get(source.id)||{};
+  const connector=String(declared.lotsConnector||'').trim();
+  if(connector){
+    return {
+      key:'connector',
+      label:'Conector comprovado',
+      detail:connector,
+      next:'Executar pela tela Fontes oficiais com sessão autenticada e conferir run + documento + paridade.'
+    };
+  }
+
+  const status=String(source.status||declared.status||'').toUpperCase();
+  if(status==='VALIDAR_ROTA'){
+    return {
+      key:'validate',
+      label:'Rota a validar',
+      detail:'sem conector',
+      next:'Validar a rota oficial antes de qualquer automação; manter consulta assistida até haver adaptador comprovado.'
+    };
+  }
+
+  if(status==='MONITORAR'){
+    return {
+      key:'monitor',
+      label:'Monitoramento assistido',
+      detail:'sem conector',
+      next:'Rever publicação oficial manualmente; só automatizar após caso real, parser específico e proveniência.'
+    };
+  }
+
+  return {
+    key:'assisted',
+    label:'Consulta assistida',
+    detail:'sem conector',
+    next:'Consultar a fonte oficial pela interface; não promover dado sem evidência backend e origem preservada.'
+  };
+}
+
 function renderSourceObservability(sources,runs,documents){
   sourceRowsBox.innerHTML='';
   const active=(sources||[]).filter(source=>source.active!==false);
   sourceEmptyBox.hidden=active.length>0;
   const coverage=new Set();
+  let connectorPending=0;
 
   for(const source of active){
     const sourceRuns=(runs||[]).filter(row=>row.source_id===source.id);
     const sourceDocs=(documents||[]).filter(row=>row.source_id===source.id);
     const complete=sourceRuns.length>0 && sourceDocs.length>0;
+    const capability=sourceCapability(source);
     if(complete) coverage.add(source.id);
+    if(!complete && capability.key==='connector') connectorPending++;
     const latest=[latestIso(sourceRuns,'started_at'),latestIso(sourceDocs,'created_at')]
       .filter(Boolean)
       .sort()
@@ -216,10 +262,14 @@ function renderSourceObservability(sources,runs,documents){
     const values=[
       source.name||source.id,
       source.status||'—',
+      capability.label+(capability.detail ? ' • '+capability.detail : ''),
       String(sourceRuns.length),
       String(sourceDocs.length),
       latest,
-      complete?'Com prova backend':'Sem telemetria'
+      complete?'Com prova backend':'Sem telemetria',
+      complete
+        ? 'Manter evidência atualizada quando houver nova execução oficial.'
+        : capability.next
     ];
     for(const value of values){
       const td=document.createElement('td');
@@ -229,7 +279,7 @@ function renderSourceObservability(sources,runs,documents){
     sourceRowsBox.appendChild(tr);
   }
 
-  return {active:active.length,covered:coverage.size};
+  return {active:active.length,covered:coverage.size,connectorPending};
 }
 
 function roleReadiness(userId,auctions,memberships){
@@ -359,7 +409,9 @@ async function loadIntegrity(){
           ? 'ok'
           : (sourceCoverage.covered?'partial':'pending'),
         sourceCoverage.active
-          ? sourceCoverage.covered+'/'+sourceCoverage.active+' fonte(s) ativa(s) possuem run + documento visíveis. Totais: '+runCount+' execução(ões), '+docCount+' documento(s).'
+          ? sourceCoverage.covered+'/'+sourceCoverage.active+' fonte(s) ativa(s) possuem run + documento visíveis. '
+            +sourceCoverage.connectorPending+' fonte(s) com conector comprovado ainda aguardam nova execução governada. '
+            +'Totais: '+runCount+' execução(ões), '+docCount+' documento(s).'
           : 'Nenhuma fonte ativa visível para medir telemetria.'),
       gate('Matriz de papéis do P2',roles.missing.length===0?'ok':(roles.demonstrated.length?'partial':'pending'),
         'Demonstrados nesta sessão: '+(roles.demonstrated.join(', ')||'nenhum')+
