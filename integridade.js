@@ -207,25 +207,34 @@ const resultCatalogById=new Map(
 );
 
 function sourceCapability(source){
-  const declared=sourceCatalogById.get(source.id)||{};
+  const declared=sourceCatalogById.get(source?.id)||{};
+  const backendPresent=Boolean(source && Object.prototype.hasOwnProperty.call(source,'active'));
   const backendConnector=String(source?.extra_data?.lotsConnector||'').trim();
   const catalogConnector=String(declared.lotsConnector||'').trim();
 
-  if(backendConnector && catalogConnector && backendConnector!==catalogConnector){
+  if(!backendPresent){
+    return {
+      key:'backend_missing',
+      label:'Autoridade backend indisponível',
+      detail:catalogConnector ? 'catálogo '+catalogConnector+' sem confirmação backend' : 'fonte não visível no backend',
+      next:'Não executar automaticamente. Restaurar a autoridade backend antes de considerar qualquer capability.'
+    };
+  }
+
+  if((backendConnector || catalogConnector) && backendConnector!==catalogConnector){
     return {
       key:'drift',
       label:'Divergência de capability',
-      detail:'backend '+backendConnector+' ≠ catálogo '+catalogConnector,
+      detail:'backend '+(backendConnector||'ausente')+' ≠ catálogo '+(catalogConnector||'ausente'),
       next:'Não executar automaticamente. Reconciliar backend e catálogo antes de nova importação.'
     };
   }
 
-  const connector=backendConnector||catalogConnector;
-  if(connector){
+  if(backendConnector && catalogConnector){
     return {
       key:'connector',
       label:'Conector comprovado',
-      detail:connector+(backendConnector?' • backend':' • catálogo'),
+      detail:backendConnector+' • backend = catálogo',
       next:'Executar pela tela Fontes oficiais com sessão autenticada e conferir run + documento + paridade.'
     };
   }
