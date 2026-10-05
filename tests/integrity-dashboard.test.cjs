@@ -113,3 +113,17 @@ test('ST-MNM-40C prefere capability backend e falha fechado em divergência',()=
   assert.match(js,/fetchVisibleRows\('official_sources','id,name,status,last_verified,active,extra_data'/);
   assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 });
+
+
+test('ST-MNM-40D exige run success para prova e expõe execução ativa',()=>{
+  const js=fs.readFileSync('integridade.js','utf8');
+  assert.match(js,/function runLifecycle/);
+  assert.match(js,/row\.status==='success'/);
+  assert.match(js,/row\.status==='started' && !row\.finished_at/);
+  assert.match(js,/complete=lifecycle\.success>0 && sourceDocs\.length>0/);
+  assert.match(js,/execução em andamento/);
+  assert.match(js,/não iniciar outra para a mesma fonte/);
+  assert.match(js,/sourcesWithErrors/);
+  assert.match(js,/activeRuns/);
+  assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+});
