@@ -203,12 +203,24 @@ const sourceCatalogById=new Map(
 
 function sourceCapability(source){
   const declared=sourceCatalogById.get(source.id)||{};
-  const connector=String(declared.lotsConnector||'').trim();
+  const backendConnector=String(source?.extra_data?.lotsConnector||'').trim();
+  const catalogConnector=String(declared.lotsConnector||'').trim();
+
+  if(backendConnector && catalogConnector && backendConnector!==catalogConnector){
+    return {
+      key:'drift',
+      label:'Divergência de capability',
+      detail:'backend '+backendConnector+' ≠ catálogo '+catalogConnector,
+      next:'Não executar automaticamente. Reconciliar backend e catálogo antes de nova importação.'
+    };
+  }
+
+  const connector=backendConnector||catalogConnector;
   if(connector){
     return {
       key:'connector',
       label:'Conector comprovado',
-      detail:connector,
+      detail:connector+(backendConnector?' • backend':' • catálogo'),
       next:'Executar pela tela Fontes oficiais com sessão autenticada e conferir run + documento + paridade.'
     };
   }
@@ -246,6 +258,7 @@ function renderSourceObservability(sources,runs,documents){
   sourceEmptyBox.hidden=active.length>0;
   const coverage=new Set();
   let connectorPending=0;
+  let capabilityDrift=0;
 
   for(const source of active){
     const sourceRuns=(runs||[]).filter(row=>row.source_id===source.id);
@@ -254,6 +267,7 @@ function renderSourceObservability(sources,runs,documents){
     const capability=sourceCapability(source);
     if(complete) coverage.add(source.id);
     if(!complete && capability.key==='connector') connectorPending++;
+    if(capability.key==='drift') capabilityDrift++;
     const latest=[latestIso(sourceRuns,'started_at'),latestIso(sourceDocs,'created_at')]
       .filter(Boolean)
       .sort()
@@ -279,7 +293,7 @@ function renderSourceObservability(sources,runs,documents){
     sourceRowsBox.appendChild(tr);
   }
 
-  return {active:active.length,covered:coverage.size,connectorPending};
+  return {active:active.length,covered:coverage.size,connectorPending,capabilityDrift};
 }
 
 function roleReadiness(userId,auctions,memberships){
@@ -353,7 +367,7 @@ async function loadIntegrity(){
       fetchVisibleRows('auction_members','auction_id,user_id,role,created_at','created_at'),
       fetchVisibleRows('invitations','auction_id,role,status,expires_at,created_at','created_at'),
       fetchVisibleRows('audit_log','auction_id,entity_type,action,created_at','created_at'),
-      fetchVisibleRows('official_sources','id,name,status,last_verified,active','id'),
+      fetchVisibleRows('official_sources','id,name,status,last_verified,active,extra_data','id'),
       fetchVisibleRows('source_search_runs','source_id,status,found_count,started_at,finished_at','started_at'),
       fetchVisibleRows('source_documents','source_id,created_at,document_url','created_at')
     ]);
@@ -411,6 +425,7 @@ async function loadIntegrity(){
         sourceCoverage.active
           ? sourceCoverage.covered+'/'+sourceCoverage.active+' fonte(s) ativa(s) possuem run + documento visíveis. '
             +sourceCoverage.connectorPending+' fonte(s) com conector comprovado ainda aguardam nova execução governada. '
+            +sourceCoverage.capabilityDrift+' divergência(s) backend ↔ catálogo. '
             +'Totais: '+runCount+' execução(ões), '+docCount+' documento(s).'
           : 'Nenhuma fonte ativa visível para medir telemetria.'),
       gate('Matriz de papéis do P2',roles.missing.length===0?'ok':(roles.demonstrated.length?'partial':'pending'),
