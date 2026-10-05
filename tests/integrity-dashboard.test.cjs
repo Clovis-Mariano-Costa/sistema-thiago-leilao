@@ -194,3 +194,14 @@ test('ST-MNM-41D exibe resultado catalogado mesmo sem run backend',()=>{
   assert.match(js,/renderResultObservability\(sourceRunRows,sourceDocumentRows,auctions,lots,sourceRows\)/);
   assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 });
+
+
+test('ST-MNM-42B distingue run ativo de run possivelmente órfão',()=>{
+  const js=fs.readFileSync('integridade.js','utf8');
+  assert.match(js,/STALE_RUN_MS=10\*60\*1000/);
+  assert.match(js,/function isStaleStartedRun/);
+  assert.match(js,/latestStale=isStaleStartedRun\(latest\)/);
+  assert.match(js,/execução possivelmente órfã/);
+  assert.match(js,/Não iniciar outra execução automaticamente/);
+  assert.match(js,/órfãos\?/);
+});
