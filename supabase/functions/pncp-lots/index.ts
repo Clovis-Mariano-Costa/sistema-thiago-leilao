@@ -138,7 +138,14 @@ async function requireConfirmedUser(req: Request) {
   return {response:null,user};
 }
 
-async function requireBackendConnectorAuthority(req:Request,sourceId:string,requestedConnector:string){
+const SUPPORTED_BACKEND_CONNECTORS=new Set(["pncp","pncp-detran","prf-pdf"]);
+
+async function requireBackendConnectorAuthority(
+  req:Request,
+  sourceId:string,
+  requestedConnector:string,
+  fallbackUrl:string
+){
   const admin=adminSupabase();
   if(!admin){
     return {
@@ -180,11 +187,27 @@ async function requireBackendConnectorAuthority(req:Request,sourceId:string,requ
     };
   }
 
+  if(!SUPPORTED_BACKEND_CONNECTORS.has(backendConnector)){
+    return {
+      response:json(req,{error:"A capability configurada no backend não é executável por esta Edge."},403),
+      admin,
+      connector:""
+    };
+  }
+
   if(!requestedConnector || requestedConnector!==backendConnector){
     return {
       response:json(req,{
         error:"Conector solicitado não corresponde à capability autorizada no backend."
       },403),
+      admin,
+      connector:""
+    };
+  }
+
+  if(backendConnector==="pncp" && fallbackUrl){
+    return {
+      response:json(req,{error:"Fallback DETRAN exige capability pncp-detran autorizada no backend."},403),
       admin,
       connector:""
     };
@@ -451,7 +474,7 @@ Deno.serve(async (req:Request)=>{
     const reference=String(body?.reference||"").trim();
     const fallbackUrl=String(body?.fallbackUrl||"").trim();
 
-    const authority=await requireBackendConnectorAuthority(req,sourceId,connector);
+    const authority=await requireBackendConnectorAuthority(req,sourceId,connector,fallbackUrl);
     if(authority.response) return authority.response;
 
     const run=await startSourceRun(
