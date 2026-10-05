@@ -172,3 +172,21 @@ test('ST-MNM-41A reconcilia proveniência por resultId sem somar resultados da m
   assert.match(js,/fetchVisibleRows\('source_documents','id,source_id,reference,created_at,document_url'/);
   assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 });
+
+
+test('ST-MNM-41B exibe resultado catalogado mesmo sem run backend',()=>{
+  const html=fs.readFileSync('integridade.html','utf8');
+  const js=fs.readFileSync('integridade.js','utf8');
+  assert.match(html,/catálogo define a expectativa/);
+  assert.match(js,/SISTEMA_THIAGO_OFFICIAL_RESULTS/);
+  assert.match(js,/resultCatalogById/);
+  assert.match(js,/for\(const result of catalogResults\)/);
+  assert.match(js,/if\(!resultRuns\.length && catalogResult\)/);
+  assert.match(js,/Sem run backend • execução governada pendente/);
+  assert.match(js,/Relacional sem prova backend/);
+  assert.match(js,/Sem run backend • capability divergente/);
+  assert.match(js,/catalogMissing/);
+  assert.match(js,/runOnly/);
+  assert.match(js,/renderResultObservability\(sourceRunRows,sourceDocumentRows,auctions,lots,sourceRows\)/);
+  assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+});
