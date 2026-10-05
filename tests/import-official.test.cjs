@@ -226,6 +226,7 @@ test('ST-MNM-31A catálogo declara conectores de lotes sem rota genérica',()=>{
   assert.match(sources,/lotsConnector:'prf-pdf'/);
   assert.match(sources,/lotsConnector:'pncp-detran'/);
   assert.match(sources,/lotsConnector:'pncp'/);
+  assert.doesNotMatch(sources,/lotsConnector:'detran-pdf'/);
   assert.match(fontes,/SUPPORTED_LOT_CONNECTORS/);
   assert.match(fontes,/lotConnectorFor/);
   assert.doesNotMatch(fontes,/item\?\.sourceId==='prf-sc'/);
@@ -247,4 +248,90 @@ test('ST-MNM-31A fonte sem capacidade declarada não recebe importador automáti
   const fontes=fs.readFileSync('fontes.js','utf8');
   assert.match(fontes,/if\(!SUPPORTED_LOT_CONNECTORS\.has\(declared\)\) return ''/);
   assert.match(fontes,/if\(\(declared==='pncp' \|\| declared==='pncp-detran'\) && !item\?\.pncp\) return ''/);
+});
+
+
+test('ST-MNM-30B executa persistência relacional com lote real e preserva campo humano',async()=>{
+  const fs=require('node:fs');
+  const vm=require('node:vm');
+  let source=fs.readFileSync('fontes.js','utf8');
+  source=source.replace(
+    'import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";',
+    'const createClient=globalThis.__createClient;'
+  );
+  source=source.slice(0,source.indexOf('function normalizeImportedLot'));
+  source+='\n;globalThis.__persistOfficialRelational=persistOfficialRelational;';
+
+  let lotUpsertRows=null;
+  const existingLot={
+    lot_number:1,
+    item_type:'vehicle',
+    plate:'HUM1234',
+    brand_model:'Modelo confirmado',
+    chassis:null,engine:null,model_year:'2020',color:'Azul',fuel:'Flex',
+    extra_data:{humanConfirmedFields:['plate'],humanConfirmedAt:'2026-10-05T03:00:00Z',manual:'preservar'}
+  };
+
+  function query(table){
+    let op='select';
+    let payload=null;
+    const q={
+      select(){return q;},
+      eq(){return q;},
+      contains(){return q;},
+      limit(){return q;},
+      range(){return q;},
+      update(value){op='update';payload=value;return q;},
+      insert(value){op='insert';payload=value;return q;},
+      upsert(value){
+        op='upsert';payload=value;
+        if(table==='lots') lotUpsertRows=value;
+        return q;
+      },
+      single(){
+        if(table==='auctions' && op==='insert') return Promise.resolve({data:{id:'auction-1'},error:null});
+        return Promise.resolve({data:null,error:null});
+      },
+      then(resolve,reject){
+        try{
+          if(table==='auctions' && op==='select') return resolve({data:[],error:null});
+          if(table==='lots' && op==='select') return resolve({data:[existingLot],error:null});
+          if(table==='lots' && op==='upsert') return resolve({data:[{id:'lot-1',lot_number:1}],error:null});
+          if(table==='lot_items' && op==='upsert') return resolve({data:[{id:'item-1'}],error:null});
+          if(op==='update') return resolve({data:null,error:null});
+          return resolve({data:[],error:null});
+        }catch(error){ return reject(error); }
+      }
+    };
+    return q;
+  }
+
+  const client={
+    auth:{getSession:async()=>({data:{session:{user:{id:'user-1',email_confirmed_at:'2026-10-05T00:00:00Z'}}},error:null})},
+    from:query
+  };
+  const sandbox={
+    __createClient:()=>client,
+    window:{SUPABASE_CONFIG:{url:'https://example.supabase.co',publishableKey:'pk'},SISTEMA_THIAGO_OFFICIAL_SOURCES:[],SISTEMA_THIAGO_OFFICIAL_RESULTS:[]},
+    localStorage:{getItem:()=>null,setItem:()=>{}},
+    console,
+    URLSearchParams,
+    Date,
+    Set,Map,Number,String,Object,Array,JSON,Promise
+  };
+  vm.runInNewContext(source,sandbox,{filename:'fontes.js'});
+  const result=await sandbox.__persistOfficialRelational({
+    id:'official-1',
+    title:'Leilão oficial teste',
+    officialUrl:'https://www.gov.br/exemplo',
+    lots:[{n:1,vehicle:'Veículo oficial',plate:'OFF9999',year:'2020',extraFields:{parser:'ok'}}]
+  });
+
+  assert.equal(result.ok,true);
+  assert.equal(result.lots,1);
+  assert.equal(result.items,1);
+  assert.ok(Array.isArray(lotUpsertRows));
+  assert.equal(lotUpsertRows[0].plate,'HUM1234');
+  assert.equal(lotUpsertRows[0].extra_data.manual,'preservar');
+  assert.equal(lotUpsertRows[0].extra_data.parser,'ok');
 });
