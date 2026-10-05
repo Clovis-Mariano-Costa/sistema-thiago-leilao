@@ -5,6 +5,8 @@ const statusBox=document.querySelector('#integrityStatus');
 const gateBox=document.querySelector('#integrityGates');
 const rowsBox=document.querySelector('#integrityAuctionRows');
 const emptyBox=document.querySelector('#integrityAuctionEmpty');
+const parityRowsBox=document.querySelector('#integrityParityRows');
+const parityEmptyBox=document.querySelector('#integrityParityEmpty');
 const refreshBtn=document.querySelector('#refreshIntegrity');
 
 let client=null;
@@ -107,6 +109,74 @@ function renderTable(auctions,lots,items){
   }
 }
 
+
+function normalizedSignature(value){
+  return String(value||'').trim().toLowerCase();
+}
+
+function snapshotLotCount(state){
+  return (state?.auctions||[]).reduce((total,auction)=>
+    total+(Array.isArray(auction?.lots)?auction.lots.length:0),0);
+}
+
+function renderSnapshotParity(snapshotState,auctions,lots){
+  parityRowsBox.innerHTML='';
+  const snapshotAuctions=Array.isArray(snapshotState?.auctions)?snapshotState.auctions:[];
+  const lotsByAuction=new Map();
+  for(const lot of lots){
+    lotsByAuction.set(lot.auction_id,(lotsByAuction.get(lot.auction_id)||0)+1);
+  }
+
+  const byId=new Map(auctions.map(auction=>[auction.id,auction]));
+  const byOfficialResult=new Map();
+  const bySignature=new Map();
+  for(const auction of auctions){
+    const resultId=String(auction?.source_evidence?.officialResultId||'').trim();
+    if(resultId) byOfficialResult.set(resultId,auction);
+    const signature=normalizedSignature(auction.title)+'|'+normalizedSignature(auction.reference);
+    if(signature!=='|') bySignature.set(signature,auction);
+  }
+
+  let gaps=0;
+  parityEmptyBox.hidden=snapshotAuctions.length>0;
+
+  for(const snapshotAuction of snapshotAuctions){
+    const hinted=String(snapshotAuction?.extraFields?.relationalAuctionId||'').trim();
+    const resultId=String(snapshotAuction?.sourceEvidence?.officialResultId||'').trim();
+    const signature=normalizedSignature(snapshotAuction?.title)+'|'+normalizedSignature(snapshotAuction?.reference);
+    const relational=(hinted && byId.get(hinted))
+      || (resultId && byOfficialResult.get(resultId))
+      || bySignature.get(signature)
+      || null;
+
+    const snapshotLots=Array.isArray(snapshotAuction?.lots)?snapshotAuction.lots.length:0;
+    const relationalLots=relational ? (lotsByAuction.get(relational.id)||0) : null;
+    const aligned=relational && relationalLots===snapshotLots;
+    if(!aligned) gaps++;
+
+    const tr=document.createElement('tr');
+    const values=[
+      snapshotAuction?.title||snapshotAuction?.reference||'Leilão',
+      String(snapshotLots),
+      relational ? String(relationalLots) : '—',
+      aligned ? 'Alinhado' : (relational ? 'Divergente' : 'Somente snapshot')
+    ];
+    for(const value of values){
+      const td=document.createElement('td');
+      td.textContent=value;
+      tr.appendChild(td);
+    }
+    rowsBox.dataset.parityChecked='true';
+    parityRowsBox.appendChild(tr);
+  }
+
+  return {
+    snapshotAuctions:snapshotAuctions.length,
+    snapshotLots:snapshotLotCount(snapshotState),
+    gaps
+  };
+}
+
 async function loadIntegrity(){
   refreshBtn.disabled=true;
   setStatus('Verificando estado relacional e evidências visíveis pela sua sessão…','info');
@@ -125,12 +195,12 @@ async function loadIntegrity(){
 
     const [auctionResult,lots,items,snapshotResult,runCount,docCount,memberCount,inviteCount]=await Promise.all([
       client.from('auctions')
-        .select('id,title,reference,source_type,source_label,official_url,created_at')
+        .select('id,title,reference,source_type,source_label,official_url,source_evidence,created_at')
         .order('created_at',{ascending:false}),
       fetchAllLots(),
       fetchAllItems(),
       client.from('user_state_snapshots')
-        .select('state_version,last_client_change,source_origin')
+        .select('state,state_version,last_client_change,source_origin')
         .eq('user_id',user.id)
         .maybeSingle(),
       countVisible('source_search_runs'),
@@ -163,9 +233,17 @@ async function loadIntegrity(){
     setText('#invitations',inviteCount);
 
     renderTable(auctions,lots,items);
+    const parity=renderSnapshotParity(snapshot?.state||null,auctions,lots);
+    setText('#snapshotAuctions',parity.snapshotAuctions);
+    setText('#snapshotLots',parity.snapshotLots);
 
     gateBox.append(
       gate('Backup online',snapshot?'ok':'pending',snapshot?'Snapshot próprio encontrado.':'Ainda não há snapshot próprio visível.'),
+      gate('Paridade snapshot ↔ relacional',!snapshot?'pending':(parity.gaps?'partial':'ok'),!snapshot
+        ? 'Sem snapshot próprio para comparar.'
+        : parity.gaps
+          ? parity.gaps+' leilão(ões) do snapshot ainda não coincidem com a camada relacional.'
+          : 'Todos os leilões do snapshot coincidem com as contagens relacionais visíveis.'),
       gate('Canonização relacional oficial',officialIds.size?'ok':'pending',officialIds.size
         ? officialIds.size+' leilão(ões) oficial(is), '+officialLotRows.length+' lote(s) e '+officialItemRows.length+' item(ns) no banco canônico.'
         : 'Nenhum leilão source_type=official visível. Uma nova importação oficial é necessária para demonstrar o POST do ST-MNM-22.'),
@@ -180,6 +258,7 @@ async function loadIntegrity(){
 
     const pending=[
       !snapshot,
+      parity.gaps>0,
       officialIds.size===0,
       runCount===0 || docCount===0,
       memberCount===0 && inviteCount===0
