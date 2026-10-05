@@ -19,7 +19,7 @@ test('cadastro suporta vários lotes e vários itens por lote',()=>{
 });
 
 test('schema versionado contém lot_items e vínculos de mídia FIPE',()=>{
-  const sql=fs.readFileSync('supabase/migrations/20261003005000_add_multi_item_lots.sql','utf8');
+  const sql=fs.readFileSync('supabase/migrations/20261003045241_add_multi_item_lots.sql','utf8');
   assert.match(sql,/create table if not exists public\.lot_items/i);
   assert.match(sql,/add column if not exists lot_item_id/i);
   assert.match(sql,/enable row level security/i);
