@@ -279,7 +279,7 @@ test('ST-MNM-33A mostra capacidade e frescor sem habilitar conectores novos',()=
   assert.match(fontes,/function connectorLabel/);
   assert.match(fontes,/function sourceFreshness/);
   assert.match(fontes,/não automatizada nesta fonte/);
-  assert.match(fontes,/source\.lotsConnector/);
+  assert.match(fontes,/source\?\.lotsConnector/);
   assert.match(html,/catálogo informa quando a extração de lotes é automatizada/);
   assert.doesNotMatch(fontes,/fetch\(source\.url/);
 });
