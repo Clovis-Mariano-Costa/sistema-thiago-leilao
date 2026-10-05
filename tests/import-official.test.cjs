@@ -356,3 +356,16 @@ test('ST-MNM-30B executa persistência relacional com lote real e preserva campo
   assert.equal(lotUpsertRows[0].extra_data.manual,'preservar');
   assert.equal(lotUpsertRows[0].extra_data.parser,'ok');
 });
+
+
+test('ST-MNM-33A mostra capacidade e frescor sem habilitar conectores novos',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  const html=fs.readFileSync('fontes-oficiais.html','utf8');
+  assert.match(fontes,/function connectorLabel/);
+  assert.match(fontes,/function sourceFreshness/);
+  assert.match(fontes,/não automatizada nesta fonte/);
+  assert.match(fontes,/source\?\.lotsConnector/);
+  assert.match(html,/catálogo informa quando a extração de lotes é automatizada/);
+  assert.doesNotMatch(fontes,/fetch\(source\.url/);
+});
