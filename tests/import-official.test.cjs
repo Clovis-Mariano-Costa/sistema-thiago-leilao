@@ -246,8 +246,9 @@ test('ST-MNM-31A PRF permanece restrito à fonte oficial já cadastrada',()=>{
 test('ST-MNM-31A fonte sem capacidade declarada não recebe importador automático',()=>{
   const fs=require('node:fs');
   const fontes=fs.readFileSync('fontes.js','utf8');
-  assert.match(fontes,/if\(!SUPPORTED_LOT_CONNECTORS\.has\(declared\)\) return ''/);
-  assert.match(fontes,/if\(\(declared==='pncp' \|\| declared==='pncp-detran'\) && !item\?\.pncp\) return ''/);
+  assert.match(fontes,/function connectorAuthorityFor/);
+  assert.match(fontes,/if\(!declared \|\| !SUPPORTED_LOT_CONNECTORS\.has\(declared\)\)/);
+  assert.match(fontes,/if\(\(backend==='pncp' \|\| backend==='pncp-detran'\) && !item\?\.pncp\)/);
 });
 
 
@@ -416,5 +417,68 @@ test('ST-MNM-39B distingue importação nova de reconciliação relacional',()=>
   assert.match(fontes,/Atualizar fonte oficial/);
   assert.match(fontes,/collectOfficialResultIdsFromState/);
   assert.match(fontes,/await loadReconciliationReadiness\(\)/);
+  assert.doesNotMatch(fontes,/service_role|SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEYS/);
+});
+
+
+test('ST-MNM-40E backend autoriza a execução e catálogo sozinho não executa',()=>{
+  const fs=require('node:fs');
+  const vm=require('node:vm');
+  let source=fs.readFileSync('fontes.js','utf8');
+  source=source.replace(
+    'import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";',
+    'const createClient=globalThis.__createClient;'
+  );
+  source=source.slice(0,source.indexOf('async function enrichOfficialLots'));
+  source+='\n;globalThis.__connectorAuthorityFor=connectorAuthorityFor;';
+
+  const sandbox={
+    __createClient:()=>null,
+    window:{
+      SUPABASE_CONFIG:{},
+      SISTEMA_THIAGO_OFFICIAL_SOURCES:[
+        {id:'compras-sc',lotsConnector:'pncp-detran'},
+        {id:'prf-sc',lotsConnector:'prf-pdf'}
+      ],
+      SISTEMA_THIAGO_OFFICIAL_RESULTS:[]
+    },
+    localStorage:{getItem:()=>null,setItem:()=>{}},
+    console,Set,Map,Date,String,Number,Object,Array,JSON
+  };
+  vm.runInNewContext(source,sandbox,{filename:'fontes.js'});
+
+  const detran={sourceId:'compras-sc',lotsConnector:'pncp-detran',pncp:{sequence:41}};
+  const prf={sourceId:'prf-sc',lotsConnector:'prf-pdf'};
+
+  assert.equal(sandbox.__connectorAuthorityFor(detran,new Map(),false).connector,'');
+  assert.match(sandbox.__connectorAuthorityFor(detran,new Map(),false).reason,/backend/i);
+
+  assert.equal(sandbox.__connectorAuthorityFor(detran,new Map([['compras-sc','']]),true).connector,'');
+  assert.match(sandbox.__connectorAuthorityFor(detran,new Map([['compras-sc','']]),true).reason,/não autoriza/i);
+
+  assert.equal(sandbox.__connectorAuthorityFor(detran,new Map([['compras-sc','pncp']]),true).connector,'');
+  assert.match(sandbox.__connectorAuthorityFor(detran,new Map([['compras-sc','pncp']]),true).reason,/Divergência/i);
+
+  assert.equal(
+    sandbox.__connectorAuthorityFor(detran,new Map([['compras-sc','pncp-detran']]),true).connector,
+    'pncp-detran'
+  );
+  assert.equal(
+    sandbox.__connectorAuthorityFor(prf,new Map([['prf-sc','prf-pdf']]),true).connector,
+    'prf-pdf'
+  );
+});
+
+test('ST-MNM-40E recarrega autoridade backend antes do clique e bloqueia fetch em drift',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  assert.match(fontes,/async function refreshBackendConnectorAuthority/);
+  assert.match(fontes,/from\('official_sources'\)/);
+  assert.match(fontes,/select\('id,active,extra_data'\)/);
+  assert.match(fontes,/await refreshBackendConnectorAuthority\(\)/);
+  assert.match(fontes,/connectorBlocked/);
+  assert.match(fontes,/Automação oficial bloqueada pela governança/);
+  assert.match(fontes,/const connector=authority\.connector/);
+  assert.doesNotMatch(fontes,/const connector=lotConnectorFor\(item\);/);
   assert.doesNotMatch(fontes,/service_role|SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEYS/);
 });
