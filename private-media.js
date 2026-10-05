@@ -5,11 +5,15 @@ const TARGET_AUCTION_TITLE='Leilão Thiago — Base inicial';
 let running=false;
 let lastHydratedAt=0;
 
-function setRuntimeMaps({lotUrls={},itemUrls={},fipeUrls={}}={}){
+function setRuntimeMaps({lotUrls={},itemUrls={},fipeUrls={},scope={}}={}){
   lastHydratedAt=Date.now();
   window.SISTEMA_THIAGO_MEDIA_URLS=lotUrls;
   window.SISTEMA_THIAGO_ITEM_MEDIA_URLS=itemUrls;
   window.SISTEMA_THIAGO_FIPE_MEDIA_URLS=fipeUrls;
+  window.SISTEMA_THIAGO_MEDIA_SCOPE={
+    auctionTitle:String(scope.auctionTitle||''),
+    relationalAuctionId:String(scope.relationalAuctionId||'')
+  };
   if(window.SISTEMA_THIAGO_APP?.renderAll) window.SISTEMA_THIAGO_APP.renderAll();
   window.dispatchEvent(new CustomEvent('sistema-thiago:media-ready',{
     detail:{
@@ -83,7 +87,7 @@ async function hydratePrivateLotMedia(){
     media.forEach(row=>{if(row.storage_path) pathSet.add(row.storage_path)});
     const paths=[...pathSet];
     if(!paths.length){
-      setRuntimeMaps();
+      setRuntimeMaps({scope:{auctionTitle:chosen.title,relationalAuctionId:chosen.id}});
       return;
     }
 
@@ -131,7 +135,12 @@ async function hydratePrivateLotMedia(){
       if(url && item.item_identifier) itemUrls[String(item.item_identifier)]=url;
     }
 
-    setRuntimeMaps({lotUrls,itemUrls,fipeUrls});
+    setRuntimeMaps({
+      lotUrls,
+      itemUrls,
+      fipeUrls,
+      scope:{auctionTitle:chosen.title,relationalAuctionId:chosen.id}
+    });
   }catch(error){
     console.warn('Não foi possível carregar as fotos privadas dos lotes/itens.',error);
   }finally{
