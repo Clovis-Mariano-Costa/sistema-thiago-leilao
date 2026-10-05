@@ -63,8 +63,17 @@ function cardHtml(item){
     : '';
 
   const mediaRuntime=window.SISTEMA_THIAGO_FIPE_MEDIA_URLS || {};
+  const contextRuntime=window.SISTEMA_THIAGO_FIPE_CONTEXTS || {};
   const imageKey=String(item.imageName||'').trim();
-  const imageUrl=imageKey ? (mediaRuntime[imageKey] || mediaRuntime[imageKey.split(/[\\/]/).pop()] || '') : '';
+  const basename=imageKey ? imageKey.split(/[\\/]/).pop() : '';
+  const itemContext=imageKey ? (contextRuntime[imageKey] || contextRuntime[basename] || null) : null;
+  const imageUrl=itemContext?.imageUrl || (imageKey ? (mediaRuntime[imageKey] || mediaRuntime[basename] || '') : '');
+  const contextHtml=itemContext
+    ? `<div class="fipe-reference-context">
+        <strong>${esc(itemContext.auctionTitle || 'Leilão')}</strong>
+        <span>Lote ${esc(String(itemContext.lotNumber||'—').padStart(3,'0'))} • Item ${esc(itemContext.itemOrder||1)}/${esc(itemContext.itemTotal||1)}${itemContext.itemIdentifier ? ' • '+esc(itemContext.itemIdentifier) : ''}</span>
+      </div>`
+    : '';
   const imageHtml=imageUrl
     ? `<figure class="fipe-reference-media">
         <img src="${esc(imageUrl)}" alt="Imagem de referência de ${esc(item.vehicle || item.plate || 'veículo')}" loading="lazy" />
@@ -77,6 +86,7 @@ function cardHtml(item){
       <span class="source-badge user-source">Dados inseridos pelo usuário</span>
       ${flags}
     </div>
+    ${contextHtml}
     ${imageHtml}
     <div class="reference-title-row">
       <div>
@@ -327,3 +337,9 @@ render();
 window.addEventListener('sistema-thiago:media-ready',()=>{
   render();
 });
+
+// A página FIPE não emite o app-ready da tela principal.
+// O pedido explícito garante a hidratação das fotos e do contexto lote/item.
+setTimeout(()=>{
+  window.dispatchEvent(new CustomEvent('sistema-thiago:media-refresh-request'));
+},120);
