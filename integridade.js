@@ -252,6 +252,20 @@ function sourceCapability(source){
   };
 }
 
+function runLifecycle(rows){
+  const sourceRuns=Array.isArray(rows)?rows:[];
+  const ordered=[...sourceRuns].sort((a,b)=>
+    String(a?.started_at||'').localeCompare(String(b?.started_at||'')));
+  const latest=ordered.at(-1)||null;
+  return {
+    latest,
+    success:sourceRuns.filter(row=>row.status==='success').length,
+    active:sourceRuns.filter(row=>row.status==='started' && !row.finished_at).length,
+    error:sourceRuns.filter(row=>row.status==='error').length,
+    partial:sourceRuns.filter(row=>row.status==='partial').length
+  };
+}
+
 function renderSourceObservability(sources,runs,documents){
   sourceRowsBox.innerHTML='';
   const active=(sources||[]).filter(source=>source.active!==false);
@@ -259,31 +273,51 @@ function renderSourceObservability(sources,runs,documents){
   const coverage=new Set();
   let connectorPending=0;
   let capabilityDrift=0;
+  let activeRuns=0;
+  let sourcesWithErrors=0;
 
   for(const source of active){
     const sourceRuns=(runs||[]).filter(row=>row.source_id===source.id);
     const sourceDocs=(documents||[]).filter(row=>row.source_id===source.id);
-    const complete=sourceRuns.length>0 && sourceDocs.length>0;
+    const lifecycle=runLifecycle(sourceRuns);
+    const complete=lifecycle.success>0 && sourceDocs.length>0;
     const capability=sourceCapability(source);
     if(complete) coverage.add(source.id);
     if(!complete && capability.key==='connector') connectorPending++;
     if(capability.key==='drift') capabilityDrift++;
+    activeRuns+=lifecycle.active;
+    if(lifecycle.error>0) sourcesWithErrors++;
     const latest=[latestIso(sourceRuns,'started_at'),latestIso(sourceDocs,'created_at')]
       .filter(Boolean)
       .sort()
       .at(-1)||'—';
     const tr=document.createElement('tr');
+    const runSummary=String(sourceRuns.length)
+      +' • ok '+lifecycle.success
+      +' • ativos '+lifecycle.active
+      +(lifecycle.error ? ' • erro '+lifecycle.error : '')
+      +(lifecycle.partial ? ' • parcial '+lifecycle.partial : '');
+    const state=lifecycle.active
+      ? (complete?'Com prova backend • execução em andamento':'Execução em andamento')
+      : complete
+        ? 'Com prova backend'
+        : lifecycle.error
+          ? 'Sem prova backend • houve erro'
+          : 'Sem telemetria';
+    const next=lifecycle.active
+      ? 'Aguardar finalizar a execução em andamento; não iniciar outra para a mesma fonte.'
+      : complete
+        ? 'Manter evidência atualizada quando houver nova execução oficial.'
+        : capability.next;
     const values=[
       source.name||source.id,
       source.status||'—',
       capability.label+(capability.detail ? ' • '+capability.detail : ''),
-      String(sourceRuns.length),
+      runSummary,
       String(sourceDocs.length),
       latest,
-      complete?'Com prova backend':'Sem telemetria',
-      complete
-        ? 'Manter evidência atualizada quando houver nova execução oficial.'
-        : capability.next
+      state,
+      next
     ];
     for(const value of values){
       const td=document.createElement('td');
@@ -293,7 +327,14 @@ function renderSourceObservability(sources,runs,documents){
     sourceRowsBox.appendChild(tr);
   }
 
-  return {active:active.length,covered:coverage.size,connectorPending,capabilityDrift};
+  return {
+    active:active.length,
+    covered:coverage.size,
+    connectorPending,
+    capabilityDrift,
+    activeRuns,
+    sourcesWithErrors
+  };
 }
 
 function roleReadiness(userId,auctions,memberships){
@@ -426,6 +467,8 @@ async function loadIntegrity(){
           ? sourceCoverage.covered+'/'+sourceCoverage.active+' fonte(s) ativa(s) possuem run + documento visíveis. '
             +sourceCoverage.connectorPending+' fonte(s) com conector comprovado ainda aguardam nova execução governada. '
             +sourceCoverage.capabilityDrift+' divergência(s) backend ↔ catálogo. '
+            +sourceCoverage.activeRuns+' execução(ões) em andamento; '
+            +sourceCoverage.sourcesWithErrors+' fonte(s) com erro histórico. '
             +'Totais: '+runCount+' execução(ões), '+docCount+' documento(s).'
           : 'Nenhuma fonte ativa visível para medir telemetria.'),
       gate('Matriz de papéis do P2',roles.missing.length===0?'ok':(roles.demonstrated.length?'partial':'pending'),
