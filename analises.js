@@ -27,7 +27,11 @@ function money(value){
 }
 
 function finiteValues(rows,field){
-  return rows.map(row=>Number(row?.[field])).filter(Number.isFinite);
+  return rows
+    .map(row=>row?.[field])
+    .filter(value=>value!==null && value!==undefined && String(value).trim()!=='')
+    .map(Number)
+    .filter(Number.isFinite);
 }
 
 function average(values){
@@ -103,7 +107,8 @@ function fipeCandidateValues(row){
 }
 
 function fipeDisplay(row){
-  const definitive=Number(row?.fipe_value);
+  const raw=row?.fipe_value;
+  const definitive=(raw===null || raw===undefined || String(raw).trim()==='') ? NaN : Number(raw);
   if(Number.isFinite(definitive)) return money(definitive);
   const candidates=fipeCandidateValues(row);
   if(candidates.length===1) return '1 referência FIPE';
@@ -171,7 +176,11 @@ function renderMetrics(items){
   ],total);
 
   const fipeDefined=finiteValues(items,'fipe_value').length;
-  const fipeToReview=items.filter(item=>!Number.isFinite(Number(item?.fipe_value)) && fipeCandidateValues(item).length>0).length;
+  const fipeToReview=items.filter(item=>{
+    const raw=item?.fipe_value;
+    const definitive=(raw===null || raw===undefined || String(raw).trim()==='') ? NaN : Number(raw);
+    return !Number.isFinite(definitive) && fipeCandidateValues(item).length>0;
+  }).length;
   renderBars('#coverageBars',[
     {label:'FIPE definida',value:fipeDefined},
     {label:'FIPE para revisar',value:fipeToReview},
