@@ -41,8 +41,42 @@ function operationalPayload(lot){
   };
 }
 
+const HUMAN_FIELD_DB_MAP={
+  type:'item_type',
+  plate:'plate',
+  brandModel:'brand_model',
+  chassis:'chassis',
+  engine:'engine',
+  year:'model_year',
+  color:'color',
+  fuel:'fuel'
+};
+
+function humanConfirmedPayload(lot,existingRow={}){
+  const fields=Array.isArray(lot?.extraFields?.humanConfirmedFields) ? lot.extraFields.humanConfirmedFields : [];
+  if(!fields.length) return {};
+  const payload={};
+  for(const field of fields){
+    const dbField=HUMAN_FIELD_DB_MAP[field];
+    if(!dbField) continue;
+    const raw=lot?.[field];
+    payload[dbField]=raw==null || String(raw).trim()==='' ? null : String(raw).trim();
+  }
+  payload.extra_data={
+    ...(existingRow?.extra_data||{}),
+    ...(lot?.extraFields||{}),
+    humanConfirmedFields:[...new Set(fields.filter(field=>HUMAN_FIELD_DB_MAP[field]))],
+    humanConfirmedAt:lot?.extraFields?.humanConfirmedAt || new Date().toISOString()
+  };
+  return payload;
+}
+
+function canonicalPayload(lot,existingRow={}){
+  return {...operationalPayload(lot),...humanConfirmedPayload(lot,existingRow)};
+}
+
 function operationalFingerprint(value){
-  const payload=value?.preference_level!==undefined ? value : operationalPayload(value);
+  const payload=value?.preference_level!==undefined ? value : canonicalPayload(value);
   return JSON.stringify([
     Number(payload.preference_level||0),
     payload.fipe_value==null?null:Number(payload.fipe_value),
@@ -51,7 +85,16 @@ function operationalFingerprint(value){
     payload.final_value==null?null:Number(payload.final_value),
     Boolean(payload.sold),
     payload.result||null,
-    payload.note||null
+    payload.note||null,
+    payload.item_type??null,
+    payload.plate??null,
+    payload.brand_model??null,
+    payload.chassis??null,
+    payload.engine??null,
+    payload.model_year??null,
+    payload.color??null,
+    payload.fuel??null,
+    payload.extra_data?.humanConfirmedFields||[]
   ]);
 }
 
@@ -131,7 +174,7 @@ async function start(){
 
     while(true){
       const {data,error}=await supabase.from('lots')
-        .select('id,lot_number,preference_level,fipe_value,minimum_bid,max_bid,final_value,sold,result,note')
+        .select('id,lot_number,preference_level,fipe_value,minimum_bid,max_bid,final_value,sold,result,note,item_type,plate,brand_model,chassis,engine,model_year,color,fuel,extra_data')
         .eq('auction_id',auctionId)
         .order('lot_number',{ascending:true})
         .range(from,from+pageSize-1);
@@ -164,7 +207,7 @@ async function start(){
       const row=byNumber.get(Number(lot.n));
       if(!row?.id) continue;
 
-      const payload=operationalPayload(lot);
+      const payload=canonicalPayload(lot,row);
       const nextFingerprint=operationalFingerprint(payload);
       const previousFingerprint=operationalFingerprints.get(row.id);
       if(nextFingerprint===previousFingerprint) continue;
