@@ -20,6 +20,9 @@ let sourceFilter='all';
 let searchQuery='';
 let protectedOfficialResultIds=new Set();
 let relationalOfficialResultIds=new Set();
+let backendConnectorCapabilities=new Map();
+let backendConnectorAuthorityLoaded=false;
+let backendConnectorAuthorityError='';
 
 const $=sel=>document.querySelector(sel);
 
@@ -61,6 +64,38 @@ function collectOfficialResultIdsFromState(state){
   return ids;
 }
 
+async function refreshBackendConnectorAuthority(){
+  backendConnectorCapabilities=new Map();
+  backendConnectorAuthorityLoaded=false;
+  backendConnectorAuthorityError='';
+
+  if(!supabase){
+    backendConnectorAuthorityError='Supabase não configurado para validar a autoridade dos conectores.';
+    return false;
+  }
+
+  const {data:{session},error:sessionError}=await supabase.auth.getSession();
+  if(sessionError || !session?.user?.id || !session?.user?.email_confirmed_at){
+    backendConnectorAuthorityError='Sessão autenticada e e-mail confirmado são necessários para validar conectores.';
+    return false;
+  }
+
+  const {data,error}=await supabase.from('official_sources')
+    .select('id,active,extra_data')
+    .eq('active',true);
+  if(error){
+    backendConnectorAuthorityError=error.message||String(error);
+    return false;
+  }
+
+  for(const row of data||[]){
+    const connector=String(row?.extra_data?.lotsConnector||'').trim();
+    backendConnectorCapabilities.set(String(row.id||''),connector);
+  }
+  backendConnectorAuthorityLoaded=true;
+  return true;
+}
+
 async function loadReconciliationReadiness(){
   protectedOfficialResultIds=collectOfficialResultIdsFromState(loadState());
   relationalOfficialResultIds=new Set();
@@ -90,15 +125,18 @@ async function loadReconciliationReadiness(){
       if(id) relationalOfficialResultIds.add(id);
     }
   }
+  await refreshBackendConnectorAuthority();
 }
 
 function resultActionLabel(item){
   const id=String(item?.id||'').trim();
   const protectedInSnapshot=id && protectedOfficialResultIds.has(id);
   const relational=id && relationalOfficialResultIds.has(id);
+  const authority=connectorAuthorityFor(item);
+  if(authority.governed && !authority.connector) return 'Automação bloqueada pela governança';
   if(protectedInSnapshot && !relational) return 'Reconciliar no banco relacional';
   if(relational) return 'Atualizar fonte oficial';
-  if(hasOfficialLotConnector(item)) return 'Importar cadastro + buscar lotes';
+  if(authority.connector) return 'Importar cadastro + buscar lotes';
   return Array.isArray(item?.lots) && item.lots.length
     ? 'Importar cadastro oficial'
     : 'Importar cadastro oficial • dados gerais';
@@ -502,12 +540,58 @@ function sourceConfig(sourceId){
   return SOURCES.find(source=>source.id===sourceId) || null;
 }
 
+function staticConnectorFor(item){
+  return String(item?.lotsConnector || sourceConfig(item?.sourceId)?.lotsConnector || '').trim();
+}
+
+function connectorAuthorityFor(
+  item,
+  capabilities=backendConnectorCapabilities,
+  authorityLoaded=backendConnectorAuthorityLoaded
+){
+  const declared=staticConnectorFor(item);
+  if(!declared || !SUPPORTED_LOT_CONNECTORS.has(declared)){
+    return {connector:'',governed:false,reason:''};
+  }
+
+  if(!authorityLoaded){
+    return {
+      connector:'',
+      governed:true,
+      reason:backendConnectorAuthorityError || 'Autoridade backend dos conectores ainda não foi validada.'
+    };
+  }
+
+  const sourceId=String(item?.sourceId||'').trim();
+  const backend=String(capabilities.get(sourceId)||'').trim();
+  if(!backend){
+    return {
+      connector:'',
+      governed:true,
+      reason:'O backend não autoriza conector automático para esta fonte.'
+    };
+  }
+  if(backend!==declared){
+    return {
+      connector:'',
+      governed:true,
+      reason:'Divergência de capability: backend '+backend+' ≠ catálogo '+declared+'.'
+    };
+  }
+  if(!SUPPORTED_LOT_CONNECTORS.has(backend)){
+    return {connector:'',governed:true,reason:'Conector backend não reconhecido.'};
+  }
+  if((backend==='pncp' || backend==='pncp-detran') && !item?.pncp){
+    return {connector:'',governed:true,reason:'Resultado sem coordenadas PNCP válidas para o conector autorizado.'};
+  }
+  if(backend==='prf-pdf' && sourceId!=='prf-sc'){
+    return {connector:'',governed:true,reason:'Conector PRF/PDF restrito à fonte PRF/SC.'};
+  }
+  return {connector:backend,governed:true,reason:''};
+}
+
 function lotConnectorFor(item){
-  const declared=String(item?.lotsConnector || sourceConfig(item?.sourceId)?.lotsConnector || '').trim();
-  if(!SUPPORTED_LOT_CONNECTORS.has(declared)) return '';
-  if((declared==='pncp' || declared==='pncp-detran') && !item?.pncp) return '';
-  if(declared==='prf-pdf' && item?.sourceId!=='prf-sc') return '';
-  return declared;
+  return connectorAuthorityFor(item).connector;
 }
 
 function hasOfficialLotConnector(item){
@@ -515,7 +599,17 @@ function hasOfficialLotConnector(item){
 }
 
 async function enrichOfficialLots(item,button){
-  if(!hasOfficialLotConnector(item)) return {item,connectorAttempted:false,connectorError:'',connectorData:null};
+  const authority=connectorAuthorityFor(item);
+  if(authority.governed && !authority.connector){
+    return {
+      item,
+      connectorAttempted:false,
+      connectorBlocked:true,
+      connectorError:authority.reason,
+      connectorData:null
+    };
+  }
+  if(!authority.connector) return {item,connectorAttempted:false,connectorBlocked:false,connectorError:'',connectorData:null};
 
   if(!supabase || !SUPABASE_CFG.url || !SUPABASE_CFG.publishableKey){
     return {
@@ -551,7 +645,7 @@ async function enrichOfficialLots(item,button){
         'apikey':SUPABASE_CFG.publishableKey
       },
       body:JSON.stringify((()=>{
-        const connector=lotConnectorFor(item);
+        const connector=authority.connector;
         if(connector==='pncp' || connector==='pncp-detran'){
           return {
             ...item.pncp,
@@ -728,6 +822,8 @@ function resultCard(item){
   const statusText=item.status || '';
   const statusClass=/suspens/i.test(statusText)?'status-badge sold':'status-badge waiting';
   const importLabel=resultActionLabel(item);
+  const authority=connectorAuthorityFor(item);
+  const automationBlocked=authority.governed && !authority.connector;
   return `<article class="official-auction-card">
     <div class="source-row">
       <span class="source-badge official-source">Fonte oficial</span>
@@ -750,17 +846,24 @@ function resultCard(item){
     </div>
     <div class="official-card-actions">
       <a class="secondary-link compact" href="${esc(item.officialUrl||'#')}" target="_blank" rel="noopener">Abrir origem oficial</a>
-      <button class="primary-btn import-official-btn" data-id="${esc(item.id)}" type="button">${importLabel}</button>
+      <button class="primary-btn import-official-btn" data-id="${esc(item.id)}" type="button"${automationBlocked?' disabled title="'+esc(authority.reason)+'"':''}>${importLabel}</button>
     </div>
   </article>`;
 }
 
 function connectorLabel(source){
-  const connector=String(source?.lotsConnector||'').trim();
-  if(connector==='prf-pdf') return 'Importação de lotes: adaptador PRF/PDF disponível';
-  if(connector==='pncp-detran') return 'Importação de lotes: PNCP + documento DETRAN disponível';
-  if(connector==='pncp') return 'Importação de lotes: PNCP disponível quando o processo possuir coordenadas válidas';
-  return 'Importação de lotes: não automatizada nesta fonte';
+  const declared=String(source?.lotsConnector||'').trim();
+  if(!declared) return 'Importação de lotes: não automatizada nesta fonte';
+  if(!backendConnectorAuthorityLoaded){
+    return 'Importação automática: aguardando autoridade backend';
+  }
+  const backend=String(backendConnectorCapabilities.get(String(source?.id||''))||'').trim();
+  if(!backend) return 'Importação automática: não autorizada no backend';
+  if(backend!==declared) return 'Importação automática: bloqueada por divergência backend ↔ catálogo';
+  if(backend==='prf-pdf') return 'Importação de lotes: adaptador PRF/PDF autorizado';
+  if(backend==='pncp-detran') return 'Importação de lotes: PNCP + documento DETRAN autorizado';
+  if(backend==='pncp') return 'Importação de lotes: PNCP autorizado para resultados compatíveis';
+  return 'Importação automática: conector backend não reconhecido';
 }
 
 function sourceFreshness(source){
@@ -813,7 +916,13 @@ function render(){
     const base=RESULTS.find(x=>x.id===btn.dataset.id);
     if(!base) return;
 
+    await refreshBackendConnectorAuthority();
     const enriched=await enrichOfficialLots(base,btn);
+    if(enriched.connectorBlocked){
+      window.alert('Automação oficial bloqueada pela governança: '+(enriched.connectorError||'capability backend indisponível.'));
+      render();
+      return;
+    }
     const item={
       ...enriched.item,
       __pncpAttempted:enriched.connectorAttempted,
