@@ -384,6 +384,7 @@ Deno.serve(async (req:Request)=>{
   if(req.method==="OPTIONS") return new Response("ok",{headers:cors(req)});
   if(req.method!=="POST") return json(req,{error:"Use POST."},405);
 
+  let activeRun:any={admin:null,runId:"",sourceId:"",resultId:"",reference:""};
   try{
     const auth=await requireConfirmedUser(req);
     if(auth.response) return auth.response;
@@ -403,6 +404,7 @@ Deno.serve(async (req:Request)=>{
         connector:"pncp-lots"
       }
     );
+    activeRun={...run,sourceId,resultId,reference};
 
     if(sourceId==="prf-sc"){
       if(!fallbackUrl){
@@ -585,7 +587,17 @@ Deno.serve(async (req:Request)=>{
       importedAt:new Date().toISOString()
     });
   }catch(error){
-    console.error("PNCP_LOTS_ERROR",String(error?.stack||error?.message||error));
-    return json(req,{error:String(error?.message||error)},502);
+    const message=String(error?.message||error);
+    await finishSourceRun(
+      activeRun.admin,activeRun.runId,"error",0,message,
+      {
+        resultId:activeRun.resultId||null,
+        reference:activeRun.reference||null,
+        sourceId:activeRun.sourceId||null,
+        unexpected:true
+      }
+    );
+    console.error("PNCP_LOTS_ERROR",String(error?.stack||message));
+    return json(req,{error:message},502);
   }
 });
