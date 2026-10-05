@@ -306,6 +306,7 @@ function normalizeState(raw) {
       sourceType: original.sourceType === 'official' ? 'official' : 'user',
       sourceLabel: original.sourceType === 'official' ? 'Fonte oficial' : 'Dados inseridos pelo usuário',
       officialUrl: original.officialUrl || official?.officialUrl || '',
+      auctioneerUrl: original.auctioneerUrl || official?.auctioneerUrl || original?.extraFields?.auctioneerUrl || '',
       officialPayload: original.officialPayload || official || null,
       sourceEvidence: evidence,
       extraFields: {
@@ -344,6 +345,8 @@ let filter = 'all';
 let query = '';
 const liveCursorByAuction = new Map();
 const itemCursorByLot = new Map();
+const LOT_RENDER_STEP = 60;
+let lotRenderLimit = LOT_RENDER_STEP;
 
 const $ = sel => document.querySelector(sel);
 const list = $('#lotList');
@@ -399,12 +402,31 @@ function syncLotRollupFromItems(lot) {
   lot.note=item.note || '';
 }
 
-function saveState(showError = true) {
+function saveState(showError = true, change = {}) {
   try {
-    state.auctions.forEach(a => (a.lots || []).forEach(syncLotRollupFromItems));
+    const auction = activeAuction();
+    if(change?.lotNumber!=null && auction){
+      const changedLot=(auction.lots||[]).find(lot=>Number(lot.n)===Number(change.lotNumber));
+      if(changedLot) syncLotRollupFromItems(changedLot);
+    }else if(change?.normalizeActive===true && auction){
+      (auction.lots||[]).forEach(syncLotRollupFromItems);
+    }
+
     const serialized = JSON.stringify(state);
     localStorage.setItem(storageKey(), serialized);
-    window.dispatchEvent(new CustomEvent('sistema-thiago:state-saved',{detail:{key:storageKey(),state}}));
+
+    if(change?.syncOnline!==false){
+      window.dispatchEvent(new CustomEvent('sistema-thiago:state-saved',{
+        detail:{
+          key:storageKey(),
+          state,
+          auctionId:change?.auctionId || state.currentAuctionId || '',
+          lotNumber:change?.lotNumber ?? null,
+          itemOrder:change?.itemOrder ?? null,
+          skipRelational:Boolean(change?.skipRelational)
+        }
+      }));
+    }
     return true;
   } catch (err) {
     if (showError) alert('Não foi possível salvar todos os dados neste navegador. A foto pode estar grande demais para o armazenamento local.');
@@ -729,6 +751,25 @@ function renderActiveAuctionHeader() {
   } else {
     officialLink.hidden = true;
   }
+
+  const auctioneerLink = $('#auctioneerLink');
+  const auctioneerUrl = String(a.auctioneerUrl || a.officialPayload?.auctioneerUrl || a.extraFields?.auctioneerUrl || '').trim();
+  if (auctioneerUrl) {
+    auctioneerLink.href = auctioneerUrl;
+    auctioneerLink.hidden = false;
+  } else {
+    auctioneerLink.hidden = true;
+  }
+
+  const mapLink = $('#auctionMapLink');
+  const locationText = String(a.location || '').trim();
+  const mapEligible = locationText && !/^(on-?line|online|virtual)$/i.test(locationText);
+  if (mapEligible) {
+    mapLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(locationText);
+    mapLink.hidden = false;
+  } else {
+    mapLink.hidden = true;
+  }
 }
 
 function matches(lot) {
@@ -778,7 +819,7 @@ function bindLotText(card,selector,lot,field) {
     const changed=String(lot[field]||'')!==next;
     lot[field]=next;
     if (changed) markHumanConfirmedField(lot,field);
-    saveState();
+    saveState(true,{lotNumber:lot.n});
   });
 }
 
@@ -801,7 +842,7 @@ function bindItemText(card, selector, lot, item, field) {
     item[field] = next;
     if (changed && HUMAN_CONFIRMABLE_ITEM_FIELDS.has(field)) markHumanConfirmedItemField(item,field);
     syncLotRollupFromItems(lot);
-    saveState();
+    saveState(true,{lotNumber:lot.n,itemOrder:item.itemOrder});
     updateSummary();
     renderAgenda();
   });
@@ -815,8 +856,20 @@ function renderLots() {
   if (!a) return;
 
   const nextEntry = nextPendingItem(a);
-  const visible = a.lots.filter(matches);
-  $('#emptyState').hidden = visible.length !== 0;
+  const filtered = a.lots.filter(matches);
+  const visible = filtered.slice(0,lotRenderLimit);
+  $('#emptyState').hidden = filtered.length !== 0;
+
+  const footer=$('#lotRenderFooter');
+  const status=$('#renderedLotsStatus');
+  const loadMore=$('#loadMoreLotsBtn');
+  if(footer && status && loadMore){
+    footer.hidden=filtered.length<=LOT_RENDER_STEP;
+    status.textContent=filtered.length
+      ? `Mostrando ${visible.length} de ${filtered.length} lote(s).`
+      : '';
+    loadMore.hidden=visible.length>=filtered.length;
+  }
 
   for (const lot of visible) {
     const card = template.content.firstElementChild.cloneNode(true);
@@ -931,7 +984,7 @@ function renderLots() {
     preferenceBtn.addEventListener('click', () => {
       item.preferenceLevel = (item.preferenceLevel + 1) % 3;
       syncLotRollupFromItems(lot);
-      saveState();
+      saveState(true,{lotNumber:lot.n,itemOrder:item.itemOrder});
       renderAll();
     });
 
@@ -946,7 +999,7 @@ function renderLots() {
       }
       syncLotRollupFromItems(lot);
       liveCursorByAuction.delete(a.id);
-      saveState();
+      saveState(true,{lotNumber:lot.n,itemOrder:item.itemOrder});
       renderAll();
     });
 
@@ -958,7 +1011,7 @@ function renderLots() {
     resultSelect.addEventListener('change', () => {
       item.result = resultSelect.value;
       syncLotRollupFromItems(lot);
-      saveState();
+      saveState(true,{lotNumber:lot.n,itemOrder:item.itemOrder});
       renderAll();
     });
 
@@ -982,7 +1035,7 @@ function renderLots() {
     const saveBtn = card.querySelector('.save-lot-btn');
     saveBtn.addEventListener('click',()=>{
       syncLotRollupFromItems(lot);
-      saveState();
+      saveState(true,{lotNumber:lot.n,itemOrder:item.itemOrder});
       const old = saveBtn.textContent;
       saveBtn.textContent = 'Salvo ✓';
       setTimeout(()=>{ saveBtn.textContent = old; },900);
@@ -1138,9 +1191,10 @@ function switchAuction(id) {
   state.currentAuctionId = id;
   query = '';
   filter = 'all';
+  lotRenderLimit = LOT_RENDER_STEP;
   searchInput.value = '';
   document.querySelectorAll('.chip').forEach(b => b.classList.toggle('active', b.dataset.filter === 'all'));
-  saveState();
+  saveState(true,{syncOnline:false});
   renderAll();
   $('#activeAuctionPanel').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -1185,6 +1239,7 @@ function addAuction(data) {
     sourceType: data.sourceType === 'official' ? 'official' : 'user',
     sourceLabel: data.sourceType === 'official' ? 'Fonte oficial' : 'Dados inseridos pelo usuário',
     officialUrl: data.officialUrl || '',
+    auctioneerUrl: data.auctioneerUrl || '',
     photoDataUrl: data.photoDataUrl || '',
     notes: data.notes || '',
     officialPayload: data.officialPayload || null,
@@ -1253,7 +1308,7 @@ function markNextSold() {
   if(!next) return;
   next.item.sold=true;
   syncLotRollupFromItems(next.lot);
-  saveState();
+  saveState(true,{lotNumber:next.lot.n,itemOrder:next.item.itemOrder});
   renderAll();
 }
 
@@ -1262,7 +1317,7 @@ function cycleLivePreference() {
   if(!current) return;
   current.item.preferenceLevel=(current.item.preferenceLevel+1)%3;
   syncLotRollupFromItems(current.lot);
-  saveState();
+  saveState(true,{lotNumber:current.lot.n,itemOrder:current.item.itemOrder});
   renderAll();
 }
 
@@ -1274,7 +1329,7 @@ function saveLiveMaxBid() {
   if(nextValue===current.maxBid) return;
   current.maxBid = nextValue;
   syncLotRollupFromItems(entry.lot);
-  saveState();
+  saveState(true,{lotNumber:entry.lot.n,itemOrder:entry.item.itemOrder});
   renderAll();
 }
 
@@ -1292,7 +1347,7 @@ function toggleLiveSold() {
     liveCursorByAuction.set(a.id,index+1);
   }
   syncLotRollupFromItems(current.lot);
-  saveState();
+  saveState(true,{lotNumber:current.lot.n,itemOrder:current.item.itemOrder});
   renderAll();
 }
 
@@ -1515,7 +1570,7 @@ function downloadJsonPayload(payload, prefix='sistema-thiago-backup') {
 }
 
 function exportBackupJson() {
-  saveState();
+  saveState(false,{syncOnline:false});
   downloadJsonPayload(buildBackupPayload());
 }
 
@@ -1632,18 +1687,26 @@ function slugify(value) {
   return String(value || 'leilao').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 }
 
+let searchRenderTimer=null;
 searchInput.addEventListener('input',e=>{
   query=e.target.value.trim().toLowerCase();
-  renderLots();
+  lotRenderLimit=LOT_RENDER_STEP;
+  clearTimeout(searchRenderTimer);
+  searchRenderTimer=setTimeout(renderLots,120);
 });
 
 document.querySelectorAll('.chip').forEach(btn=>btn.addEventListener('click',()=>{
   document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   filter=btn.dataset.filter;
+  lotRenderLimit=LOT_RENDER_STEP;
   renderLots();
 }));
 
+$('#loadMoreLotsBtn')?.addEventListener('click',()=>{
+  lotRenderLimit+=LOT_RENDER_STEP;
+  renderLots();
+});
 $('#chooseAuctionBtn').addEventListener('click',()=>{renderChooseAuctions();openDialog(chooseAuctionDialog)});
 $('#switchAuctionBtn').addEventListener('click',()=>{renderChooseAuctions();openDialog(chooseAuctionDialog)});
 $('#newAuctionBtn').addEventListener('click',()=>openDialog(newAuctionDialog));
@@ -1739,7 +1802,7 @@ $('#liveBackBtn').addEventListener('click',backLiveLot);
 $('#liveAuctionSelect').addEventListener('change',e=>{
   state.currentAuctionId=e.target.value;
   liveCursorByAuction.delete(e.target.value);
-  saveState();
+  saveState(true,{syncOnline:false});
   renderAll();
 });
 $('#exportCsvBtn').addEventListener('click',exportCsv);

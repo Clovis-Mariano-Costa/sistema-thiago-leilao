@@ -278,25 +278,65 @@ async function start(){
     return byKey;
   }
 
-  async function syncOperationalChanges(state){
-    const localAuction=(state?.auctions||[]).find(a=>a.id===state.currentAuctionId) || null;
+  async function syncOperationalChanges(state,change={}){
+    const targetAuctionId=String(change?.auctionId || state?.currentAuctionId || '');
+    const localAuction=(state?.auctions||[]).find(a=>String(a.id)===targetAuctionId) || null;
     if(!localAuction) return {ok:true,changed:0,itemChanged:0};
 
     const relationalAuction=await resolveRelationalAuction(localAuction);
     if(!relationalAuction?.id) return {ok:true,changed:0,itemChanged:0};
 
+    const requestedNumbers=[...new Set(
+      (Array.isArray(change?.lotNumbers)?change.lotNumbers:[])
+        .map(Number)
+        .filter(Number.isFinite)
+    )];
+
     let byNumber;
     let itemsByKey;
+    let targetLots=localAuction.lots||[];
+
     try{
-      byNumber=await loadRelationalLots(relationalAuction.id);
-      itemsByKey=await loadRelationalItems(relationalAuction.id,byNumber);
+      if(requestedNumbers.length){
+        targetLots=targetLots.filter(lot=>requestedNumbers.includes(Number(lot.n)));
+        byNumber=new Map();
+        itemsByKey=new Map();
+
+        const {data:lotRows,error:lotError}=await supabase.from('lots')
+          .select('id,lot_number,preference_level,fipe_value,minimum_bid,max_bid,final_value,sold,result,note,item_type,plate,brand_model,chassis,engine,model_year,color,fuel,extra_data')
+          .eq('auction_id',relationalAuction.id)
+          .in('lot_number',requestedNumbers);
+        if(lotError) throw lotError;
+
+        for(const row of lotRows||[]){
+          byNumber.set(Number(row.lot_number),row);
+          operationalFingerprints.set(row.id,operationalFingerprint(row));
+        }
+
+        const lotIds=(lotRows||[]).map(row=>row.id).filter(Boolean);
+        if(lotIds.length){
+          const {data:itemRows,error:itemError}=await supabase.from('lot_items')
+            .select('id,lot_id,item_order,item_identifier,description,item_type,vehicle,plate,brand_model,chassis,engine,model_year,color,fuel,licensing,city,state,fipe_value,minimum_bid,max_bid,final_value,preference_level,sold,result,note,extra_data')
+            .in('lot_id',lotIds)
+            .order('item_order',{ascending:true});
+          if(itemError) throw itemError;
+          for(const row of itemRows||[]){
+            const key=row.lot_id+':'+Number(row.item_order||1);
+            itemsByKey.set(key,row);
+            itemOperationalFingerprints.set(row.id,itemOperationalFingerprint(row));
+          }
+        }
+      }else{
+        byNumber=await loadRelationalLots(relationalAuction.id);
+        itemsByKey=await loadRelationalItems(relationalAuction.id,byNumber);
+      }
     }catch(error){
       return {ok:false,changed:0,itemChanged:0,error:error?.message||String(error)};
     }
 
     let changed=0;
     let itemChanged=0;
-    for(const lot of localAuction.lots||[]){
+    for(const lot of targetLots){
       const row=byNumber.get(Number(lot.n));
       if(!row?.id) continue;
 
@@ -338,6 +378,29 @@ async function start(){
       if(!data?.id) return {ok:false,changed,itemChanged,error:'A política de acesso não confirmou edição deste lote.'};
       operationalFingerprints.set(row.id,nextFingerprint);
       changed++;
+    }
+
+    return {ok:true,changed,itemChanged};
+  }
+
+  async function syncOperationalChangesBatch(state,fullAuctionIds,dirtyLotsByAuction){
+    let changed=0;
+    let itemChanged=0;
+    const fullSet=new Set(fullAuctionIds||[]);
+
+    for(const auctionId of fullSet){
+      const result=await syncOperationalChanges(state,{auctionId});
+      if(!result.ok) return {ok:false,changed,itemChanged,error:result.error};
+      changed+=result.changed||0;
+      itemChanged+=result.itemChanged||0;
+    }
+
+    for(const [auctionId,lotNumbers] of dirtyLotsByAuction||[]){
+      if(fullSet.has(auctionId)) continue;
+      const result=await syncOperationalChanges(state,{auctionId,lotNumbers});
+      if(!result.ok) return {ok:false,changed,itemChanged,error:result.error};
+      changed+=result.changed||0;
+      itemChanged+=result.itemChanged||0;
     }
 
     return {ok:true,changed,itemChanged};
@@ -425,7 +488,24 @@ async function start(){
   }
 
   let timer=null;
-  window.addEventListener('sistema-thiago:state-saved',()=>{
+  let pendingState=null;
+  const pendingLotsByAuction=new Map();
+  const pendingFullAuctions=new Set();
+
+  window.addEventListener('sistema-thiago:state-saved',event=>{
+    const detail=event?.detail||{};
+    pendingState=detail.state || pendingState;
+
+    const auctionId=String(detail.auctionId||'');
+    if(!detail.skipRelational && auctionId){
+      if(detail.lotNumber!=null){
+        if(!pendingLotsByAuction.has(auctionId)) pendingLotsByAuction.set(auctionId,new Set());
+        pendingLotsByAuction.get(auctionId).add(Number(detail.lotNumber));
+      }else{
+        pendingFullAuctions.add(auctionId);
+      }
+    }
+
     clearTimeout(timer);
     timer=setTimeout(async()=>{
       if(unresolvedStateConflict){
@@ -435,10 +515,18 @@ async function start(){
         );
         return;
       }
-      const current=app.getState();
+
+      const current=pendingState || app.getState();
+      pendingState=null;
+      const fullAuctionIds=[...pendingFullAuctions];
+      pendingFullAuctions.clear();
+      const dirtyLots=[...pendingLotsByAuction.entries()].map(([auctionId,numbers])=>[auctionId,[...numbers]]);
+      pendingLotsByAuction.clear();
+
       const snapshotOk=await upload(current,'Alterações salvas online');
       if(!snapshotOk) return;
-      const relational=await syncOperationalChanges(current);
+
+      const relational=await syncOperationalChangesBatch(current,fullAuctionIds,dirtyLots);
       if(!relational.ok){
         setStatus(
           '<strong>Backup online salvo, mas o banco canônico não confirmou a última alteração operacional.</strong> '+
@@ -453,7 +541,7 @@ async function start(){
           'ok'
         );
       }
-    },900);
+    },2200);
   });
 
   supabase.auth.onAuthStateChange((_event,nextSession)=>{

@@ -289,3 +289,16 @@ body{background:
 .fipe-reference-media img{display:block;width:100%;max-height:260px;object-fit:contain;background:#fff}
 .fipe-reference-media figcaption{padding:6px 9px;color:var(--muted);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:520px){.fipe-reference-media img{max-height:220px}}
+
+/* ST-MNM-44E — exportação consolidada, carregamento progressivo e ações externas */
+.export-menu{position:relative}
+.export-menu>summary{list-style:none;cursor:pointer;user-select:none}
+.export-menu>summary::-webkit-details-marker{display:none}
+.export-menu[open]>summary{border-color:var(--gold)}
+.export-menu-panel{position:absolute;right:0;z-index:40;display:grid;min-width:230px;margin-top:6px;padding:7px;border:1px solid var(--line);border-radius:13px;background:#fff;box-shadow:var(--shadow)}
+.export-menu-action{min-height:42px;padding:9px 11px;border:0;border-radius:9px;background:transparent;color:var(--ink);text-align:left;font:inherit;font-weight:780;cursor:pointer}
+.export-menu-action:hover,.export-menu-action:focus-visible{background:#f2f6f9}
+.lot-render-footer{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:18px 0 4px}
+.lot-render-footer .secondary-btn{min-width:190px}
+.auction-header-actions .primary-link.compact{min-height:40px;padding:9px 12px}
+@media(max-width:619px){.export-menu,.export-menu>summary{width:100%}.export-menu-panel{left:0;right:0}.export-bar{display:grid;gap:8px}}
