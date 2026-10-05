@@ -261,7 +261,7 @@ async function persistOfficialRelational(item){
       official_url:item.officialUrl||null,
       official_payload:lot,
       source_evidence:lotEvidence,
-      extra_data:{...relationalLotExtra(lot),...(effective.extra_data||{})},
+      extra_data:relationalLotExtra(lot),
       created_by:uid,
       updated_at:new Date().toISOString()
     };
