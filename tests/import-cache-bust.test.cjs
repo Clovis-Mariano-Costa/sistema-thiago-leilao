@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 
 test('app força versão nova do importador',()=>{
   const html=fs.readFileSync('app.html','utf8');
-  assert.match(html,/whatsapp-import\.js\?v=20261004-royal-mime1/);
+  assert.match(html,/whatsapp-import\.js\?v=20261005-item45a1/);
 });
 
 test('Pages não mantém importador antigo em cache',()=>{
