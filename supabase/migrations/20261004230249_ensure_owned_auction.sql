@@ -1,3 +1,7 @@
+-- RECONCILIACAO DE HISTORICO — 2026-10-04
+-- Versao alinhada ao historico remoto Supabase 20261004230249.
+-- Conteudo funcional derivado do arquivo Git anterior 20261004225000_ensure_owned_auction.sql.
+
 -- Sistema Thiago — criação segura da Base inicial pelo próprio usuário
 -- Motivo: permitir criação idempotente do leilão de importação sem afrouxar RLS.
 -- A função usa auth.uid(), exige e-mail confirmado e nunca aceita owner_id arbitrário.

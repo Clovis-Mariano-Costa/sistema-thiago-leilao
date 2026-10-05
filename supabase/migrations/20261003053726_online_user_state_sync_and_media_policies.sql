@@ -1,3 +1,7 @@
+-- RECONCILIACAO DE HISTORICO — 2026-10-04
+-- Versao alinhada ao historico remoto Supabase 20261003053726.
+-- Conteudo funcional derivado do arquivo Git anterior 20261003022000_online_user_state_sync_and_media_policies.sql.
+
 create table if not exists public.user_state_snapshots (
   user_id uuid primary key references auth.users(id) on delete cascade,
   state_version integer not null default 4,

@@ -1,3 +1,8 @@
+-- RECONCILIACAO DE HISTORICO — 2026-10-04
+-- Versao alinhada ao historico remoto Supabase 20261003045241.
+-- Conteudo funcional derivado do arquivo Git anterior 20261003005000_add_multi_item_lots.sql.
+-- O arquivo anterior permanece no historico Git; esta versao alinha a pasta migrations ao remoto.
+
 create table if not exists public.lot_items (
   id uuid primary key default gen_random_uuid(),
   lot_id uuid not null references public.lots(id) on delete cascade,
