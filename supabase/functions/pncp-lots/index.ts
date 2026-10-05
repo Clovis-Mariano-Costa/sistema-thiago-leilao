@@ -1,6 +1,7 @@
 import pdf from "npm:pdf-parse@1.1.1";
 import { Buffer } from "node:buffer";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { parsePrfLots, renderPdfRows, scorePrfPdfUrl } from "./prf-parser.mjs";
 
 const PNCP_BASE = "https://pncp.gov.br/pncp-api/v1";
 const allowedOrigins = new Set([
@@ -192,116 +193,7 @@ function parseLots(text:string) {
 }
 
 
-const PRF_HOSTS=new Set(["www.gov.br","gov.br"]);
-const PRF_LOT_START=/(?:^|\s)(\d{1,4})\s+(\d{2}\/\d{2}\/\d{2})(?=\s)/g;
-const PRF_PLATE=/\b([A-Z]{3}[0-9][A-Z0-9][0-9]{2}|S\/?PLACA|SEM\s*PLACA)\s+([A-Z]{2})\s+/i;
-const PRF_VEHICLE_TYPE=/(Autom[oó]vel|Motocicleta|Motoneta|Caminhonete|Camioneta|Ciclomotor|Reboque\/S\.R\.|Reboque|Semirreboque|[ÔO]nibus|Micro-?[oô]nibus|Utilit[aá]rio|Triciclo|Quadriciclo|Caminh[aã]o|Especial|Misto)/i;
-const PRF_STATUS=/(Circula(?:ç|c)[aã]o|Sucata\s+aproveit[aá]vel(?:\s+com\s+motor\s+(?:aproveit[aá]vel|inserv[ií]vel))?|Sucata\s+inserv[ií]vel)/i;
-
-function prfMoney(value:string){
-  return String(value||"").replace(/[^0-9,.-]/g,"");
-}
-
-function preparePrfText(value:string){
-  return String(value||"")
-    .replace(/\u00a0/g," ")
-    .replace(/(\d{1,3}(?:\.\d{3})*,\d{2})(?=\d{1,4}\s+\d{2}\/\d{2}\/\d{2})/g,"$1\n");
-}
-
-function parsePrfLots(rawText:string){
-  const text=preparePrfText(rawText);
-  const starts=[...text.matchAll(PRF_LOT_START)];
-  const lots:any[]=[];
-  const failures:any[]=[];
-
-  for(let i=0;i<starts.length;i++){
-    const match=starts[i];
-    const blockStart=(match.index||0)+(match[0].length-match[0].trimStart().length);
-    const blockEnd=i+1<starts.length ? (starts[i+1].index||text.length) : text.length;
-    const block=text.slice(blockStart,blockEnd).replace(/\s+/g," ").trim();
-    const lotNumber=Number(match[1]);
-    const auctionDate=String(match[2]||"");
-
-    const plateMatch=block.match(PRF_PLATE);
-    if(!plateMatch || plateMatch.index==null){
-      failures.push({lot:lotNumber,reason:"placa/UF não localizados"});
-      continue;
-    }
-
-    const plate=plateMatch[1].replace(/\s+/g,"").toUpperCase();
-    const uf=plateMatch[2].toUpperCase();
-    const afterPlate=block.slice(plateMatch.index+plateMatch[0].length).trim();
-    const typeMatch=afterPlate.match(PRF_VEHICLE_TYPE);
-    if(!typeMatch || typeMatch.index==null){
-      failures.push({lot:lotNumber,reason:"tipo de veículo não localizado",plate});
-      continue;
-    }
-
-    const brandModel=afterPlate.slice(0,typeMatch.index).trim();
-    const type=typeMatch[0].trim();
-    const afterType=afterPlate.slice(typeMatch.index+typeMatch[0].length).trim();
-    const statusMatch=afterType.match(PRF_STATUS);
-    if(!statusMatch || statusMatch.index==null){
-      failures.push({lot:lotNumber,reason:"status de avaliação não localizado",plate});
-      continue;
-    }
-
-    const technical=afterType.slice(0,statusMatch.index).trim();
-    const techMatch=technical.match(/^(\S+)\s+(\d{5,14})\s+(\d{4})\s+(.+)$/);
-    if(!techMatch){
-      failures.push({lot:lotNumber,reason:"chassi/renavam/ano/cor não reconciliados",plate});
-      continue;
-    }
-
-    const bidMatch=afterType.slice(statusMatch.index+statusMatch[0].length).match(/R\$\s*([0-9.]+,[0-9]{2})/i);
-    const prefix=block.slice(0,plateMatch.index).trim();
-    const dates=[...prefix.matchAll(/\b\d{2}\/\d{2}\/\d{2}\b/g)].map(x=>x[0]);
-    const entryDate=dates.length>1 ? dates[dates.length-1] : "";
-
-    lots.push({
-      n:lotNumber,
-      auctionDate,
-      entryDate,
-      plate,
-      uf,
-      brandModel,
-      vehicle:brandModel,
-      type,
-      chassis:techMatch[1],
-      renavam:techMatch[2],
-      year:techMatch[3],
-      color:techMatch[4].trim(),
-      statusAvaliacao:statusMatch[0].replace(/\s+/g," ").trim(),
-      minimumBid:prfMoney(bidMatch?.[1]||""),
-      context:prefix.replace(/^\d{1,4}\s+\d{2}\/\d{2}\/\d{2}\s*/,"").slice(0,500),
-      sourceType:"official",
-      needsReview:true
-    });
-  }
-
-  const unique=new Map<number,any>();
-  for(const lot of lots){
-    if(!unique.has(lot.n)) unique.set(lot.n,lot);
-  }
-  return {
-    lots:[...unique.values()].sort((a,b)=>a.n-b.n),
-    sourceRows:starts.length,
-    failures
-  };
-}
-
-function scorePrfPdfUrl(url:string){
-  const s=url.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-  let score=0;
-  if(s.includes("anexo-i")) score+=100;
-  if(s.includes("anexo")) score+=40;
-  if(s.includes("edital")) score+=20;
-  if(s.includes("errata")) score-=50;
-  if(s.includes("informativo")) score-=30;
-  return score;
-}
-
-async function fetchPrfLots(pageUrl:string){
+const PRF_HOSTS=new Set(["www.gov.br","gov.br"]);\n\nasync function fetchPrfLots(pageUrl:string){
   const page=new URL(pageUrl);
   if(page.protocol!=="https:" || !PRF_HOSTS.has(page.hostname) || !page.pathname.startsWith("/prf/")){
     throw new Error("fonte PRF fora do domínio oficial gov.br/prf");
@@ -338,10 +230,18 @@ async function fetchPrfLots(pageUrl:string){
   const bytes=new Uint8Array(await pdfResponse.arrayBuffer());
   if(bytes.byteLength>20*1024*1024) throw new Error("Anexo I da PRF maior que 20 MB");
 
-  const parsedPdf=await pdf(Buffer.from(bytes));
+  const pdfMagic=String.fromCharCode(...bytes.slice(0,4));
+  const contentType=String(pdfResponse.headers.get("content-type")||"").toLowerCase();
+  if(pdfMagic!=="%PDF" && !contentType.includes("pdf")){
+    throw new Error("Anexo I oficial não respondeu como PDF.");
+  }
+
+  const parsedPdf=await pdf(Buffer.from(bytes),{pagerender:renderPdfRows});
   const parsed=parsePrfLots(String(parsedPdf.text||""));
   const parsedRatio=parsed.sourceRows ? parsed.lots.length/parsed.sourceRows : 0;
-  if(!parsed.sourceRows) throw new Error("Nenhuma linha de lote foi localizada no Anexo I da PRF.");
+  if(!parsed.sourceRows){
+    throw new Error("Nenhuma linha de lote foi localizada no Anexo I da PRF após reconstrução por linhas.");
+  }
   if(parsedRatio<0.98){
     throw new Error(`Parser PRF extraiu apenas ${parsed.lots.length} de ${parsed.sourceRows} linhas candidatas; importação bloqueada para evitar dados parciais.`);
   }
@@ -362,6 +262,7 @@ async function fetchPrfLots(pageUrl:string){
       bytes:bytes.byteLength,
       pages:parsedPdf.numpages||null,
       textChars:String(parsedPdf.text||"").length,
+      textLayout:"row-aware",
       lots:parsed.lots.length,
       sourceRows:parsed.sourceRows,
       failures:parsed.failures.slice(0,20),
