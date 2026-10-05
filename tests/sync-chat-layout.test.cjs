@@ -36,7 +36,7 @@ test('painel contém sync online, Charlie Echo e aviso de cookies',()=>{
 });
 
 test('persistência online é isolada por usuário com RLS',()=>{
-  const sql=fs.readFileSync('supabase/migrations/20261003022000_online_user_state_sync_and_media_policies.sql','utf8');
+  const sql=fs.readFileSync('supabase/migrations/20261003053726_online_user_state_sync_and_media_policies.sql','utf8');
   assert.match(sql,/create table if not exists public\.user_state_snapshots/i);
   assert.match(sql,/alter table public\.user_state_snapshots enable row level security/i);
   assert.match(sql,/user_id = \(select auth\.uid\(\)\)/);
