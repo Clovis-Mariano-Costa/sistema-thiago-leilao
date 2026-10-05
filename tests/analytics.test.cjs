@@ -26,12 +26,15 @@ test('análises não convertem ausência de valor em média zero',()=>{
   assert.match(js,/nenhum valor informado/);
 });
 
-test('mapa fica bloqueado enquanto localização não estiver comprovada',()=>{
+test('mapa só abre quando há localização estruturada disponível',()=>{
   const html=fs.readFileSync('analises.html','utf8');
   const js=fs.readFileSync('analises.js','utf8');
-  assert.match(html,/Mapa não exibido nesta etapa/);
-  assert.match(html,/localização estruturada|cidade\/pátio ou coordenadas/);
-  assert.doesNotMatch(js,/google\.maps|leaflet|mapbox/i);
+  assert.match(html,/id="analyticsMapFrame"/);
+  assert.match(html,/id="analyticsMapEmpty"/);
+  assert.match(js,/function normalizeMapLocation/);
+  assert.match(js,/if\(!locationLabel\)/);
+  assert.match(js,/frame\.removeAttribute\('src'\)/);
+  assert.match(js,/google\.com\/maps\?q=/);
 });
 
 test('ST-MNM-26A separa FIPE, mínimo, nosso máximo e valor final',()=>{
