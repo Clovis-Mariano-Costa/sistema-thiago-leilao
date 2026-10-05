@@ -77,3 +77,18 @@ test('ST-MNM-44F reduz trabalho pesado em salvamento e mídia',()=>{
   assert.match(media,/sistema-thiago:media-refresh-request/);
   assert.match(media,/45\*60\*1000/);
 });
+
+
+test('ST-MNM-44F busca vazia usa caminho rapido sem montar FIPE textual',()=>{
+  const js=fs.readFileSync('app.js','utf8');
+  const start=js.indexOf('function matches(lot)');
+  const end=js.indexOf('const HUMAN_CONFIRMABLE_LOT_FIELDS',start);
+  const block=js.slice(start,end);
+  assert.match(block,/if \(query\) \{/);
+  const gate=block.indexOf('if (query) {');
+  const itemSearch=block.indexOf('const itemSearch',gate);
+  const fipeSearch=block.indexOf('const fipeSearch',gate);
+  const status=block.indexOf('const anyWaiting',gate);
+  assert.ok(gate>=0 && itemSearch>gate && fipeSearch>itemSearch && status>fipeSearch);
+  assert.doesNotMatch(block.slice(0,gate),/lotFipeCandidates|flatMap/);
+});
