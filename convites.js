@@ -44,6 +44,17 @@ function formatDate(value){
   return Number.isNaN(d.getTime()) ? 'prazo não identificado' : d.toLocaleString('pt-BR');
 }
 
+function invitationExpired(invite){
+  if(!invite?.expires_at) return false;
+  const expires=new Date(invite.expires_at);
+  return !Number.isNaN(expires.getTime()) && expires.getTime()<=Date.now();
+}
+
+function invitationDisplayStatus(invite){
+  if(invite?.status==='pending' && invitationExpired(invite)) return 'expired';
+  return invite?.status || 'pending';
+}
+
 function shortId(value=''){
   const text=String(value);
   return text.length>12 ? text.slice(0,8)+'…' : text;
@@ -135,7 +146,8 @@ function invitationCard(invite,{incoming=false}={}){
   const role=document.createElement('span');
   role.className='invite-role';
   role.textContent=roleLabels[invite.role] || invite.role;
-  meta.append('Papel: ',role,' • Estado: '+invite.status+' • Prazo: '+formatDate(invite.expires_at));
+  const displayStatus=invitationDisplayStatus(invite);
+  meta.append('Papel: ',role,' • Estado: '+displayStatus+' • Prazo: '+formatDate(invite.expires_at));
   copy.append(title,meta);
   head.append(copy);
   article.append(head);
@@ -146,9 +158,20 @@ function invitationCard(invite,{incoming=false}={}){
     const accept=document.createElement('button');
     accept.type='button';
     accept.className='primary-btn';
-    accept.textContent='Aceitar convite';
-    accept.addEventListener('click',()=>acceptInvitation(invite.id,accept));
+    accept.textContent=invitationExpired(invite) ? 'Convite expirado' : 'Aceitar convite';
+    accept.disabled=invitationExpired(invite);
+    if(!accept.disabled) accept.addEventListener('click',()=>acceptInvitation(invite.id,accept));
     actions.appendChild(accept);
+    article.appendChild(actions);
+  }else if(invite.status==='pending' && !invitationExpired(invite)){
+    const actions=document.createElement('div');
+    actions.className='invite-actions';
+    const revoke=document.createElement('button');
+    revoke.type='button';
+    revoke.className='secondary-btn';
+    revoke.textContent='Revogar convite';
+    revoke.addEventListener('click',()=>revokeInvitation(invite.id,revoke));
+    actions.appendChild(revoke);
     article.appendChild(actions);
   }
   return article;
@@ -245,6 +268,29 @@ async function acceptInvitation(id,button){
   }catch(error){
     console.error(error);
     setStatus('Não foi possível aceitar o convite: '+(error?.message||error),'error');
+    button.disabled=false;
+  }
+}
+
+
+async function revokeInvitation(id,button){
+  clearStatus();
+  button.disabled=true;
+  try{
+    const {data,error}=await client
+      .from('invitations')
+      .update({status:'revoked'})
+      .eq('id',id)
+      .eq('status','pending')
+      .select('id')
+      .maybeSingle();
+    if(error) throw error;
+    if(!data?.id) throw new Error('O convite não está mais pendente ou sua sessão não pode revogá-lo.');
+    setStatus('Convite revogado. O registro foi preservado para auditoria.','ok');
+    await loadOutgoing();
+  }catch(error){
+    console.error(error);
+    setStatus('Não foi possível revogar o convite: '+(error?.message||error),'error');
     button.disabled=false;
   }
 }
