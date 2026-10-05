@@ -296,8 +296,9 @@ test('ST-MNM-30B executa persistência relacional com lote real e preserva campo
   function query(table){
     let op='select';
     let payload=null;
+    let selection='';
     const q={
-      select(){return q;},
+      select(columns){selection=columns||'';return q;},
       eq(){return q;},
       contains(){return q;},
       limit(){return q;},
@@ -316,8 +317,9 @@ test('ST-MNM-30B executa persistência relacional com lote real e preserva campo
       then(resolve,reject){
         try{
           if(table==='auctions' && op==='select') return resolve({data:[],error:null});
+          if(table==='lots' && op==='select' && selection==='id,lot_number') return resolve({data:[{id:'lot-1',lot_number:1}],error:null});
           if(table==='lots' && op==='select') return resolve({data:[existingLot],error:null});
-          if(table==='lots' && op==='upsert') return resolve({data:[{id:'lot-1',lot_number:1}],error:null});
+          if(table==='lots' && op==='upsert') return resolve({data:[],error:null});
           if(table==='lot_items' && op==='upsert') return resolve({data:[{id:'item-1'}],error:null});
           if(op==='update') return resolve({data:null,error:null});
           return resolve({data:[],error:null});
@@ -378,4 +380,13 @@ test('ST-MNM-35A owner recém-criado pode receber RETURNING do auction',()=>{
   assert.match(migration,/owner_id\s*=\s*\(select auth\.uid\(\)\)/i);
   assert.match(migration,/private\.can_view_auction\(id\)/i);
   assert.doesNotMatch(migration,/drop policy|disable row level security|service_role/i);
+});
+
+
+test('ST-MNM-35B relê IDs persistidos quando upsert não devolve representação',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  assert.match(fontes,/async function loadOfficialLotIds/);
+  assert.match(fontes,/if\(lotIdByNumber\.size < sourceLots\.length\)/);
+  assert.match(fontes,/IDs relacionais não resolvidos/);
 });
