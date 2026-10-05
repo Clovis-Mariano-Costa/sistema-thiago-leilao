@@ -1198,6 +1198,8 @@ function showImportFeedback() {
   const pncpAttempted = params.get('pncp') === '1';
   const pncpError = params.get('pncp_error') || '';
   const pncpDocument = params.get('pncp_document') || '';
+  const importSync = params.get('sync') || '';
+  const importSyncError = params.get('sync_error') || '';
 
   const detail = pncpError
     ? `A busca automática dos lotes no PNCP foi tentada, mas não concluiu: ${escapeHtml(pncpError)}`
@@ -1207,10 +1209,18 @@ function showImportFeedback() {
         ? 'O sistema consultou o PNCP e os documentos do edital, mas não conseguiu extrair lotes individualizados nesta tentativa. Os diagnósticos da pesquisa foram preservados nos dados oficiais.'
         : 'Esta fonte ainda possui apenas dados gerais no catálogo; os campos oficiais importados aparecem logo abaixo.';
 
+  const syncDetail = importSync === 'online'
+    ? '<br><strong>Backup online:</strong> atualizado antes de abrir o painel.'
+    : importSync === 'local'
+      ? '<br><strong>Backup online:</strong> não confirmado nesta importação; os dados continuam preservados neste navegador.' +
+        (importSyncError ? ' ' + escapeHtml(importSyncError) : '')
+      : '';
+
   box.innerHTML = `<strong>Cadastro oficial importado.</strong>
     ${auction ? escapeHtml(auction.title) + ' • ' : ''}
     ${fieldCount ? fieldCount + ' campo(s) de origem processados • ' : ''}
     ${lotCount} lote(s) disponível(is). ${detail}
+    ${syncDetail}
     <br><strong>Confira os dados no edital/documento oficial antes de dar lance ou tomar decisão.</strong>`;
   box.hidden = false;
 
