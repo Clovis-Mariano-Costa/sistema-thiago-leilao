@@ -248,3 +248,25 @@ test('ST-MNM-31A fonte sem capacidade declarada não recebe importador automáti
   assert.match(fontes,/if\(!SUPPORTED_LOT_CONNECTORS\.has\(declared\)\) return ''/);
   assert.match(fontes,/if\(\(declared==='pncp' \|\| declared==='pncp-detran'\) && !item\?\.pncp\) return ''/);
 });
+
+
+test('ST-MNM-32A propaga recibo de proveniencia e id relacional ao painel',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  const app=fs.readFileSync('app.js','utf8');
+  assert.match(fontes,/__sourceRunId/);
+  assert.match(fontes,/__sourceDocumentId/);
+  assert.match(fontes,/relational_auction_id/);
+  assert.match(fontes,/source_run_id/);
+  assert.match(fontes,/source_document_id/);
+  assert.match(app,/Recibo de proveni.ncia/);
+  assert.match(app,/ID can.nico do leil.o/);
+  assert.match(app,/integridade\.html/);
+});
+
+test('ST-MNM-32A ids de auditoria ficam fora do payload oficial bruto',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  assert.match(fontes,/delete officialPayload\.__sourceRunId/);
+  assert.match(fontes,/delete officialPayload\.__sourceDocumentId/);
+});
