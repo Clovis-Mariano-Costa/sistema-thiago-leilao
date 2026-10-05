@@ -195,3 +195,33 @@ Security Advisor aponta apenas `Leaked Password Protection Disabled`. A organiza
 ### Regra de continuidade após a varredura
 
 Pendência humana ou externa bloqueia somente sua própria trilha. O trabalho técnico pode continuar em observabilidade, documentação, segurança fail-closed e preparação de reconciliação, desde que não fabrique identidades, sessão autenticada, decisão humana de survivor ou smoke físico.
+
+## ST-MNM-43 — fechamento técnico e gates humanos — 05/10/2026
+
+### Encerrado tecnicamente
+
+- **ST-MNM-42E / PR #105:** observabilidade por resultId usa a mesma classificação de run órfão da visão por fonte. CI + Worker dry-run verdes.
+- **ST-MNM-43A / PR #106:** CGN-022 foi reavaliado sobre o main vigente e integrado com Guardia/JIT sintética + publication gate fail-closed endurecidos. CI + Worker dry-run verdes.
+- **Issue #101:** run órfão DETRAN 1600 reconciliado como `error`, nunca `success`, preservando causa HTTP 546 / CPU Time exceeded e executionId na metadata.
+- **Issue #103:** fechado após integração limpa do CGN-022.
+- **Issue #7 / M13:** PoC multiusuário real passou **12/12** com três usuários confirmados já existentes; dados sintéticos foram removidos. Storage privado foi validado em transação com rollback.
+- **Issue #5 / M11:** registro extensível de fontes oficiais + capabilities existentes + rotina diária condicional de monitoramento oficial estão operacionais.
+- **Issue #71 / P5:** organização Supabase está no plano Free; documentação atual exige Pro+ para Leaked Password Protection. Gate fechado como limitação documentada do plano, sem upgrade/custo automático.
+- **M14 técnico:** 37 vínculos `lot_media` criados para a segunda Base inicial; todos apontam para objetos privados existentes, sem mover propriedade e sem exclusão.
+
+### Gates que não podem ser fabricados
+
+- **#1 — AUTH_SESSION_GATE:** DETRAN 0013/2026 já tem 489 lotes comprovados em backend, mas exige sessão autenticada real para write-through governado + repetição idempotente.
+- **#4 — HUMAN_GATE navegador:** backend/RLS passou; falta repetir owner/admin/participant/observer/outsider com sessões reais separadas na interface.
+- **#2 — HUMAN_GATE celular:** falta smoke físico do Modo ao Vivo no aparelho.
+- **#20 — HUMAN_GATE celular:** recuperação no navegador/aparelho original e canonização final das mídias após decisão de conta.
+- **#102 — HUMAN_GATE propriedade:** as duas Bases iniciais pertencem a contas diferentes; há evidências conflitantes/associações `requires_review`. Nenhum survivor deve ser escolhido automaticamente.
+
+### Estado de governança
+
+- Não existem PRs técnicos abertos ao fim desta espira.
+- Pendência humana bloqueia apenas a própria trilha.
+- Não fabricar JWT, sessão, usuário, decisão de titularidade ou smoke físico.
+- Não fazer write-through DETRAN 0013 por SQL ad hoc.
+- Não mover dados/mídia entre contas até confirmação explícita de propriedade e conta canônica.
+- Ao receber a presença humana necessária, executar cada gate e fechar o respectivo issue imediatamente após evidência.
