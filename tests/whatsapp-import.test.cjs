@@ -74,3 +74,17 @@ test('erro parcial não afirma falsamente que nada foi gravado',()=>{
   assert.match(js,/As etapas já concluídas permanecem protegidas/);
   assert.doesNotMatch(js,/Importação interrompida:[^\n]+Nenhum dado foi promovido a oficial/);
 });
+
+
+test('importador persiste candidatos FIPE por lote e item sem selecionar automaticamente',()=>{
+  assert.match(js,/replaceLotFipeCandidates/);
+  assert.match(js,/lot_fipe_candidates/);
+  assert.match(js,/lot_item_id:itemId/);
+  assert.match(js,/verification_status:'user_reference'/);
+  assert.match(js,/is_selected:false/);
+  assert.match(js,/review_required:true/);
+});
+
+test('mensagem final informa vínculos FIPE por item',()=>{
+  assert.match(js,/referências FIPE \(\$\{lotFipeCount\} vínculos por item\)/);
+});
