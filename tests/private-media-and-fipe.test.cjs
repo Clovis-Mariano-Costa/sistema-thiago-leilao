@@ -32,3 +32,12 @@ test('UI preserva todos os candidatos FIPE sem selecionar silenciosamente um del
 test('build publica hidratação de mídia privada',()=>{
   assert.match(build,/private-media\.js/);
 });
+
+test('painel mostra cada código FIPE ligado ao respectivo valor sem selecionar candidato automaticamente',()=>{
+  assert.match(app,/function fipeCandidatePairLabel/);
+  assert.match(app,/lot-fipe-visible/);
+  assert.match(app,/FIPE importada da captura/);
+  assert.match(app,/candidate\.code/);
+  assert.match(app,/→ R\$/);
+  assert.match(app,/Referências FIPE da captura/);
+});
