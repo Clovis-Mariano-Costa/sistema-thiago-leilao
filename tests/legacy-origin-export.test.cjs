@@ -29,3 +29,27 @@ test('build Pages inclui a ponte de recuperação',()=>{
   assert.match(build,/recuperar-legado\.html/);
   assert.match(build,/legacy-recovery\.js/);
 });
+
+
+test('ST-MNM-34A prévia legada permite reconhecer cópia sem mutação',()=>{
+  const fs=require('node:fs');
+  const html=fs.readFileSync('recuperar-legado.html','utf8');
+  const js=fs.readFileSync('legacy-recovery.js','utf8');
+  assert.match(js,/function auctionPreview/);
+  assert.match(js,/lotSample/);
+  assert.match(js,/Identificador local:/);
+  assert.match(js,/amostra:/);
+  assert.match(html,/Esta prévia é somente leitura/);
+  assert.doesNotMatch(js,/localStorage\.removeItem/);
+  assert.doesNotMatch(js,/localStorage\.clear/);
+  assert.doesNotMatch(js,/fetch\s*\(/);
+});
+
+
+test('ST-MNM-34A informa itens omitidos e separa título da metadata',()=>{
+  const js=fs.readFileSync('legacy-recovery.js','utf8');
+  assert.match(js,/omitted:Math\.max\(0,auctions\.length-visible\.length\)/);
+  assert.match(js,/leilão\(ões\) adicional\(is\) não exibido\(s\) nesta prévia/);
+  assert.match(js,/A lista acima mostra apenas os 8 primeiros/);
+  assert.match(js,/meta\.textContent=' — '/);
+});
