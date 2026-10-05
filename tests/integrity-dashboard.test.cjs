@@ -83,3 +83,20 @@ test('ST-MNM-39D mede observabilidade por fonte e não apenas por total global',
   assert.match(js,/sourceCoverage\.covered<sourceCoverage\.active/);
   assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 });
+
+
+test('ST-MNM-40A torna observabilidade por fonte acionável sem escrita automática',()=>{
+  const html=fs.readFileSync('integridade.html','utf8');
+  const js=fs.readFileSync('integridade.js','utf8');
+  assert.match(html,/official-sources\.js/);
+  assert.match(html,/Próxima ação/);
+  assert.match(html,/Capacidade/);
+  assert.match(js,/function sourceCapability/);
+  assert.match(js,/Conector comprovado/);
+  assert.match(js,/Monitoramento assistido/);
+  assert.match(js,/Rota a validar/);
+  assert.match(js,/Consulta assistida/);
+  assert.match(js,/connectorPending/);
+  assert.match(js,/run \+ documento \+ paridade/);
+  assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+});
