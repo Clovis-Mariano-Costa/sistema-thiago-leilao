@@ -174,7 +174,7 @@ test('ST-MNM-41A reconcilia proveniência por resultId sem somar resultados da m
 });
 
 
-test('ST-MNM-41B exibe resultado catalogado mesmo sem run backend',()=>{
+test('ST-MNM-41D exibe resultado catalogado mesmo sem run backend',()=>{
   const html=fs.readFileSync('integridade.html','utf8');
   const js=fs.readFileSync('integridade.js','utf8');
   assert.match(html,/catálogo define a expectativa/);
