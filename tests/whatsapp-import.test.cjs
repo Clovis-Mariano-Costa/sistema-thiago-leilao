@@ -109,3 +109,14 @@ test('ST-MNM-40G duplicidade aponta reconciliação assistida em vez de ação i
   assert.match(js,/não exclua dados manualmente/);
   assert.doesNotMatch(js,/Abra Integridade e reconcilie a duplicata antes de importar novamente/);
 });
+
+
+test('ST-MNM-45A importador grava mídia e serial no item correto',()=>{
+  assert.match(js,/item_serial:imageData\?\.serial \|\| imageData\?\.chassis/);
+  assert.match(js,/async function uploadImages\(supabase,auctionId,zip,manifest,lotIds,itemIds,uid\)/);
+  assert.match(js,/from\('lot_media'\)\.upsert/);
+  assert.match(js,/lot_item_id:itemId/);
+  assert.match(js,/item_link_method:'manifest_item_order'/);
+  assert.match(js,/media-refresh-request/);
+  assert.match(js,/imagens privadas vinculadas item a item/);
+});
