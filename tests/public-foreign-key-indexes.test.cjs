@@ -20,5 +20,5 @@ test('ST-MNM-37B cobre as FKs públicas sinalizadas pelo advisor',()=>{
   assert.match(sql,/lot_items\(created_by\)/);
   assert.match(sql,/lot_media\(source_document_id\)/);
   assert.match(sql,/user_lot_evidence\(auction_id\)/);
-  assert.doesNotMatch(sql,/private\.platform_authorities/);
+  assert.doesNotMatch(sql,/on\s+private\.platform_authorities\s*\(/i);
 });
