@@ -9,6 +9,8 @@ const parityRowsBox=document.querySelector('#integrityParityRows');
 const parityEmptyBox=document.querySelector('#integrityParityEmpty');
 const sourceRowsBox=document.querySelector('#integritySourceRows');
 const sourceEmptyBox=document.querySelector('#integritySourceEmpty');
+const resultRowsBox=document.querySelector('#integrityResultRows');
+const resultEmptyBox=document.querySelector('#integrityResultEmpty');
 const refreshBtn=document.querySelector('#refreshIntegrity');
 
 let client=null;
@@ -361,6 +363,105 @@ function renderSourceObservability(sources,runs,documents){
   };
 }
 
+function renderResultObservability(runs,documents,auctions,lots){
+  resultRowsBox.innerHTML='';
+  const groups=new Map();
+  let unidentified=0;
+  for(const run of runs||[]){
+    const resultId=String(run?.metadata?.resultId||'').trim();
+    if(!resultId){
+      unidentified++;
+      continue;
+    }
+    if(!groups.has(resultId)) groups.set(resultId,[]);
+    groups.get(resultId).push(run);
+  }
+
+  const documentsById=new Map((documents||[]).map(doc=>[String(doc.id||''),doc]));
+  const auctionsByResult=new Map();
+  for(const auction of auctions||[]){
+    const resultId=String(auction?.source_evidence?.officialResultId||'').trim();
+    if(resultId) auctionsByResult.set(resultId,auction);
+  }
+  const lotsByAuction=new Map();
+  for(const lot of lots||[]){
+    lotsByAuction.set(lot.auction_id,(lotsByAuction.get(lot.auction_id)||0)+1);
+  }
+
+  resultEmptyBox.hidden=groups.size>0;
+  let aligned=0;
+  let gaps=0;
+
+  for(const [resultId,resultRuns] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){
+    const ordered=[...resultRuns].sort((a,b)=>
+      String(a?.started_at||'').localeCompare(String(b?.started_at||'')));
+    const latest=ordered.at(-1)||null;
+    const latestSuccess=[...ordered].reverse().find(run=>run.status==='success')||null;
+    const documentId=String(latestSuccess?.metadata?.documentId||'').trim();
+    const document=documentId ? documentsById.get(documentId)||null : null;
+    const relational=auctionsByResult.get(resultId)||null;
+    const relationalLots=relational ? (lotsByAuction.get(relational.id)||0) : null;
+    const provenLots=latestSuccess ? Number(latestSuccess.found_count)||0 : null;
+    const latestStatus=String(latest?.status||'sem run');
+    const proofComplete=Boolean(latestSuccess && document);
+    const countAligned=proofComplete && relational && relationalLots===provenLots;
+
+    let state='';
+    if(countAligned){
+      state=latestStatus==='success'
+        ? 'Alinhado'
+        : 'Prova alinhada • último run '+latestStatus;
+      aligned++;
+    }else{
+      gaps++;
+      if(!latestSuccess) state='Sem success';
+      else if(!document) state='Success sem documento vinculado';
+      else if(!relational) state='Prova sem leilão relacional';
+      else state='Divergente: prova '+provenLots+' × relacional '+relationalLots;
+      if(latestStatus!=='success' && latestStatus!=='sem run'){
+        state+=' • último run '+latestStatus;
+      }
+    }
+
+    const tr=document.createElement('tr');
+    const values=[
+      resultId,
+      String(latest?.source_id||latestSuccess?.source_id||'—'),
+      String(resultRuns.length)+' • último '+latestStatus,
+      latestSuccess ? String(provenLots) : '—'
+    ];
+    for(const value of values){
+      const td=document.createElement('td');
+      td.textContent=value;
+      tr.appendChild(td);
+    }
+
+    const docTd=document.createElement('td');
+    if(document?.document_url){
+      const link=document.createElement('a');
+      link.href=document.document_url;
+      link.target='_blank';
+      link.rel='noopener';
+      link.textContent=document.reference||'Abrir documento';
+      docTd.appendChild(link);
+    }else{
+      docTd.textContent=documentId?'Documento não visível':'—';
+    }
+    tr.appendChild(docTd);
+
+    const relationalTd=document.createElement('td');
+    relationalTd.textContent=relational ? String(relationalLots) : '—';
+    tr.appendChild(relationalTd);
+
+    const stateTd=document.createElement('td');
+    stateTd.textContent=state;
+    tr.appendChild(stateTd);
+    resultRowsBox.appendChild(tr);
+  }
+
+  return {results:groups.size,aligned,gaps,unidentified};
+}
+
 function roleReadiness(userId,auctions,memberships){
   const expected=['owner','admin','participant','observer'];
   const demonstrated=new Set();
@@ -433,8 +534,8 @@ async function loadIntegrity(){
       fetchVisibleRows('invitations','auction_id,role,status,expires_at,created_at','created_at'),
       fetchVisibleRows('audit_log','auction_id,entity_type,action,created_at','created_at'),
       fetchVisibleRows('official_sources','id,name,status,last_verified,active,extra_data','id'),
-      fetchVisibleRows('source_search_runs','source_id,status,found_count,started_at,finished_at','started_at'),
-      fetchVisibleRows('source_documents','source_id,created_at,document_url','created_at')
+      fetchVisibleRows('source_search_runs','source_id,status,found_count,started_at,finished_at,metadata','started_at'),
+      fetchVisibleRows('source_documents','id,source_id,reference,created_at,document_url','created_at')
     ]);
 
     if(auctionResult.error) throw auctionResult.error;
@@ -467,6 +568,7 @@ async function loadIntegrity(){
     setText('#snapshotLots',parity.snapshotLots);
 
     const sourceCoverage=renderSourceObservability(sourceRows,sourceRunRows,sourceDocumentRows);
+    const resultCoverage=renderResultObservability(sourceRunRows,sourceDocumentRows,auctions,lots);
     const roles=roleReadiness(user.id,auctions,memberships);
     const invitationStatuses=countBy(invitations,'status');
     const auditActions=countBy(auditRows,'action');
@@ -495,6 +597,12 @@ async function loadIntegrity(){
             +sourceCoverage.sourcesWithErrors+' fonte(s) com erro histórico. '
             +'Totais: '+runCount+' execução(ões), '+docCount+' documento(s).'
           : 'Nenhuma fonte ativa visível para medir telemetria.'),
+      gate('Evidência por resultado oficial',
+        resultCoverage.results>0 && resultCoverage.gaps===0?'ok':(resultCoverage.aligned?'partial':'pending'),
+        resultCoverage.results
+          ? resultCoverage.aligned+'/'+resultCoverage.results+' resultado(s) com success + documento + contagem relacional alinhada. '
+            +resultCoverage.gaps+' gap(s); '+resultCoverage.unidentified+' run(s) sem resultId.'
+          : 'Nenhum run com resultId visível para reconciliar individualmente.'),
       gate('Matriz de papéis do P2',roles.missing.length===0?'ok':(roles.demonstrated.length?'partial':'pending'),
         'Demonstrados nesta sessão: '+(roles.demonstrated.join(', ')||'nenhum')+
         '. Faltam: '+(roles.missing.join(', ')||'nenhum')+
@@ -512,6 +620,7 @@ async function loadIntegrity(){
       parity.gaps>0,
       officialIds.size===0,
       sourceCoverage.active===0 || sourceCoverage.covered<sourceCoverage.active,
+      resultCoverage.results===0 || resultCoverage.gaps>0,
       roles.missing.length>0,
       invitations.length===0 || auditRows.length===0 || missingAuditActions.length>0
     ].filter(Boolean).length;
