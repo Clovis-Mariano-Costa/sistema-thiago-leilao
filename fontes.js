@@ -78,6 +78,198 @@ async function persistOfficialStateOnline(state){
   return {ok:true,reason:''};
 }
 
+function relationalMoney(value){
+  const raw=String(value??'').trim();
+  if(!raw) return null;
+  const compact=raw.replace(/[^0-9,.-]/g,'');
+  const normalized=compact.includes(',')
+    ? compact.replace(/\./g,'').replace(',','.')
+    : compact;
+  const number=Number(normalized);
+  return Number.isFinite(number)?number:null;
+}
+
+function relationalLotExtra(lot){
+  const known=new Set([
+    'n','lot','numero','vehicle','item','description','descricao','type','tipo','plate','placa',
+    'brandModel','marcaModelo','marca/modelo','chassis','chassi','engine','motor','year','ano',
+    'color','cor','fuel','combustivel','minimumBid','lanceMinimo','valorMinimo','fipeValue',
+    'valorFipe','extraFields'
+  ]);
+  const extra={...(lot?.extraFields||{})};
+  Object.entries(lot||{}).forEach(([key,value])=>{
+    if(!known.has(key)) extra[key]=value;
+  });
+  return extra;
+}
+
+function chunkRows(rows,size=150){
+  const chunks=[];
+  for(let i=0;i<rows.length;i+=size) chunks.push(rows.slice(i,i+size));
+  return chunks;
+}
+
+async function persistOfficialRelational(item){
+  if(!supabase) return {ok:false,reason:'Supabase não configurado.',auctionId:'',lots:0,items:0};
+
+  const {data:{session},error:sessionError}=await supabase.auth.getSession();
+  const uid=session?.user?.id || '';
+  if(sessionError || !uid) return {ok:false,reason:'Sessão autenticada indisponível.',auctionId:'',lots:0,items:0};
+  if(!session.user.email_confirmed_at) return {ok:false,reason:'E-mail não confirmado.',auctionId:'',lots:0,items:0};
+
+  const evidence={
+    officialResultId:item.id||'',
+    sourceId:item.sourceId||'',
+    sourceName:item.sourceName||'',
+    agency:item.agency||'',
+    foundAt:item.foundAt||'',
+    officialUrl:item.officialUrl||'',
+    queriedAt:new Date().toISOString(),
+    lastVerified:item.lastChecked||'',
+    document:item?.extraFields?.official_connector_document || item?.extraFields?.pncp_document_used || null
+  };
+
+  let existing=null;
+  if(item.id){
+    const {data,error}=await supabase
+      .from('auctions')
+      .select('id')
+      .eq('owner_id',uid)
+      .eq('source_type','official')
+      .contains('source_evidence',{officialResultId:item.id})
+      .limit(1);
+    if(error) return {ok:false,reason:error.message||String(error),auctionId:'',lots:0,items:0};
+    existing=Array.isArray(data)&&data.length?data[0]:null;
+  }
+
+  if(!existing && item.reference){
+    let query=supabase
+      .from('auctions')
+      .select('id')
+      .eq('owner_id',uid)
+      .eq('source_type','official')
+      .eq('reference',item.reference)
+      .limit(1);
+    if(item.date) query=query.eq('auction_date',item.date);
+    const {data,error}=await query;
+    if(error) return {ok:false,reason:error.message||String(error),auctionId:'',lots:0,items:0};
+    existing=Array.isArray(data)&&data.length?data[0]:null;
+  }
+
+  const officialPayload={...item};
+  delete officialPayload.lots;
+  delete officialPayload.__pncpAttempted;
+  delete officialPayload.__pncpError;
+  delete officialPayload.__pncpDocument;
+
+  const auctionRow={
+    owner_id:uid,
+    title:item.title||item.reference||'Leilão oficial',
+    auction_date:item.date||null,
+    auction_time:item.time||null,
+    reference:item.reference||item.process||null,
+    location:item.location||item.scope||null,
+    source_type:'official',
+    source_label:'Fonte oficial',
+    official_url:item.officialUrl||null,
+    notes:item.object||null,
+    official_payload:officialPayload,
+    source_evidence:evidence,
+    extra_data:item.extraFields||{},
+    updated_at:new Date().toISOString()
+  };
+
+  let auctionId=existing?.id||'';
+  if(auctionId){
+    const {error}=await supabase.from('auctions').update(auctionRow).eq('id',auctionId);
+    if(error) return {ok:false,reason:error.message||String(error),auctionId,lots:0,items:0};
+  }else{
+    const {data,error}=await supabase.from('auctions').insert(auctionRow).select('id').single();
+    if(error || !data?.id) return {ok:false,reason:error?.message||'Leilão oficial não pôde ser criado.',auctionId:'',lots:0,items:0};
+    auctionId=data.id;
+  }
+
+  const sourceLots=Array.isArray(item.lots)?item.lots.filter(lot=>Number(lot?.n??lot?.lot??lot?.numero)>0):[];
+  const lotRows=sourceLots.map((lot,index)=>{
+    const n=Number(lot?.n??lot?.lot??lot?.numero??index+1);
+    const vehicle=lot?.vehicle||lot?.item||lot?.description||lot?.descricao||lot?.brandModel||lot?.marcaModelo||'';
+    const brandModel=lot?.brandModel||lot?.marcaModelo||lot?.['marca/modelo']||'';
+    const lotEvidence={...evidence,lotNumber:n};
+    return {
+      auction_id:auctionId,
+      lot_number:n,
+      vehicle:vehicle||null,
+      item_type:lot?.type||lot?.tipo||null,
+      plate:String(lot?.plate||lot?.placa||'').toUpperCase()||null,
+      brand_model:brandModel||null,
+      chassis:lot?.chassis||lot?.chassi||null,
+      engine:lot?.engine||lot?.motor||null,
+      model_year:String(lot?.year||lot?.ano||'')||null,
+      color:lot?.color||lot?.cor||null,
+      fuel:lot?.fuel||lot?.combustivel||null,
+      minimum_bid:relationalMoney(lot?.minimumBid||lot?.lanceMinimo||lot?.valorMinimo),
+      source_type:'official',
+      official_url:item.officialUrl||null,
+      official_payload:lot,
+      source_evidence:lotEvidence,
+      extra_data:relationalLotExtra(lot),
+      created_by:uid,
+      updated_at:new Date().toISOString()
+    };
+  });
+
+  const lotIdByNumber=new Map();
+  for(const chunk of chunkRows(lotRows)){
+    const {data,error}=await supabase
+      .from('lots')
+      .upsert(chunk,{onConflict:'auction_id,lot_number'})
+      .select('id,lot_number');
+    if(error) return {ok:false,reason:error.message||String(error),auctionId,lots:lotIdByNumber.size,items:0};
+    (data||[]).forEach(row=>lotIdByNumber.set(Number(row.lot_number),row.id));
+  }
+
+  const itemRows=sourceLots.map((lot,index)=>{
+    const n=Number(lot?.n??lot?.lot??lot?.numero??index+1);
+    const lotId=lotIdByNumber.get(n);
+    if(!lotId) return null;
+    const vehicle=lot?.vehicle||lot?.item||lot?.description||lot?.descricao||lot?.brandModel||lot?.marcaModelo||'';
+    const brandModel=lot?.brandModel||lot?.marcaModelo||lot?.['marca/modelo']||'';
+    return {
+      lot_id:lotId,
+      item_order:1,
+      item_identifier:String(lot?.plate||lot?.placa||'').toUpperCase()||null,
+      description:vehicle||null,
+      item_type:lot?.type||lot?.tipo||null,
+      vehicle:vehicle||null,
+      plate:String(lot?.plate||lot?.placa||'').toUpperCase()||null,
+      brand_model:brandModel||null,
+      chassis:lot?.chassis||lot?.chassi||null,
+      engine:lot?.engine||lot?.motor||null,
+      model_year:String(lot?.year||lot?.ano||'')||null,
+      color:lot?.color||lot?.cor||null,
+      fuel:lot?.fuel||lot?.combustivel||null,
+      state:lot?.uf||lot?.state||null,
+      source_type:'official',
+      source_evidence:{...evidence,lotNumber:n},
+      extra_data:relationalLotExtra(lot),
+      created_by:uid,
+      updated_at:new Date().toISOString()
+    };
+  }).filter(Boolean);
+
+  let itemCount=0;
+  for(const chunk of chunkRows(itemRows)){
+    const {data,error}=await supabase
+      .from('lot_items')
+      .upsert(chunk,{onConflict:'lot_id,item_order'})
+      .select('id');
+    if(error) return {ok:false,reason:error.message||String(error),auctionId,lots:lotIdByNumber.size,items:itemCount};
+    itemCount+=(data||[]).length;
+  }
+
+  return {ok:true,reason:'',auctionId,lots:lotIdByNumber.size,items:itemCount};
+}
+
 function normalizeImportedLot(lot,index,item){
   const n=Number(lot?.n ?? lot?.lot ?? lot?.numero ?? index+1);
   const known=new Set(['n','lot','numero','vehicle','item','description','descricao','type','tipo','plate','placa','brandModel','marcaModelo','marca/modelo','chassis','chassi','engine','motor','year','ano','color','cor','fuel','combustivel','fipeValue','valorFipe','minimumBid','lanceMinimo','valorMinimo','note','observacao','sourceType','needsReview','extraFields']);
@@ -315,13 +507,18 @@ async function importAuction(item,button){
   saveState(state);
 
   const online=await persistOfficialStateOnline(state);
+  const relational=await persistOfficialRelational(item);
   const params=new URLSearchParams({
     imported:item.id,
     fields:String(Object.keys(item||{}).length),
     lots:String(importedLots.length),
-    sync:online.ok?'online':'local'
+    sync:online.ok?'online':'local',
+    relational:relational.ok?'online':'pending',
+    relational_lots:String(relational.lots||0),
+    relational_items:String(relational.items||0)
   });
   if(!online.ok && online.reason) params.set('sync_error',online.reason);
+  if(!relational.ok && relational.reason) params.set('relational_error',relational.reason);
   if(item.__pncpAttempted) params.set('pncp','1');
   if(item.__pncpError) params.set('pncp_error',item.__pncpError);
   if(item.__pncpDocument) params.set('pncp_document',item.__pncpDocument);
