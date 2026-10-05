@@ -386,8 +386,22 @@ function matchesSearch(item){
   return !searchQuery || fullText(item).includes(searchQuery);
 }
 
+const SUPPORTED_LOT_CONNECTORS=new Set(['pncp','pncp-detran','prf-pdf']);
+
+function sourceConfig(sourceId){
+  return SOURCES.find(source=>source.id===sourceId) || null;
+}
+
+function lotConnectorFor(item){
+  const declared=String(item?.lotsConnector || sourceConfig(item?.sourceId)?.lotsConnector || '').trim();
+  if(!SUPPORTED_LOT_CONNECTORS.has(declared)) return '';
+  if((declared==='pncp' || declared==='pncp-detran') && !item?.pncp) return '';
+  if(declared==='prf-pdf' && item?.sourceId!=='prf-sc') return '';
+  return declared;
+}
+
 function hasOfficialLotConnector(item){
-  return Boolean(item?.pncp || item?.sourceId==='prf-sc');
+  return Boolean(lotConnectorFor(item));
 }
 
 async function enrichOfficialLots(item,button){
