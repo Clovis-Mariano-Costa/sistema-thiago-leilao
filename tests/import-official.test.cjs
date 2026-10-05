@@ -101,3 +101,18 @@ test('reimportação sem lots não apaga lotes já cadastrados',()=>{
   assert.equal(state.auctions[0].lots.length,1);
   assert.equal(state.auctions[0].lots[0].vehicle,'Sprinter');
 });
+
+
+test('PRF/SC possui adaptador de lotes oficial sem depender de coordenadas PNCP',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(fontes,/sourceId==='prf-sc'/);
+  assert.match(fontes,/enrichOfficialLots/);
+  assert.match(edge,/sourceId==="prf-sc"/);
+  assert.match(edge,/fetchPrfLots/);
+  assert.match(edge,/Anexo I/);
+  assert.match(edge,/parsedRatio<0\.98/);
+  assert.match(edge,/needsReview:true/);
+  assert.match(edge,/gov\.br/);
+});

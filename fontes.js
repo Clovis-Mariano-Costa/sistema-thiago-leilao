@@ -115,15 +115,19 @@ function matchesSearch(item){
   return !searchQuery || fullText(item).includes(searchQuery);
 }
 
-async function enrichFromPncp(item,button){
-  if(!item?.pncp) return {item,pncpAttempted:false,pncpError:'',pncpData:null};
+function hasOfficialLotConnector(item){
+  return Boolean(item?.pncp || item?.sourceId==='prf-sc');
+}
+
+async function enrichOfficialLots(item,button){
+  if(!hasOfficialLotConnector(item)) return {item,connectorAttempted:false,connectorError:'',connectorData:null};
 
   if(!supabase || !SUPABASE_CFG.url || !SUPABASE_CFG.publishableKey){
     return {
       item,
-      pncpAttempted:true,
-      pncpError:'Configuração do conector PNCP/Supabase não encontrada nesta publicação.',
-      pncpData:null
+      connectorAttempted:true,
+      connectorError:'Configuração do conector oficial/Supabase não encontrada nesta publicação.',
+      connectorData:null
     };
   }
 
@@ -131,9 +135,9 @@ async function enrichFromPncp(item,button){
   if(!session?.access_token){
     return {
       item,
-      pncpAttempted:true,
-      pncpError:'Entre na sua conta e confirme o e-mail antes de buscar lotes automaticamente.',
-      pncpData:null
+      connectorAttempted:true,
+      connectorError:'Entre na sua conta e confirme o e-mail antes de buscar lotes automaticamente.',
+      connectorData:null
     };
   }
 
@@ -151,7 +155,9 @@ async function enrichFromPncp(item,button){
         'Authorization':'Bearer '+session.access_token,
         'apikey':SUPABASE_CFG.publishableKey
       },
-      body:JSON.stringify({...item.pncp,fallbackUrl:item.detranDownloadPage||''})
+      body:JSON.stringify(item?.pncp
+        ? {...item.pncp,fallbackUrl:item.detranDownloadPage||''}
+        : {sourceId:item.sourceId,fallbackUrl:item.officialUrl||''})
     });
 
     let data=null;
@@ -168,31 +174,36 @@ async function enrichFromPncp(item,button){
       lots:lots.length ? lots : (Array.isArray(item.lots)?item.lots:[]),
       extraFields:{
         ...(item.extraFields||{}),
-        pncp_control:item.pncp.control || data?.pncpControl || '',
+        pncp_control:item?.pncp?.control || data?.pncpControl || '',
         pncp_items:Array.isArray(data?.items)?data.items:[],
         pncp_files:Array.isArray(data?.files)?data.files:[],
         pncp_document_used:data?.documentUsed || null,
         pncp_diagnostics:Array.isArray(data?.diagnostics)?data.diagnostics:[],
         pncp_lots_extracted:lots.length,
-        pncp_imported_at:data?.importedAt || new Date().toISOString()
+        pncp_imported_at:data?.importedAt || new Date().toISOString(),
+        official_connector_source:data?.source || (item?.pncp?'PNCP':item?.sourceId||''),
+        official_connector_document:data?.documentUsed || null,
+        official_connector_diagnostics:Array.isArray(data?.diagnostics)?data.diagnostics:[],
+        official_connector_lots_extracted:lots.length,
+        official_connector_imported_at:data?.importedAt || new Date().toISOString()
       }
     };
 
-    return {item:enriched,pncpAttempted:true,pncpError:'',pncpData:data};
+    return {item:enriched,connectorAttempted:true,connectorError:'',connectorData:data};
   }catch(error){
     return {
       item:{
         ...item,
         extraFields:{
           ...(item.extraFields||{}),
-          pncp_control:item.pncp.control || '',
+          pncp_control:item?.pncp?.control || '',
           pncp_import_error:String(error?.message || error),
           pncp_import_attempted_at:new Date().toISOString()
         }
       },
-      pncpAttempted:true,
-      pncpError:String(error?.message || error),
-      pncpData:null
+      connectorAttempted:true,
+      connectorError:String(error?.message || error),
+      connectorData:null
     };
   }finally{
     if(button){
@@ -289,7 +300,7 @@ function resultCard(item){
   const extras=Object.entries(item.extraFields||{});
   const statusText=item.status || '';
   const statusClass=/suspens/i.test(statusText)?'status-badge sold':'status-badge waiting';
-  const importLabel=item.pncp
+  const importLabel=hasOfficialLotConnector(item)
     ? 'Importar cadastro + buscar lotes'
     : (Array.isArray(item.lots) && item.lots.length ? 'Importar cadastro oficial' : 'Importar cadastro oficial • dados gerais');
   return `<article class="official-auction-card">
@@ -355,12 +366,12 @@ function render(){
     const base=RESULTS.find(x=>x.id===btn.dataset.id);
     if(!base) return;
 
-    const enriched=await enrichFromPncp(base,btn);
+    const enriched=await enrichOfficialLots(base,btn);
     const item={
       ...enriched.item,
-      __pncpAttempted:enriched.pncpAttempted,
-      __pncpError:enriched.pncpError || '',
-      __pncpDocument:enriched.pncpData?.documentUsed?.name || ''
+      __pncpAttempted:enriched.connectorAttempted,
+      __pncpError:enriched.connectorError || '',
+      __pncpDocument:enriched.connectorData?.documentUsed?.name || ''
     };
     await importAuction(item,btn);
   }));
