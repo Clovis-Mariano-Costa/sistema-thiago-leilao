@@ -171,7 +171,9 @@ async function persistOfficialRelational(item){
     officialUrl:item.officialUrl||'',
     queriedAt:new Date().toISOString(),
     lastVerified:item.lastChecked||'',
-    document:item?.extraFields?.official_connector_document || item?.extraFields?.pncp_document_used || null
+    document:item?.extraFields?.official_connector_document || item?.extraFields?.pncp_document_used || null,
+    sourceRunId:item.__sourceRunId||'',
+    sourceDocumentId:item.__sourceDocumentId||''
   };
 
   let existing=null;
@@ -206,6 +208,8 @@ async function persistOfficialRelational(item){
   delete officialPayload.__pncpAttempted;
   delete officialPayload.__pncpError;
   delete officialPayload.__pncpDocument;
+  delete officialPayload.__sourceRunId;
+  delete officialPayload.__sourceDocumentId;
 
   const auctionRow={
     owner_id:uid,
@@ -600,7 +604,10 @@ async function importAuction(item,button){
     sync:online.ok?'online':'local',
     relational:relational.ok?'online':'pending',
     relational_lots:String(relational.lots||0),
-    relational_items:String(relational.items||0)
+    relational_items:String(relational.items||0),
+    relational_auction_id:String(relational.auctionId||''),
+    source_run_id:String(item.__sourceRunId||''),
+    source_document_id:String(item.__sourceDocumentId||'')
   });
   if(!online.ok && online.reason) params.set('sync_error',online.reason);
   if(!relational.ok && relational.reason) params.set('relational_error',relational.reason);
@@ -685,7 +692,9 @@ function render(){
       ...enriched.item,
       __pncpAttempted:enriched.connectorAttempted,
       __pncpError:enriched.connectorError || '',
-      __pncpDocument:enriched.connectorData?.documentUsed?.name || ''
+      __pncpDocument:enriched.connectorData?.documentUsed?.name || '',
+      __sourceRunId:enriched.connectorData?.sourceRunId || '',
+      __sourceDocumentId:enriched.connectorData?.sourceDocumentId || ''
     };
     await importAuction(item,btn);
   }));
