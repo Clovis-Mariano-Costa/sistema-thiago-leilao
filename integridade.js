@@ -7,6 +7,8 @@ const rowsBox=document.querySelector('#integrityAuctionRows');
 const emptyBox=document.querySelector('#integrityAuctionEmpty');
 const parityRowsBox=document.querySelector('#integrityParityRows');
 const parityEmptyBox=document.querySelector('#integrityParityEmpty');
+const sourceRowsBox=document.querySelector('#integritySourceRows');
+const sourceEmptyBox=document.querySelector('#integritySourceEmpty');
 const refreshBtn=document.querySelector('#refreshIntegrity');
 
 let client=null;
@@ -186,6 +188,50 @@ function renderSnapshotParity(snapshotState,auctions,lots){
   };
 }
 
+function latestIso(rows,field){
+  let latest='';
+  for(const row of rows){
+    const value=String(row?.[field]||'');
+    if(value && (!latest || value>latest)) latest=value;
+  }
+  return latest;
+}
+
+function renderSourceObservability(sources,runs,documents){
+  sourceRowsBox.innerHTML='';
+  const active=(sources||[]).filter(source=>source.active!==false);
+  sourceEmptyBox.hidden=active.length>0;
+  const coverage=new Set();
+
+  for(const source of active){
+    const sourceRuns=(runs||[]).filter(row=>row.source_id===source.id);
+    const sourceDocs=(documents||[]).filter(row=>row.source_id===source.id);
+    const complete=sourceRuns.length>0 && sourceDocs.length>0;
+    if(complete) coverage.add(source.id);
+    const latest=[latestIso(sourceRuns,'started_at'),latestIso(sourceDocs,'created_at')]
+      .filter(Boolean)
+      .sort()
+      .at(-1)||'—';
+    const tr=document.createElement('tr');
+    const values=[
+      source.name||source.id,
+      source.status||'—',
+      String(sourceRuns.length),
+      String(sourceDocs.length),
+      latest,
+      complete?'Com prova backend':'Sem telemetria'
+    ];
+    for(const value of values){
+      const td=document.createElement('td');
+      td.textContent=value;
+      tr.appendChild(td);
+    }
+    sourceRowsBox.appendChild(tr);
+  }
+
+  return {active:active.length,covered:coverage.size};
+}
+
 function roleReadiness(userId,auctions,memberships){
   const expected=['owner','admin','participant','observer'];
   const demonstrated=new Set();
@@ -238,7 +284,10 @@ async function loadIntegrity(){
       docCount,
       memberships,
       invitations,
-      auditRows
+      auditRows,
+      sourceRows,
+      sourceRunRows,
+      sourceDocumentRows
     ]=await Promise.all([
       client.from('auctions')
         .select('id,owner_id,title,reference,source_type,source_label,official_url,source_evidence,created_at')
@@ -253,7 +302,10 @@ async function loadIntegrity(){
       countVisible('source_documents'),
       fetchVisibleRows('auction_members','auction_id,user_id,role,created_at','created_at'),
       fetchVisibleRows('invitations','auction_id,role,status,expires_at,created_at','created_at'),
-      fetchVisibleRows('audit_log','auction_id,entity_type,action,created_at','created_at')
+      fetchVisibleRows('audit_log','auction_id,entity_type,action,created_at','created_at'),
+      fetchVisibleRows('official_sources','id,name,status,last_verified,active','id'),
+      fetchVisibleRows('source_search_runs','source_id,status,found_count,started_at,finished_at','started_at'),
+      fetchVisibleRows('source_documents','source_id,created_at,document_url','created_at')
     ]);
 
     if(auctionResult.error) throw auctionResult.error;
@@ -285,6 +337,7 @@ async function loadIntegrity(){
     setText('#snapshotAuctions',parity.snapshotAuctions);
     setText('#snapshotLots',parity.snapshotLots);
 
+    const sourceCoverage=renderSourceObservability(sourceRows,sourceRunRows,sourceDocumentRows);
     const roles=roleReadiness(user.id,auctions,memberships);
     const invitationStatuses=countBy(invitations,'status');
     const auditActions=countBy(auditRows,'action');
@@ -301,9 +354,13 @@ async function loadIntegrity(){
       gate('Canonização relacional oficial',officialIds.size?'ok':'pending',officialIds.size
         ? officialIds.size+' leilão(ões) oficial(is), '+officialLotRows.length+' lote(s) e '+officialItemRows.length+' item(ns) no banco canônico.'
         : 'Nenhum leilão source_type=official visível. Uma nova importação oficial é necessária para demonstrar o POST do ST-MNM-22.'),
-      gate('Observabilidade de fonte',(runCount&&docCount)?'ok':'pending',(runCount&&docCount)
-        ? runCount+' execução(ões) e '+docCount+' documento(s) visíveis.'
-        : 'Ainda faltam run/documento observáveis após uma importação executada com ST-MNM-23B publicado.'),
+      gate('Observabilidade de fonte',
+        sourceCoverage.active>0 && sourceCoverage.covered===sourceCoverage.active
+          ? 'ok'
+          : (sourceCoverage.covered?'partial':'pending'),
+        sourceCoverage.active
+          ? sourceCoverage.covered+'/'+sourceCoverage.active+' fonte(s) ativa(s) possuem run + documento visíveis. Totais: '+runCount+' execução(ões), '+docCount+' documento(s).'
+          : 'Nenhuma fonte ativa visível para medir telemetria.'),
       gate('Matriz de papéis do P2',roles.missing.length===0?'ok':(roles.demonstrated.length?'partial':'pending'),
         'Demonstrados nesta sessão: '+(roles.demonstrated.join(', ')||'nenhum')+
         '. Faltam: '+(roles.missing.join(', ')||'nenhum')+
@@ -320,7 +377,7 @@ async function loadIntegrity(){
       !snapshot,
       parity.gaps>0,
       officialIds.size===0,
-      runCount===0 || docCount===0,
+      sourceCoverage.active===0 || sourceCoverage.covered<sourceCoverage.active,
       roles.missing.length>0,
       invitations.length===0 || auditRows.length===0 || missingAuditActions.length>0
     ].filter(Boolean).length;
