@@ -139,12 +139,21 @@ async function hydratePrivateLotMedia(){
   }
 }
 
-if(window.SISTEMA_THIAGO_APP) hydratePrivateLotMedia();
-else window.addEventListener('sistema-thiago:app-ready',hydratePrivateLotMedia,{once:true});
+function scheduleMediaHydration(){
+  const launch=()=>hydratePrivateLotMedia();
+  if('requestIdleCallback' in window){
+    window.requestIdleCallback(launch,{timeout:1500});
+  }else{
+    setTimeout(launch,260);
+  }
+}
 
-window.addEventListener('sistema-thiago:media-refresh-request',hydratePrivateLotMedia);
+if(window.SISTEMA_THIAGO_APP) scheduleMediaHydration();
+else window.addEventListener('sistema-thiago:app-ready',scheduleMediaHydration,{once:true});
+
+window.addEventListener('sistema-thiago:media-refresh-request',scheduleMediaHydration);
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible' && Date.now()-lastHydratedAt>45*60*1000){
-    hydratePrivateLotMedia();
+    scheduleMediaHydration();
   }
 });

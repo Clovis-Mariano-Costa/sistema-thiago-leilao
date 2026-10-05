@@ -549,5 +549,14 @@ async function start(){
   });
 }
 
-if(window.SISTEMA_THIAGO_APP) start();
-else window.addEventListener('sistema-thiago:app-ready',start,{once:true});
+function scheduleCloudStart(){
+  const launch=()=>start();
+  if('requestIdleCallback' in window){
+    window.requestIdleCallback(launch,{timeout:1200});
+  }else{
+    setTimeout(launch,180);
+  }
+}
+
+if(window.SISTEMA_THIAGO_APP) scheduleCloudStart();
+else window.addEventListener('sistema-thiago:app-ready',scheduleCloudStart,{once:true});
