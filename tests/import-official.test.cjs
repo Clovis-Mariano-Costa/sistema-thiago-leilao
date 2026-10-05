@@ -135,3 +135,37 @@ test('painel informa se a importação oficial ficou protegida online',()=>{
   assert.match(app,/Backup online:<\/strong> atualizado antes de abrir o painel/);
   assert.match(app,/não confirmado nesta importação/);
 });
+
+
+test('ST-MNM-22 promove cadastro oficial ao modelo relacional com RLS do usuário',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  assert.match(fontes,/async function persistOfficialRelational/);
+  assert.match(fontes,/\.from\('auctions'\)/);
+  assert.match(fontes,/owner_id:uid/);
+  assert.match(fontes,/source_type:'official'/);
+  assert.match(fontes,/\.from\('lots'\)[\s\S]*onConflict:'auction_id,lot_number'/);
+  assert.match(fontes,/\.from\('lot_items'\)[\s\S]*onConflict:'lot_id,item_order'/);
+  assert.match(fontes,/const relational=await persistOfficialRelational\(item\)/);
+});
+
+test('ST-MNM-22 não zera campos de decisão do usuário em reimportação oficial',()=>{
+  const fs=require('node:fs');
+  const fontes=fs.readFileSync('fontes.js','utf8');
+  const start=fontes.indexOf('const lotRows=sourceLots.map');
+  const end=fontes.indexOf('const lotIdByNumber',start);
+  const lotPayload=fontes.slice(start,end);
+  assert.doesNotMatch(lotPayload,/preference_level:/);
+  assert.doesNotMatch(lotPayload,/max_bid:/);
+  assert.doesNotMatch(lotPayload,/final_value:/);
+  assert.doesNotMatch(lotPayload,/sold:/);
+  assert.doesNotMatch(lotPayload,/result:/);
+});
+
+test('painel distingue snapshot de banco relacional após importação oficial',()=>{
+  const fs=require('node:fs');
+  const app=fs.readFileSync('app.js','utf8');
+  assert.match(app,/params\.get\('relational'\)/);
+  assert.match(app,/Banco canônico:<\/strong>/);
+  assert.match(app,/reconciliação pendente/);
+});
