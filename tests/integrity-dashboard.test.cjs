@@ -105,10 +105,13 @@ test('ST-MNM-40A torna observabilidade por fonte acionável sem escrita automát
 test('ST-MNM-40C prefere capability backend e falha fechado em divergência',()=>{
   const js=fs.readFileSync('integridade.js','utf8');
   assert.match(js,/source\?\.extra_data\?\.lotsConnector/);
-  assert.match(js,/backendConnector && catalogConnector && backendConnector!==catalogConnector/);
+  assert.match(js,/backendPresent/);
+  assert.match(js,/Autoridade backend indisponível/);
+  assert.match(js,/\(backendConnector \|\| catalogConnector\) && backendConnector!==catalogConnector/);
   assert.match(js,/Divergência de capability/);
   assert.match(js,/Não executar automaticamente/);
-  assert.match(js,/connector=backendConnector\|\|catalogConnector/);
+  assert.match(js,/if\(backendConnector && catalogConnector\)/);
+  assert.doesNotMatch(js,/connector=backendConnector\|\|catalogConnector/);
   assert.match(js,/capabilityDrift/);
   assert.match(js,/fetchVisibleRows\('official_sources','id,name,status,last_verified,active,extra_data'/);
   assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
@@ -185,6 +188,7 @@ test('ST-MNM-41D exibe resultado catalogado mesmo sem run backend',()=>{
   assert.match(js,/Sem run backend • execução governada pendente/);
   assert.match(js,/Relacional sem prova backend/);
   assert.match(js,/Sem run backend • capability divergente/);
+  assert.match(js,/Autoridade backend indisponível/);
   assert.match(js,/catalogMissing/);
   assert.match(js,/runOnly/);
   assert.match(js,/renderResultObservability\(sourceRunRows,sourceDocumentRows,auctions,lots,sourceRows\)/);
