@@ -222,3 +222,34 @@ body{background:
 .lot-fipe-candidates>div{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
 .lot-fipe-candidates strong{color:#9f1d1d;font-size:.82rem}
 .lot-fipe-candidates small{color:var(--muted);font-size:.71rem}
+
+
+/* Fotos dos lotes — miniatura clicável, ampliação e modo ao vivo */
+.lot-photo{cursor:zoom-in;transition:transform .15s ease,box-shadow .15s ease}
+.lot-photo:hover{transform:scale(1.035);box-shadow:0 6px 18px rgba(7,23,41,.18)}
+.lot-photo:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+
+.photo-viewer-dialog{
+  width:min(96vw,1180px);max-width:none;max-height:96vh;padding:0;border:0;border-radius:20px;background:transparent
+}
+.photo-viewer-dialog::backdrop{background:rgba(1,8,18,.93);backdrop-filter:blur(3px)}
+.photo-viewer-shell{position:relative;display:grid;place-items:center;gap:10px;min-height:70vh;padding:50px 14px 16px;background:#050b13;border:1px solid rgba(255,255,255,.16);border-radius:20px}
+.photo-viewer-image{display:block;max-width:100%;max-height:82vh;width:auto;height:auto;object-fit:contain;border-radius:10px;background:#111}
+.photo-viewer-caption{margin:0;color:#d8e0ea;font-size:.84rem;text-align:center}
+.photo-viewer-close{position:absolute;top:10px;right:10px;width:42px;height:42px;border:1px solid rgba(255,255,255,.25);border-radius:50%;background:rgba(255,255,255,.08);color:#fff;font-size:1.55rem;cursor:pointer}
+
+.live-photo-button{
+  width:min(100%,520px);margin-top:14px;padding:0;border:1px solid rgba(214,165,52,.45);border-radius:16px;background:rgba(255,255,255,.06);overflow:hidden;color:#f1d071;cursor:zoom-in
+}
+.live-photo{display:block;width:100%;max-height:30vh;min-height:120px;object-fit:contain;background:#02070d}
+.live-photo-button span{display:block;padding:7px 10px;font-size:.73rem;font-weight:850}
+.live-photo-button:focus-visible{outline:3px solid #f1d071;outline-offset:3px}
+
+@media(min-width:720px){
+  .live-photo{max-height:280px}
+}
+@media(max-width:520px){
+  .photo-viewer-shell{min-height:78vh;padding:52px 8px 12px}
+  .photo-viewer-image{max-height:76vh}
+  .live-photo{max-height:24vh;min-height:100px}
+}
