@@ -369,3 +369,13 @@ test('ST-MNM-33A mostra capacidade e frescor sem habilitar conectores novos',()=
   assert.match(html,/catálogo informa quando a extração de lotes é automatizada/);
   assert.doesNotMatch(fontes,/fetch\(source\.url/);
 });
+
+
+test('ST-MNM-35A owner recém-criado pode receber RETURNING do auction',()=>{
+  const fs=require('node:fs');
+  const migration=fs.readFileSync('supabase/migrations/20261005041014_allow_owner_select_on_new_auction.sql','utf8');
+  assert.match(migration,/alter policy auctions_select_member on public\.auctions/i);
+  assert.match(migration,/owner_id\s*=\s*\(select auth\.uid\(\)\)/i);
+  assert.match(migration,/private\.can_view_auction\(id\)/i);
+  assert.doesNotMatch(migration,/drop policy|disable row level security|service_role/i);
+});
