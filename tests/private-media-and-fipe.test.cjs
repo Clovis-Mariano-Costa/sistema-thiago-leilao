@@ -12,7 +12,7 @@ test('Painel usa URL assinada de foto privada quando disponível',()=>{
   assert.match(app,/function lotPhotoUrl/);
   assert.match(app,/SISTEMA_THIAGO_MEDIA_URLS/);
   assert.match(app,/lot\.photoDataUrl \|\| ''/);
-  assert.match(html,/private-media\.js\?v=20261005-item45a1/);
+  assert.match(html,/private-media\.js\?v=20261005-item45b1/);
 });
 
 test('hidratação consulta apenas leilão do usuário autenticado e assina URLs privadas',()=>{
