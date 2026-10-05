@@ -87,6 +87,8 @@
             <button id="bulkLotsBtn" class="secondary-btn" type="button">+ Vários lotes</button>
             <button id="liveModeBtn" class="secondary-btn" type="button">Modo ao vivo</button>
             <a id="officialSourceLink" class="secondary-link compact" href="#" target="_blank" rel="noopener" hidden>Fonte oficial</a>
+            <a id="auctioneerLink" class="primary-link compact" href="#" target="_blank" rel="noopener" hidden>Acompanhar leilão online</a>
+            <a id="auctionMapLink" class="secondary-link compact" href="#" target="_blank" rel="noopener" hidden>Ver local no mapa</a>
           </div>
         </div>
       </div>
@@ -129,9 +131,14 @@
       </section>
 
       <section class="export-bar" aria-label="Exportação e segurança dos dados">
-        <button id="exportCsvBtn" class="secondary-btn" type="button">Exportar CSV</button>
-        <button id="printBtn" class="secondary-btn" type="button">PDF / Imprimir</button>
-        <button id="backupJsonBtn" class="secondary-btn" type="button">Backup JSON</button>
+        <details class="export-menu">
+          <summary class="secondary-btn">Exportar dados</summary>
+          <div class="export-menu-panel" role="menu" aria-label="Formatos de exportação">
+            <button id="printBtn" class="export-menu-action" type="button" role="menuitem">Relatório PDF / imprimir</button>
+            <button id="exportCsvBtn" class="export-menu-action" type="button" role="menuitem">Planilha CSV</button>
+            <button id="backupJsonBtn" class="export-menu-action" type="button" role="menuitem">Backup JSON</button>
+          </div>
+        </details>
         <button class="secondary-btn" type="button" data-import-package>Importar Pacote</button>
         <button id="restoreJsonBtn" class="secondary-btn" type="button">Restaurar backup</button>
         <input id="restoreJsonInput" type="file" accept=".json,application/json" hidden />
@@ -151,6 +158,10 @@
       </section>
 
       <section id="lotList" class="lot-list" aria-label="Lotes cadastrados"></section>
+      <div id="lotRenderFooter" class="lot-render-footer" hidden>
+        <span id="renderedLotsStatus" class="muted"></span>
+        <button id="loadMoreLotsBtn" class="secondary-btn" type="button">Carregar mais lotes</button>
+      </div>
       <p id="emptyState" class="empty-state" hidden>Nenhum lote corresponde ao filtro atual.</p>
     </section>
   </main>
@@ -421,11 +432,12 @@
 
   <script src="auth-config.js"></script>
   <script src="official-sources.js"></script>
-  <script src="app.js?v=20261004-fipepair1"></script>
+  <script src="app.js?v=20261005-itemui2"></script>
   <script src="charlie-chat.js"></script>
   <script type="module" src="session-ui.js"></script>
   <script type="module" src="cloud-sync.js"></script>
-  <script type="module" src="whatsapp-import.js?v=20261004-royal-mime1"></script>\n  <script type="module" src="private-media.js?v=20261004-media1"></script>
+  <script type="module" src="whatsapp-import.js?v=20261004-royal-mime1"></script>
+  <script type="module" src="private-media.js?v=20261005-item-media2"></script>
   <script src="cookie-notice.js"></script>
 </body>
 </html>
