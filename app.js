@@ -591,12 +591,25 @@ function matches(lot) {
   return true;
 }
 
+const HUMAN_CONFIRMABLE_LOT_FIELDS = new Set(['type','plate','brandModel','chassis','engine','year','color','fuel']);
+
+function markHumanConfirmedField(lot,field) {
+  if (lot?.sourceType !== 'official' || !HUMAN_CONFIRMABLE_LOT_FIELDS.has(field)) return;
+  lot.extraFields = lot.extraFields && typeof lot.extraFields === 'object' ? lot.extraFields : {};
+  const current = Array.isArray(lot.extraFields.humanConfirmedFields) ? lot.extraFields.humanConfirmedFields : [];
+  lot.extraFields.humanConfirmedFields = [...new Set([...current,field])];
+  lot.extraFields.humanConfirmedAt = new Date().toISOString();
+}
+
 function bindLotText(card, selector, lot, field) {
   const input = card.querySelector(selector);
   if (!input) return;
   input.value = lot[field] || '';
   input.addEventListener('change', () => {
-    lot[field] = input.value.trim();
+    const next = input.value.trim();
+    const changed = String(lot[field] || '') !== next;
+    lot[field] = next;
+    if (changed) markHumanConfirmedField(lot,field);
     saveState();
     updateSummary();
     renderAgenda();
