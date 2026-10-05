@@ -88,7 +88,7 @@ function cardHtml(item){
 
     <dl class="reference-data-grid">
       <div><dt>Município/UF</dt><dd>${esc(item.cityUf || '—')}</dd></div>
-      <div><dt>Chassi exibido</dt><dd>${esc(item.chassis || '—')}</dd></div>
+      <div><dt>Serial do item / chassi exibido</dt><dd>${esc(item.chassis || '—')}</dd></div>
       <div><dt>Ano</dt><dd>${esc(item.year || '—')}</dd></div>
       <div><dt>Cor</dt><dd>${esc(item.color || '—')}</dd></div>
       <div><dt>Licenciamento</dt><dd>${esc(item.licensing || '—')}</dd></div>
@@ -100,8 +100,15 @@ function cardHtml(item){
       ${item.consultedOfficial ? ' O usuário declarou que realizou consulta no canal oficial da FIPE.' : ''}
     </div>
 
+    <div class="reference-note">
+      <strong>Identidade do item:</strong> ${esc(item.chassis || item.plate || 'serial não informado')}.
+      ${(item.fipeOptions || []).length
+        ? (item.fipeOptions || []).length+' opção(ões) FIPE abaixo pertencem a este mesmo item; não representam itens adicionais do lote.'
+        : 'Nenhuma opção FIPE foi vinculada a este item.'}
+    </div>
+
     <div class="fipe-options">
-      <h3>Dados / opções FIPE</h3>
+      <h3>Dados / opções FIPE deste item</h3>
       ${(item.fipeOptions || []).map(optionHtml).join('') || '<p class="muted">Nenhuma opção FIPE cadastrada.</p>'}
     </div>
 
