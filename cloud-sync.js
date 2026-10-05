@@ -260,7 +260,8 @@ async function start(){
       'warn'
     );
     statusBox.querySelector('[data-sync-local]')?.addEventListener('click',async()=>{
-      const ok=await upload(localState,'Dados deste navegador enviados ao backup online');
+      const currentLocal=app.getState();
+      const ok=await upload(currentLocal,'Dados deste navegador enviados ao backup online');
       if(ok) unresolvedStateConflict=false;
     });
     statusBox.querySelector('[data-sync-cloud]')?.addEventListener('click',()=>{
