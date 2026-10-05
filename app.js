@@ -525,24 +525,29 @@ function auctionStatus(auction) {
 }
 
 function nextPending(auction = activeAuction()) {
-  if (!auction) return null;
-  return auction.lots.find(l => !l.sold) || null;
+  return nextPendingItem(auction)?.lot || null;
 }
 
 function ensureLiveCursor(auction = activeAuction()) {
-  if (!auction || !auction.lots.length) return -1;
-  let index = liveCursorByAuction.get(auction.id);
-  if (!Number.isInteger(index) || index < 0 || index >= auction.lots.length) {
-    index = auction.lots.findIndex(l => !l.sold);
-    if (index < 0) index = Math.max(0, auction.lots.length - 1);
+  const entries=operationalEntries(auction);
+  if(!entries.length) return -1;
+  let index=liveCursorByAuction.get(auction.id);
+  if(!Number.isInteger(index) || index<0 || index>=entries.length){
+    index=entries.findIndex(entry=>!entry.item.sold);
+    if(index<0) index=Math.max(0,entries.length-1);
     liveCursorByAuction.set(auction.id,index);
   }
   return index;
 }
 
+function liveCurrentEntry(auction = activeAuction()) {
+  const entries=operationalEntries(auction);
+  const index=ensureLiveCursor(auction);
+  return index>=0 ? entries[index] : null;
+}
+
 function liveCurrentLot(auction = activeAuction()) {
-  const index = ensureLiveCursor(auction);
-  return index >= 0 ? auction.lots[index] : null;
+  return liveCurrentEntry(auction)?.lot || null;
 }
 
 function openDialog(dialog) {
@@ -966,44 +971,45 @@ function renderLots() {
 
 function updateSummary() {
   const a = activeAuction();
-  const lots = auctionLots(a);
-  const sold = lots.filter(l => l.sold).length;
-  const waiting = lots.length - sold;
-  const prefs = lots.filter(l => l.preferenceLevel > 0).length;
+  const entries=operationalEntries(a);
+  const sold=entries.filter(entry=>entry.item.sold).length;
+  const waiting=entries.length-sold;
+  const prefs=entries.filter(entry=>Number(entry.item.preferenceLevel)>0).length;
 
-  $('#totalCount').textContent = lots.length;
+  $('#totalCount').textContent = entries.length;
   $('#waitingCount').textContent = waiting;
   $('#preferenceCount').textContent = prefs;
   $('#soldCount').textContent = sold;
 
-  const pct = lots.length ? Math.round((sold / lots.length) * 100) : 0;
+  const pct=entries.length ? Math.round((sold/entries.length)*100) : 0;
   $('#progressText').textContent = `${pct}%`;
   $('#progressBar').style.width = `${pct}%`;
 
-  const next = nextPending(a);
-  if (next) {
-    $('#nextLot').textContent = `Lote ${padLot(next.n)}`;
-    $('#nextVehicle').textContent = next.vehicle;
-    $('#nextPreference').hidden = next.preferenceLevel === 0;
-    $('#nextPreference').textContent = plainPreferenceLabel(next.preferenceLevel);
-    $('#nextMaxBid').hidden = !next.maxBid;
-    $('#nextMaxBid').textContent = next.maxBid ? `Nosso máximo: R$ ${next.maxBid}` : '';
+  const next=nextPendingItem(a);
+  if(next){
+    const {lot,item,index,total}=next;
+    $('#nextLot').textContent = `Lote ${padLot(lot.n)} • Item ${index+1}/${total}`;
+    $('#nextVehicle').textContent = `${item.vehicle || item.description || 'Item'} • ${itemIdentifier(lot,item,index)}`;
+    $('#nextPreference').hidden = item.preferenceLevel === 0;
+    $('#nextPreference').textContent = plainPreferenceLabel(item.preferenceLevel);
+    $('#nextMaxBid').hidden = !item.maxBid;
+    $('#nextMaxBid').textContent = item.maxBid ? `Nosso máximo: R$ ${item.maxBid}` : '';
     $('#markNextBtn').disabled = false;
-    $('#markNextBtn').textContent = `Leiloado • lote ${padLot(next.n)}`;
-  } else if (lots.length) {
+    $('#markNextBtn').textContent = `Leiloado • item ${index+1} do lote ${padLot(lot.n)}`;
+  }else if(entries.length){
     $('#nextLot').textContent = 'Concluído';
-    $('#nextVehicle').textContent = 'Todos os lotes cadastrados já foram acompanhados';
+    $('#nextVehicle').textContent = 'Todos os itens cadastrados já foram acompanhados';
     $('#nextPreference').hidden = true;
     $('#nextMaxBid').hidden = true;
     $('#markNextBtn').disabled = true;
     $('#markNextBtn').textContent = 'Acompanhamento concluído';
-  } else {
-    $('#nextLot').textContent = 'Sem lotes';
-    $('#nextVehicle').textContent = 'Cadastre o primeiro lote deste leilão';
+  }else{
+    $('#nextLot').textContent = 'Sem itens';
+    $('#nextVehicle').textContent = 'Cadastre o primeiro lote/item deste leilão';
     $('#nextPreference').hidden = true;
     $('#nextMaxBid').hidden = true;
     $('#markNextBtn').disabled = true;
-    $('#markNextBtn').textContent = 'Nenhum lote cadastrado';
+    $('#markNextBtn').textContent = 'Nenhum item cadastrado';
   }
 }
 
@@ -1016,58 +1022,59 @@ function updateLiveMode() {
   if (!a) return;
   $('#liveAuctionMeta').textContent = `${formatDate(a.date,a.time)} • ${a.reference}`;
 
-  const current = liveCurrentLot(a);
-  const index = ensureLiveCursor(a);
-  if (!current) {
-    $('#liveLot').textContent = 'Sem lotes';
-    $('#liveVehicle').textContent = 'Cadastre lotes antes de iniciar';
+  const entries=operationalEntries(a);
+  const current=liveCurrentEntry(a);
+  const index=ensureLiveCursor(a);
+  if(!current){
+    $('#liveLot').textContent = 'Sem itens';
+    $('#liveVehicle').textContent = 'Cadastre lotes e itens antes de iniciar';
     $('#livePreference').hidden = true;
-    if (liveMaxBidInput) {
-      liveMaxBidInput.value = '';
-      liveMaxBidInput.disabled = true;
+    if(liveMaxBidInput){
+      liveMaxBidInput.value='';
+      liveMaxBidInput.disabled=true;
     }
-    $('#liveSoldBtn').disabled = true;
-    $('#livePreferenceBtn').disabled = true;
-    $('#liveSkipBtn').disabled = true;
-    $('#liveBackBtn').disabled = true;
-    $('#liveVehicleLink').href = 'fipe.html';
-    if (livePhotoButton) livePhotoButton.hidden = true;
-    if (livePhoto) livePhoto.removeAttribute('src');
+    $('#liveSoldBtn').disabled=true;
+    $('#livePreferenceBtn').disabled=true;
+    $('#liveSkipBtn').disabled=true;
+    $('#liveBackBtn').disabled=true;
+    $('#liveVehicleLink').href='fipe.html';
+    if(livePhotoButton) livePhotoButton.hidden=true;
+    if(livePhoto) livePhoto.removeAttribute('src');
     return;
   }
 
-  $('#liveLot').textContent = `Lote ${padLot(current.n)}`;
-  $('#liveVehicle').textContent = current.vehicle;
-  $('#livePreference').hidden = current.preferenceLevel === 0;
-  $('#livePreference').textContent = plainPreferenceLabel(current.preferenceLevel);
-  if (liveMaxBidInput) {
-    liveMaxBidInput.disabled = false;
-    if (document.activeElement !== liveMaxBidInput) liveMaxBidInput.value = current.maxBid || '';
+  const {lot,item,index:itemIndex,total}=current;
+  $('#liveLot').textContent = `Lote ${padLot(lot.n)} • Item ${itemIndex+1}/${total}`;
+  $('#liveVehicle').textContent = `${item.vehicle || item.description || 'Item'} • ${itemIdentifier(lot,item,itemIndex)}`;
+  $('#livePreference').hidden = item.preferenceLevel === 0;
+  $('#livePreference').textContent = plainPreferenceLabel(item.preferenceLevel);
+  if(liveMaxBidInput){
+    liveMaxBidInput.disabled=false;
+    if(document.activeElement!==liveMaxBidInput) liveMaxBidInput.value=item.maxBid || '';
   }
 
-  const currentPhotoUrl = lotPhotoUrl(current);
-  if (livePhotoButton && livePhoto) {
-    if (currentPhotoUrl) {
-      const caption = `Lote ${padLot(current.n)} — ${current.vehicle || current.items?.[0]?.description || 'foto do lote'}`;
-      livePhoto.src = currentPhotoUrl;
-      livePhoto.alt = `Foto do lote ${padLot(current.n)}`;
-      livePhotoButton.hidden = false;
-      livePhotoButton.onclick = ()=>openLotPhoto(currentPhotoUrl,caption);
-    } else {
-      livePhotoButton.hidden = true;
-      livePhotoButton.onclick = null;
+  const currentPhotoUrl=itemPhotoUrl(lot,item);
+  if(livePhotoButton && livePhoto){
+    if(currentPhotoUrl){
+      const caption=`Lote ${padLot(lot.n)} • Item ${itemIndex+1} — ${item.vehicle || item.description || 'foto do item'}`;
+      livePhoto.src=currentPhotoUrl;
+      livePhoto.alt=`Foto do item ${itemIndex+1} do lote ${padLot(lot.n)}`;
+      livePhotoButton.hidden=false;
+      livePhotoButton.onclick=()=>openLotPhoto(currentPhotoUrl,caption);
+    }else{
+      livePhotoButton.hidden=true;
+      livePhotoButton.onclick=null;
       livePhoto.removeAttribute('src');
     }
   }
 
-  $('#livePreferenceBtn').disabled = false;
-  $('#livePreferenceBtn').textContent = preferenceLabel(current.preferenceLevel);
-  $('#liveBackBtn').disabled = index <= 0;
-  $('#liveSkipBtn').disabled = index >= a.lots.length - 1;
-  $('#liveSoldBtn').disabled = false;
-  $('#liveSoldBtn').textContent = current.sold ? 'DESMARCAR LEILOADO' : 'LEILOADO';
-  $('#liveSoldBtn').classList.toggle('undo-live',current.sold);
-  $('#liveVehicleLink').href = `fipe.html?q=${encodeURIComponent(current.plate || current.brandModel || current.vehicle)}`;
+  $('#livePreferenceBtn').disabled=false;
+  $('#livePreferenceBtn').textContent=preferenceLabel(item.preferenceLevel);
+  $('#liveBackBtn').disabled=index<=0;
+  $('#liveSkipBtn').disabled=index>=entries.length-1;
+  $('#liveSoldBtn').disabled=false;
+  $('#liveSoldBtn').textContent=item.sold ? '↶ VOLTAR PARA AGUARDANDO' : 'LEILOADO';
+  $('#liveVehicleLink').href=`fipe.html?q=${encodeURIComponent(item.plate || item.brandModel || item.vehicle || item.itemIdentifier)}`;
 }
 
 function renderAll() {
@@ -1206,61 +1213,68 @@ function addLotToActive(data) {
 }
 
 function markNextSold() {
-  const a = activeAuction();
-  const next = nextPending(a);
-  if (!next) return;
-  next.sold = true;
+  const a=activeAuction();
+  const next=nextPendingItem(a);
+  if(!next) return;
+  next.item.sold=true;
+  syncLotRollupFromItems(next.lot);
   saveState();
   renderAll();
 }
 
 function cycleLivePreference() {
-  const current = liveCurrentLot();
-  if (!current) return;
-  current.preferenceLevel = (current.preferenceLevel + 1) % 3;
+  const current=liveCurrentEntry();
+  if(!current) return;
+  current.item.preferenceLevel=(current.item.preferenceLevel+1)%3;
+  syncLotRollupFromItems(current.lot);
   saveState();
   renderAll();
 }
 
 function saveLiveMaxBid() {
-  const current = liveCurrentLot();
-  if (!current || !liveMaxBidInput) return;
-  const nextValue = String(liveMaxBidInput.value || '').trim();
-  if (nextValue === current.maxBid) return;
-  current.maxBid = nextValue;
+  const current=liveCurrentEntry();
+  if(!current || !liveMaxBidInput) return;
+  const nextValue=String(liveMaxBidInput.value||'').trim();
+  if(nextValue===current.item.maxBid) return;
+  current.item.maxBid=nextValue;
+  syncLotRollupFromItems(current.lot);
   saveState();
   renderAll();
 }
 
 function toggleLiveSold() {
-  const a = activeAuction();
-  const current = liveCurrentLot(a);
-  if (!a || !current) return;
-  const index = ensureLiveCursor(a);
-  current.sold = !current.sold;
-  if (!current.sold) {
-    current.result = '';
-    current.finalValue = '';
-  } else if (index < a.lots.length - 1) {
-    liveCursorByAuction.set(a.id,index + 1);
+  const a=activeAuction();
+  const current=liveCurrentEntry(a);
+  if(!a || !current) return;
+  const entries=operationalEntries(a);
+  const index=ensureLiveCursor(a);
+  current.item.sold=!current.item.sold;
+  if(!current.item.sold){
+    current.item.result='';
+    current.item.finalValue='';
+  }else if(index<entries.length-1){
+    liveCursorByAuction.set(a.id,index+1);
   }
+  syncLotRollupFromItems(current.lot);
   saveState();
   renderAll();
 }
 
 function skipLiveLot() {
-  const a = activeAuction();
-  if (!a || !a.lots.length) return;
-  const index = ensureLiveCursor(a);
-  if (index < a.lots.length - 1) liveCursorByAuction.set(a.id,index + 1);
+  const a=activeAuction();
+  const entries=operationalEntries(a);
+  if(!a || !entries.length) return;
+  const index=ensureLiveCursor(a);
+  if(index<entries.length-1) liveCursorByAuction.set(a.id,index+1);
   updateLiveMode();
 }
 
 function backLiveLot() {
-  const a = activeAuction();
-  if (!a || !a.lots.length) return;
-  const index = ensureLiveCursor(a);
-  if (index > 0) liveCursorByAuction.set(a.id,index - 1);
+  const a=activeAuction();
+  const entries=operationalEntries(a);
+  if(!a || !entries.length) return;
+  const index=ensureLiveCursor(a);
+  if(index>0) liveCursorByAuction.set(a.id,index-1);
   updateLiveMode();
 }
 
@@ -1271,17 +1285,21 @@ function csvCell(value) {
 function exportCsv() {
   const a = activeAuction();
   if (!a) return;
-  const header = ['Leilão','Data','Referência','Lote','Tipo','Veículo/item','Placa','Marca/modelo','Chassi','Motor','Ano','Cor','Combustível','Valor FIPE','Lance mínimo','Nosso máximo','Status','Preferência','Resultado','Valor final','Observação','Fonte'];
-  const rows = a.lots.map(l => [
-    a.title,formatDate(a.date,a.time),a.reference,padLot(l.n),l.type,l.vehicle,l.plate,l.brandModel,l.chassis,l.engine,l.year,l.color,l.fuel,
-    l.fipeValue,l.minimumBid,l.maxBid,l.sold?'Leiloado':'Aguardando',plainPreferenceLabel(l.preferenceLevel)||'Não',l.result,l.finalValue,l.note,sourceLabel(l)
+  const header = ['Leilão','Data','Referência','Lote','Item','Identificador do item','Tipo','Veículo/item','Placa','Marca/modelo','Chassi','Motor','Ano','Cor','Combustível','Valor FIPE','Referências FIPE','Lance mínimo','Nosso máximo','Status','Preferência','Resultado','Valor final','Observação','Fonte'];
+  const rows = operationalEntries(a).map(({lot,item,index}) => [
+    a.title,formatDate(a.date,a.time),a.reference,padLot(lot.n),index+1,itemIdentifier(lot,item,index),
+    item.type,item.vehicle||item.description,item.plate,item.brandModel,item.chassis,item.engine,item.year,item.color,item.fuel,
+    item.fipeValue,
+    (item.fipeCandidates||[]).map(fipeCandidatePairLabel).join(' | '),
+    item.minimumBid,item.maxBid,item.sold?'Leiloado':'Aguardando',
+    plainPreferenceLabel(item.preferenceLevel)||'Não',item.result,item.finalValue,item.note,sourceLabel(item.sourceType==='official'?item:lot)
   ]);
   const csv = '\uFEFF' + [header,...rows].map(r=>r.map(csvCell).join(';')).join('\r\n');
   const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const el = document.createElement('a');
   el.href = url;
-  el.download = `leilao-${slugify(a.title)}-${a.date || 'sem-data'}.csv`;
+  el.download = `leilao-${slugify(a.title)}-${a.date || 'sem-data'}-itens.csv`;
   document.body.appendChild(el);
   el.click();
   el.remove();
@@ -1292,22 +1310,30 @@ function printSummary() {
   const a = activeAuction();
   if (!a) return;
 
-  const sold = a.lots.filter(l=>l.sold).length;
-  const waiting = Math.max(0,a.lots.length-sold);
+  const entries=operationalEntries(a);
+  const sold = entries.filter(entry=>entry.item.sold).length;
+  const waiting = Math.max(0,entries.length-sold);
   const generatedAt = new Date().toLocaleString('pt-BR');
   const logoUrl = new URL('assets/sistema-thiago-logo.svg',location.href).href;
 
-  const rows = a.lots.map(l=>`<tr>
-    <td class="lot-col">${padLot(l.n)}</td>
-    <td><strong>${escapeHtml(l.vehicle||'—')}</strong></td>
-    <td>${escapeHtml(l.plate||'—')}</td>
-    <td class="money">${escapeHtml(l.fipeValue ? 'R$ '+l.fipeValue : '—')}</td>
-    <td class="money">${escapeHtml(l.minimumBid ? 'R$ '+l.minimumBid : '—')}</td>
-    <td class="money">${escapeHtml(l.maxBid ? 'R$ '+l.maxBid : '—')}</td>
-    <td><span class="status ${l.sold?'sold':'waiting'}">${l.sold?'Leiloado':'Aguardando'}</span></td>
-    <td>${escapeHtml(l.result||'—')}</td>
-    <td class="money">${escapeHtml(l.finalValue ? 'R$ '+l.finalValue : '—')}</td>
-  </tr>`).join('');
+  const rows = entries.map(({lot,item,index})=>{
+    const fipeRefs=(item.fipeCandidates||[]).map(fipeCandidatePairLabel);
+    const fipeDisplay=item.fipeValue
+      ? 'R$ '+item.fipeValue
+      : (fipeRefs.length ? fipeRefs.join(' / ') : '—');
+    return `<tr>
+      <td class="lot-col">${padLot(lot.n)}</td>
+      <td><strong>Item ${index+1}</strong><br><small>${escapeHtml(itemIdentifier(lot,item,index))}</small></td>
+      <td><strong>${escapeHtml(item.vehicle||item.description||'—')}</strong></td>
+      <td>${escapeHtml(item.plate||'—')}</td>
+      <td class="money">${escapeHtml(fipeDisplay)}</td>
+      <td class="money">${escapeHtml(item.minimumBid ? 'R$ '+item.minimumBid : '—')}</td>
+      <td class="money">${escapeHtml(item.maxBid ? 'R$ '+item.maxBid : '—')}</td>
+      <td><span class="status ${item.sold?'sold':'waiting'}">${item.sold?'Leiloado':'Aguardando'}</span></td>
+      <td>${escapeHtml(item.result||'—')}</td>
+      <td class="money">${escapeHtml(item.finalValue ? 'R$ '+item.finalValue : '—')}</td>
+    </tr>`;
+  }).join('');
 
   const frame=document.createElement('iframe');
   Object.assign(frame.style,{position:'fixed',right:'0',bottom:'0',width:'0',height:'0',border:'0'});
@@ -1376,14 +1402,14 @@ function printSummary() {
     </section>
 
     <div class="summary">
-      <span class="summary-badge">Total: ${a.lots.length} lotes</span>
+      <span class="summary-badge">Total: ${a.lots.length} lotes • ${entries.length} itens</span>
       <span class="summary-badge gold">Aguardando: ${waiting}</span>
       <span class="summary-badge">Leiloados: ${sold}</span>
     </div>
 
     <table>
       <thead><tr>
-        <th>Lote</th><th>Veículo</th><th>Placa</th><th>FIPE</th><th>Lance mínimo</th><th>Nosso máximo</th><th>Status</th><th>Resultado</th><th>Valor final</th>
+        <th>Lote</th><th>Item / ID</th><th>Veículo / item</th><th>Placa</th><th>FIPE / referências</th><th>Lance mínimo</th><th>Nosso máximo</th><th>Status</th><th>Resultado</th><th>Valor final</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -1696,6 +1722,7 @@ $('#resetBtn').addEventListener('click',()=>{
   localStorage.removeItem(storageKey());
   localStorage.setItem(storageKey(),JSON.stringify(state));
   liveCursorByAuction.clear();
+  itemCursorByLot.clear();
   renderAll();
 });
 
@@ -1704,6 +1731,7 @@ window.SISTEMA_THIAGO_APP = {
   replaceState:(nextState,{save=true}={})=>{
     state=normalizeState(nextState);
     liveCursorByAuction.clear();
+    itemCursorByLot.clear();
     if(save) saveState();
     renderAll();
     return JSON.parse(JSON.stringify(state));
