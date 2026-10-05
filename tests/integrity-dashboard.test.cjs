@@ -100,3 +100,16 @@ test('ST-MNM-40A torna observabilidade por fonte acionável sem escrita automát
   assert.match(js,/run \+ documento \+ paridade/);
   assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 });
+
+
+test('ST-MNM-40C prefere capability backend e falha fechado em divergência',()=>{
+  const js=fs.readFileSync('integridade.js','utf8');
+  assert.match(js,/source\?\.extra_data\?\.lotsConnector/);
+  assert.match(js,/backendConnector && catalogConnector && backendConnector!==catalogConnector/);
+  assert.match(js,/Divergência de capability/);
+  assert.match(js,/Não executar automaticamente/);
+  assert.match(js,/connector=backendConnector\|\|catalogConnector/);
+  assert.match(js,/capabilityDrift/);
+  assert.match(js,/fetchVisibleRows\('official_sources','id,name,status,last_verified,active,extra_data'/);
+  assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+});
