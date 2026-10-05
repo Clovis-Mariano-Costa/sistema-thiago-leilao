@@ -169,8 +169,16 @@ async function start(){
       const previousFingerprint=operationalFingerprints.get(row.id);
       if(nextFingerprint===previousFingerprint) continue;
 
-      const {error}=await supabase.from('lots').update(payload).eq('id',row.id);
+      const {data,error}=await supabase
+        .from('lots')
+        .update(payload)
+        .eq('id',row.id)
+        .select('id')
+        .maybeSingle();
       if(error) return {ok:false,changed,error:error.message||String(error)};
+      if(!data?.id){
+        return {ok:false,changed,error:'A política de acesso não confirmou edição deste lote.'};
+      }
       operationalFingerprints.set(row.id,nextFingerprint);
       changed++;
     }
