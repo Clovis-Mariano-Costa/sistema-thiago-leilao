@@ -3,6 +3,6 @@
   "name": "sistema-thiago-jus9verde-jus9-jus9-tecnologia-juridica",
   "compatibility_date": "2026-10-03",
   "assets": {
-    "directory": "./"
+    "directory": "./dist"
   }
 }
