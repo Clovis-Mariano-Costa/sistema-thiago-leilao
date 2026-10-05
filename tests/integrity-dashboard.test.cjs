@@ -20,9 +20,25 @@ test('ST-MNM-29A diferencia gate relacional, proveniência e gates humanos',()=>
   const js=fs.readFileSync('integridade.js','utf8');
   assert.match(js,/Canonização relacional oficial/);
   assert.match(js,/Observabilidade de fonte/);
-  assert.match(js,/Participantes \/ convites/);
   assert.match(js,/Modo ao Vivo/);
   assert.match(js,/source_type===\'official\'/);
+});
+
+test('ST-MNM-38A expõe readiness do P2 sem ampliar permissões',()=>{
+  const html=fs.readFileSync('integridade.html','utf8');
+  const js=fs.readFileSync('integridade.js','utf8');
+  assert.match(html,/ST-MNM-38A/);
+  assert.match(html,/Auditoria de acesso/);
+  assert.match(js,/fetchVisibleRows\('auction_members'/);
+  assert.match(js,/fetchVisibleRows\('invitations'/);
+  assert.match(js,/fetchVisibleRows\('audit_log'/);
+  assert.match(js,/Matriz de papéis do P2/);
+  assert.match(js,/Convites \/ auditoria do P2/);
+  assert.match(js,/invitation\.created/);
+  assert.match(js,/invitation\.accepted/);
+  assert.match(js,/invitation\.revoked/);
+  assert.match(js,/owner','admin','participant','observer/);
+  assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 });
 
 test('build público inclui integridade sem diretórios internos',()=>{
