@@ -388,7 +388,7 @@ test('ST-MNM-35B relê IDs persistidos quando upsert não devolve representaçã
   const fs=require('node:fs');
   const fontes=fs.readFileSync('fontes.js','utf8');
   assert.match(fontes,/async function loadOfficialLotIds/);
-  assert.match(fontes,/if\(lotIdByNumber\.size < sourceLots\.length\)/);
+  assert.match(fontes,/if\(lotIdByNumber\.size < sourceLotNumberSet\.size\)/);
   assert.match(fontes,/IDs relacionais não resolvidos/);
 });
 
