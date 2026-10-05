@@ -300,22 +300,6 @@ async function start(){
       const row=byNumber.get(Number(lot.n));
       if(!row?.id) continue;
 
-      const payload=canonicalPayload(lot,row);
-      const nextFingerprint=operationalFingerprint(payload);
-      const previousFingerprint=operationalFingerprints.get(row.id);
-      if(nextFingerprint!==previousFingerprint){
-        const {data,error}=await supabase
-          .from('lots')
-          .update(payload)
-          .eq('id',row.id)
-          .select('id')
-          .maybeSingle();
-        if(error) return {ok:false,changed,itemChanged,error:error.message||String(error)};
-        if(!data?.id) return {ok:false,changed,itemChanged,error:'A política de acesso não confirmou edição deste lote.'};
-        operationalFingerprints.set(row.id,nextFingerprint);
-        changed++;
-      }
-
       const localItems=Array.isArray(lot.items)?lot.items:[];
       for(let index=0;index<localItems.length;index++){
         const item=localItems[index];
@@ -338,6 +322,22 @@ async function start(){
         itemOperationalFingerprints.set(itemRow.id,itemFingerprint);
         itemChanged++;
       }
+
+      const payload=canonicalPayload(lot,row);
+      const nextFingerprint=operationalFingerprint(payload);
+      const previousFingerprint=operationalFingerprints.get(row.id);
+      if(nextFingerprint===previousFingerprint) continue;
+
+      const {data,error}=await supabase
+        .from('lots')
+        .update(payload)
+        .eq('id',row.id)
+        .select('id')
+        .maybeSingle();
+      if(error) return {ok:false,changed,itemChanged,error:error.message||String(error)};
+      if(!data?.id) return {ok:false,changed,itemChanged,error:'A política de acesso não confirmou edição deste lote.'};
+      operationalFingerprints.set(row.id,nextFingerprint);
+      changed++;
     }
 
     return {ok:true,changed,itemChanged};
