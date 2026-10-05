@@ -446,6 +446,7 @@ function renderResultObservability(runs,documents,auctions,lots,sources){
     const relationalLots=relational ? (lotsByAuction.get(relational.id)||0) : null;
     const provenLots=latestSuccess ? Number(latestSuccess.found_count)||0 : null;
     const latestStatus=String(latest?.status||'sem run');
+    const latestStale=isStaleStartedRun(latest);
     const proofComplete=Boolean(latestSuccess && document);
     const countAligned=proofComplete && relational && relationalLots===provenLots;
     const sourceId=String(latest?.source_id||latestSuccess?.source_id||catalogResult?.sourceId||'').trim();
@@ -468,7 +469,9 @@ function renderResultObservability(runs,documents,auctions,lots,sources){
     }else if(countAligned){
       state=latestStatus==='success'
         ? 'Alinhado'
-        : 'Prova alinhada • último run '+latestStatus;
+        : latestStale
+          ? 'Prova alinhada • último run possivelmente órfão'
+          : 'Prova alinhada • último run '+latestStatus;
       aligned++;
     }else{
       gaps++;
@@ -477,7 +480,9 @@ function renderResultObservability(runs,documents,auctions,lots,sources){
       else if(!relational) state='Prova sem leilão relacional';
       else state='Divergente: prova '+provenLots+' × relacional '+relationalLots;
       if(latestStatus!=='success' && latestStatus!=='sem run'){
-        state+=' • último run '+latestStatus;
+        state+=latestStale
+          ? ' • último run possivelmente órfão'
+          : ' • último run '+latestStatus;
       }
     }
 
