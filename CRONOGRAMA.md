@@ -14,8 +14,10 @@ O MVP já ultrapassou o cronograma original de 02/10. O sistema possui autentica
 | --- | ---: | ---: | ---: | --- |
 | PRF/SC 02/2026 | 1.331 | 1.331 | 1.331 | success + documento |
 | DETRAN/SC 1500/2026 | 740 | 740 | 740 | success + documento |
-| DETRAN/SC 1600/2026 | 822 | 822 | 822 | success + documento |
-| **Total** | **2.893** | **2.893** | **2.893** | alinhado por resultId |
+| DETRAN/SC 1600/2026 | 822 | 822 | 822 | success + documento; existe run posterior órfão preservado |
+| DETRAN/SC 0013/2026 | não reconfirmado nesta varredura | 0 | 0 | 489 encontrados em success + documento; write-through relacional pendente |
+| **Total relacional oficial** | — | **2.893** | **2.893** | três resultados canonizados |
+| **Total com prova backend por resultId** | — | — | — | **3.382 lotes** em quatro resultados |
 
 A tela Integridade mede evidência por resultado oficial, sem somar processos distintos de uma mesma fonte.
 
@@ -132,11 +134,15 @@ Security Advisor aponta apenas `Leaked Password Protection Disabled`. A organiza
 
 ## Próxima ordem técnica enquanto gates humanos aguardam
 
-1. manter CI, Worker dry-run e advisors como sentinelas;
-2. corrigir findings pós-merge antes de ampliar capacidade;
-3. não criar conector novo sem fonte oficial delimitada, parser específico, proveniência e caso real;
-4. melhorar observabilidade e recuperação sem mutação automática destrutiva;
-5. atualizar este cronograma sempre que um pacote alterar o estado material.
+1. concluir o write-through governado do DETRAN/SC 0013/2026 (489 lotes) e provar idempotência sem SQL ad hoc — issue #1;
+2. reconciliar a telemetria órfã do DETRAN/SC 1600 sem apagar histórico nem convertê-la silenciosamente em success — issue #101;
+3. executar reconciliação assistida das duas cópias da Base inicial antes de qualquer exclusão — issue #102;
+4. manter ST-MNM-24B/P2 e ST-MNM-25B/P3 como gates humanos reais; não fabricar identidades nem smoke físico;
+5. manter Leaked Password Protection como gate externo de plano/configuração — issue #71;
+6. reavaliar o protótipo CGN-022 somente em branch limpa baseada no main vigente — issue #103;
+7. manter CI, Worker dry-run e advisors como sentinelas; não remover índices apenas por aviso de unused index em ambiente ainda jovem;
+8. não criar conector novo sem fonte oficial delimitada, parser específico, proveniência e caso real;
+9. atualizar este cronograma sempre que um pacote alterar o estado material.
 
 ## Regra de Harmonia Perfeita
 
@@ -153,3 +159,39 @@ Security Advisor aponta apenas `Leaked Password Protection Disabled`. A organiza
 - Fontes oficiais: /fontes-oficiais.html
 - Participantes e convites: /convites.html
 - Recuperação legada: /recuperar-legado.html
+
+## Varredura integral — ST-MNM-42A a ST-MNM-42D — 05/10/2026
+
+### Fechado com evidência
+
+- **ST-MNM-42A / PR #98:** pncp-detran passou a priorizar o edital oficial DETRAN antes dos PDFs PNCP. Edge implantada como v14 e readback confirmado.
+- **ST-MNM-42B / PR #99:** Integridade distingue run ativo de run started possivelmente órfão após 10 minutos, sem mutar telemetria histórica.
+- **ST-MNM-42C / PR #100:** finishSourceRun preserva metadata inicial ao finalizar; connector, requestedBy e demais campos de abertura deixam de ser perdidos. Edge implantada como **v15**, com verify_jwt=true e readback do mergedMetadata.
+- **PR #11 / CGN-022:** fechado como SUPERSEDED_WITH_CONTINUITY; branch estava 276 commits atrás do main. Continuidade transferida para issue #103.
+
+### Estado real do banco nesta varredura
+
+- 5 auctions relacionais: 3 oficiais + 2 cópias históricas da Base inicial.
+- 2.967 lots e 2.968 lot_items no total.
+- Base inicial A: 37 lots / 38 lot_items.
+- Base inicial B: 37 lots / 37 lot_items.
+- auction_members=0, invitations=0; portanto P2 continua humano.
+- DETRAN 0013/2026 possui múltiplos runs success com **489** lotes e documento, mas ainda sem auction relacional.
+- DETRAN 1600/2026 conserva prova success de **822** lotes e um run posterior órfão ligado ao incidente CPU Time exceeded / HTTP 546.
+- Security Advisor: único WARN continua Leaked Password Protection Disabled.
+- Performance Advisor: somente INFO de índices ainda não usados; não é autorização para removê-los.
+
+### Pendências canônicas abertas
+
+- **#1** — concluir DETRAN 0013/2026 no relacional e provar idempotência.
+- **#101** — reconciliar run órfão do DETRAN 1600 de forma auditável.
+- **#102** — reconciliar as duas Bases iniciais sem escolha automática por antiguidade.
+- **#103** — reavaliar Guardia/publication gates do CGN-022 sobre o main atual.
+- **#7 / #4** — matriz multiusuário real e papéis/convites.
+- **#2 / #20** — smoke físico móvel e recuperação/mídias no aparelho.
+- **#71** — Leaked Password Protection / plano Supabase.
+- **#5** — atualização contínua de fontes oficiais permanece trilha contínua.
+
+### Regra de continuidade após a varredura
+
+Pendência humana ou externa bloqueia somente sua própria trilha. O trabalho técnico pode continuar em observabilidade, documentação, segurança fail-closed e preparação de reconciliação, desde que não fabrique identidades, sessão autenticada, decisão humana de survivor ou smoke físico.
