@@ -39,6 +39,8 @@
 
     <section class="integrity-grid" aria-label="Resumo de integridade">
       <article class="integrity-card"><span>Backup online</span><strong id="snapshotState">—</strong><small id="snapshotMeta">aguardando</small></article>
+      <article class="integrity-card"><span>Leilões no snapshot</span><strong id="snapshotAuctions">—</strong><small>estado local protegido online</small></article>
+      <article class="integrity-card"><span>Lotes no snapshot</span><strong id="snapshotLots">—</strong><small>soma dos lotes no backup próprio</small></article>
       <article class="integrity-card"><span>Leilões oficiais canônicos</span><strong id="officialAuctions">—</strong><small>auctions / source_type=official</small></article>
       <article class="integrity-card"><span>Lotes oficiais canônicos</span><strong id="officialLots">—</strong><small>lots sob leilões oficiais visíveis</small></article>
       <article class="integrity-card"><span>Itens oficiais canônicos</span><strong id="officialItems">—</strong><small>lot_items sob lotes oficiais visíveis</small></article>
@@ -70,6 +72,21 @@
         </table>
       </div>
       <p id="integrityAuctionEmpty" class="empty-state">Nenhum leilão relacional visível.</p>
+    </section>
+
+    <section class="dashboard-card integrity-panel">
+      <div>
+        <p class="eyebrow dark">Paridade</p>
+        <h2>Snapshot × banco relacional</h2>
+        <p class="muted">Comparação somente leitura por leilão. “Somente snapshot” não é promovido automaticamente para o banco canônico.</p>
+      </div>
+      <div class="integrity-table-wrap">
+        <table class="integrity-table">
+          <thead><tr><th>Leilão no snapshot</th><th>Lotes no snapshot</th><th>Lotes relacionais</th><th>Estado</th></tr></thead>
+          <tbody id="integrityParityRows"></tbody>
+        </table>
+      </div>
+      <p id="integrityParityEmpty" class="empty-state">Nenhum leilão no snapshot próprio.</p>
     </section>
 
     <section class="dashboard-card integrity-actions">
