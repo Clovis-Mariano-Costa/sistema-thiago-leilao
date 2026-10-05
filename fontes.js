@@ -829,8 +829,6 @@ function render(){
 $('#officialSearchInput').addEventListener('input',e=>{
   searchQuery=e.target.value.trim().toLowerCase();
   render();
-await loadReconciliationReadiness();
-render();
 });
 
 document.querySelectorAll('[data-source-filter]').forEach(btn=>btn.addEventListener('click',()=>{
@@ -843,4 +841,6 @@ document.querySelectorAll('[data-source-filter]').forEach(btn=>btn.addEventListe
 const params=new URLSearchParams(location.search);
 if(params.get('mode')==='import') $('#importModeNotice').hidden=false;
 
+render();
+await loadReconciliationReadiness();
 render();
