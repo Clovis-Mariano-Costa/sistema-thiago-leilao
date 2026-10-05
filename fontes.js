@@ -440,20 +440,29 @@ async function enrichOfficialLots(item,button){
         'Authorization':'Bearer '+session.access_token,
         'apikey':SUPABASE_CFG.publishableKey
       },
-      body:JSON.stringify(item?.pncp
-        ? {
+      body:JSON.stringify((()=>{
+        const connector=lotConnectorFor(item);
+        if(connector==='pncp' || connector==='pncp-detran'){
+          return {
             ...item.pncp,
+            connector,
             sourceId:item.sourceId||'pncp',
             resultId:item.id||'',
             reference:item.reference||'',
-            fallbackUrl:item.detranDownloadPage||''
-          }
-        : {
+            fallbackUrl:connector==='pncp-detran' ? (item.detranDownloadPage||'') : ''
+          };
+        }
+        if(connector==='prf-pdf'){
+          return {
+            connector,
             sourceId:item.sourceId,
             resultId:item.id||'',
             reference:item.reference||'',
             fallbackUrl:item.officialUrl||''
-          })
+          };
+        }
+        return {connector:'',sourceId:item.sourceId||'',resultId:item.id||'',reference:item.reference||''};
+      })())
     });
 
     let data=null;
