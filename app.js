@@ -285,6 +285,7 @@ const photoViewerImage = $('#photoViewerImage');
 const photoViewerCaption = $('#photoViewerCaption');
 const livePhotoButton = $('#livePhotoButton');
 const livePhoto = $('#livePhoto');
+const liveMaxBidInput = $('#liveMaxBidInput');
 
 function syncPrimaryItemFromLegacy(lot) {
   if (!lot || !Array.isArray(lot.items) || !lot.items.length) return;
@@ -853,6 +854,10 @@ function updateLiveMode() {
     $('#liveVehicle').textContent = 'Cadastre lotes antes de iniciar';
     $('#livePreference').hidden = true;
     $('#liveMaxBid').hidden = true;
+    if (liveMaxBidInput) {
+      liveMaxBidInput.value = '';
+      liveMaxBidInput.disabled = true;
+    }
     $('#liveSoldBtn').disabled = true;
     $('#livePreferenceBtn').disabled = true;
     $('#liveSkipBtn').disabled = true;
@@ -869,6 +874,10 @@ function updateLiveMode() {
   $('#livePreference').textContent = plainPreferenceLabel(current.preferenceLevel);
   $('#liveMaxBid').hidden = !current.maxBid;
   $('#liveMaxBid').textContent = current.maxBid ? `Nosso máximo: R$ ${current.maxBid}` : '';
+  if (liveMaxBidInput) {
+    liveMaxBidInput.disabled = false;
+    if (document.activeElement !== liveMaxBidInput) liveMaxBidInput.value = current.maxBid || '';
+  }
 
   const currentPhotoUrl = lotPhotoUrl(current);
   if (livePhotoButton && livePhoto) {
@@ -1043,6 +1052,16 @@ function cycleLivePreference() {
   const current = liveCurrentLot();
   if (!current) return;
   current.preferenceLevel = (current.preferenceLevel + 1) % 3;
+  saveState();
+  renderAll();
+}
+
+function saveLiveMaxBid() {
+  const current = liveCurrentLot();
+  if (!current || !liveMaxBidInput) return;
+  const nextValue = String(liveMaxBidInput.value || '').trim();
+  if (nextValue === current.maxBid) return;
+  current.maxBid = nextValue;
   saveState();
   renderAll();
 }
@@ -1375,6 +1394,8 @@ $('#liveModeBtn').addEventListener('click',()=>{updateLiveMode();openDialog(live
 $('#closeLiveBtn').addEventListener('click',()=>closeDialog(liveDialog));
 $('#liveSoldBtn').addEventListener('click',toggleLiveSold);
 $('#livePreferenceBtn').addEventListener('click',cycleLivePreference);
+liveMaxBidInput?.addEventListener('change',saveLiveMaxBid);
+liveMaxBidInput?.addEventListener('blur',saveLiveMaxBid);
 $('#liveSkipBtn').addEventListener('click',skipLiveLot);
 $('#liveBackBtn').addEventListener('click',backLiveLot);
 $('#liveAuctionSelect').addEventListener('change',e=>{
