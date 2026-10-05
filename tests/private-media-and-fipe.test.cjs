@@ -9,7 +9,9 @@ const build=fs.readFileSync('scripts/build-pages.cjs','utf8');
 
 test('Painel usa URL assinada de foto privada quando disponível',()=>{
   assert.match(app,/SISTEMA_THIAGO_MEDIA_URLS/);
-  assert.match(app,/runtimePhoto \|\| lot\.photoDataUrl/);
+  assert.match(app,/function lotPhotoUrl/);
+  assert.match(app,/SISTEMA_THIAGO_MEDIA_URLS/);
+  assert.match(app,/lot\.photoDataUrl \|\| ''/);
   assert.match(html,/private-media\.js\?v=20261004-media1/);
 });
 
