@@ -24,7 +24,7 @@ test('ST-MNM-44E analises usam lot_items e nao lots financeiros',()=>{
 test('ST-MNM-44E painel renderiza lotes progressivamente',()=>{
   const js=fs.readFileSync('app.js','utf8');
   const html=fs.readFileSync('app.html','utf8');
-  assert.match(js,/const LOT_RENDER_STEP = 120/);
+  assert.match(js,/const LOT_RENDER_STEP = 60/);
   assert.match(js,/filtered\.slice\(0,lotRenderLimit\)/);
   assert.match(js,/lotRenderLimit\+=LOT_RENDER_STEP/);
   assert.match(html,/id="loadMoreLotsBtn"/);
@@ -58,4 +58,22 @@ test('ST-MNM-44E mapa usa cidade e estado dos itens sem inventar coordenadas',()
   assert.match(js,/google\.com\/maps\?q=/);
   assert.match(html,/id="analyticsMapFrame"/);
   assert.match(html,/id="analyticsLocations"/);
+});
+
+
+test('ST-MNM-44F reduz trabalho pesado em salvamento e mídia',()=>{
+  const app=fs.readFileSync('app.js','utf8');
+  const cloud=fs.readFileSync('cloud-sync.js','utf8');
+  const media=fs.readFileSync('private-media.js','utf8');
+
+  assert.match(app,/function saveState\(showError = true, change = \{\}\)/);
+  assert.doesNotMatch(app,/state\.auctions\.forEach\(a => \(a\.lots \|\| \[\]\)\.forEach\(syncLotRollupFromItems\)\)/);
+  assert.match(app,/syncOnline:false/);
+  assert.match(cloud,/pendingLotsByAuction/);
+  assert.match(cloud,/\.in\('lot_number',requestedNumbers\)/);
+  assert.match(cloud,/syncOperationalChangesBatch/);
+  assert.match(cloud,/\},2200\);/);
+  assert.doesNotMatch(media,/sistema-thiago:state-saved/);
+  assert.match(media,/sistema-thiago:media-refresh-request/);
+  assert.match(media,/45\*60\*1000/);
 });
