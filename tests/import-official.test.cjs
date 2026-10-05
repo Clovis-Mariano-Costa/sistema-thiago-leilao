@@ -110,7 +110,8 @@ test('PRF/SC possui adaptador de lotes oficial sem depender de coordenadas PNCP'
   assert.match(fontes,/lotsConnector/);
   assert.match(fontes,/lotConnectorFor/);
   assert.match(fontes,/enrichOfficialLots/);
-  assert.match(edge,/sourceId==="prf-sc"/);
+  assert.match(edge,/connector==="prf-pdf"/);
+  assert.match(edge,/sourceId!=="prf-sc"/);
   assert.match(edge,/fetchPrfLots/);
   assert.match(edge,/Anexo I/);
   assert.match(edge,/parsed\.lots\.length!==parsed\.sourceRows/);
