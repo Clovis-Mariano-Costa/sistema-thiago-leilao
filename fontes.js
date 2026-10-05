@@ -376,8 +376,19 @@ async function enrichOfficialLots(item,button){
         'apikey':SUPABASE_CFG.publishableKey
       },
       body:JSON.stringify(item?.pncp
-        ? {...item.pncp,fallbackUrl:item.detranDownloadPage||''}
-        : {sourceId:item.sourceId,fallbackUrl:item.officialUrl||''})
+        ? {
+            ...item.pncp,
+            sourceId:item.sourceId||'pncp',
+            resultId:item.id||'',
+            reference:item.reference||'',
+            fallbackUrl:item.detranDownloadPage||''
+          }
+        : {
+            sourceId:item.sourceId,
+            resultId:item.id||'',
+            reference:item.reference||'',
+            fallbackUrl:item.officialUrl||''
+          })
     });
 
     let data=null;
