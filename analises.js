@@ -95,21 +95,40 @@ function renderSource(auction){
   }
 }
 
-function renderPreferences(lots){
+function fipeCandidateValues(row){
+  const candidates=Array.isArray(row?.extra_data?.fipe_candidates) ? row.extra_data.fipe_candidates : [];
+  return candidates
+    .map(candidate=>Number(candidate?.value_brl ?? candidate?.value ?? candidate?.fipe_value))
+    .filter(Number.isFinite);
+}
+
+function fipeDisplay(row){
+  const definitive=Number(row?.fipe_value);
+  if(Number.isFinite(definitive)) return money(definitive);
+  const candidates=fipeCandidateValues(row);
+  if(candidates.length===1) return '1 referência FIPE';
+  if(candidates.length>1) return candidates.length+' referências FIPE';
+  return '—';
+}
+
+function renderPreferences(items){
   preferenceRows.innerHTML='';
-  const preferred=lots.filter(lot=>Number(lot.preference_level)>0)
-    .sort((a,b)=>Number(b.preference_level)-Number(a.preference_level) || Number(a.lot_number)-Number(b.lot_number));
+  const preferred=items.filter(item=>Number(item.preference_level)>0)
+    .sort((a,b)=>Number(b.preference_level)-Number(a.preference_level)
+      || Number(a.lot_number)-Number(b.lot_number)
+      || Number(a.item_order)-Number(b.item_order));
 
   preferenceEmpty.hidden=preferred.length>0;
-  for(const lot of preferred.slice(0,100)){
+  for(const item of preferred.slice(0,100)){
     const tr=document.createElement('tr');
+    const itemId=item.item_identifier || ('Item '+(item.item_order||1));
     const values=[
-      String(lot.lot_number||'—'),
-      lot.vehicle||lot.brand_model||'—',
-      money(lot.fipe_value),
-      money(lot.minimum_bid),
-      money(lot.max_bid),
-      lot.sold ? (lot.result||'Leiloado') : 'Aguardando'
+      String(item.lot_number||'—')+' • '+itemId,
+      item.vehicle||item.brand_model||item.description||'—',
+      fipeDisplay(item),
+      money(item.minimum_bid),
+      money(item.max_bid),
+      item.sold ? (item.result||'Leiloado') : 'Aguardando'
     ];
     for(const value of values){
       const td=document.createElement('td');
@@ -120,11 +139,11 @@ function renderPreferences(lots){
   }
 }
 
-function renderMetrics(lots){
-  const total=lots.length;
-  const sold=lots.filter(lot=>Boolean(lot.sold)).length;
+function renderMetrics(items){
+  const total=items.length;
+  const sold=items.filter(item=>Boolean(item.sold)).length;
   const waiting=total-sold;
-  const preferences=lots.filter(lot=>Number(lot.preference_level)>0).length;
+  const preferences=items.filter(item=>Number(item.preference_level)>0).length;
 
   setText('#metricTotal',total);
   setText('#metricWaiting',waiting);
@@ -139,10 +158,10 @@ function renderMetrics(lots){
   ];
 
   for(const [field,valueId,countId] of sets){
-    const values=finiteValues(lots,field);
+    const values=finiteValues(items,field);
     const avg=average(values);
     setText(valueId,avg==null?'—':money(avg));
-    setText(countId,values.length ? values.length+' lote(s) com valor' : 'nenhum valor informado');
+    setText(countId,values.length ? values.length+' item(ns) com valor definido' : 'nenhum valor definido');
   }
 
   renderBars('#statusBars',[
@@ -151,32 +170,53 @@ function renderMetrics(lots){
     {label:'Leiloados',value:sold}
   ],total);
 
+  const fipeDefined=finiteValues(items,'fipe_value').length;
+  const fipeToReview=items.filter(item=>!Number.isFinite(Number(item?.fipe_value)) && fipeCandidateValues(item).length>0).length;
   renderBars('#coverageBars',[
-    {label:'FIPE',value:finiteValues(lots,'fipe_value').length},
-    {label:'Lance mínimo',value:finiteValues(lots,'minimum_bid').length},
-    {label:'Nosso máximo',value:finiteValues(lots,'max_bid').length},
-    {label:'Valor final',value:finiteValues(lots,'final_value').length}
+    {label:'FIPE definida',value:fipeDefined},
+    {label:'FIPE para revisar',value:fipeToReview},
+    {label:'Lance mínimo',value:finiteValues(items,'minimum_bid').length},
+    {label:'Nosso máximo',value:finiteValues(items,'max_bid').length},
+    {label:'Valor final',value:finiteValues(items,'final_value').length}
   ],total);
 
-  renderPreferences(lots);
+  renderPreferences(items);
 }
 
-async function fetchLots(auctionId){
-  const rows=[];
+async function fetchItems(auctionId){
+  const lots=[];
   const pageSize=500;
   let from=0;
   while(true){
     const {data,error}=await client.from('lots')
-      .select('lot_number,vehicle,brand_model,preference_level,sold,result,fipe_value,minimum_bid,max_bid,final_value,source_type,source_evidence')
+      .select('id,lot_number')
       .eq('auction_id',auctionId)
       .order('lot_number',{ascending:true})
       .range(from,from+pageSize-1);
     if(error) throw error;
-    rows.push(...(data||[]));
+    lots.push(...(data||[]));
     if(!data || data.length<pageSize) break;
     from+=pageSize;
   }
-  return rows;
+
+  const lotNumberById=new Map(lots.map(row=>[row.id,row.lot_number]));
+  const lotIds=lots.map(row=>row.id).filter(Boolean);
+  const items=[];
+  const chunkSize=250;
+
+  for(let i=0;i<lotIds.length;i+=chunkSize){
+    const ids=lotIds.slice(i,i+chunkSize);
+    const {data,error}=await client.from('lot_items')
+      .select('lot_id,item_order,item_identifier,description,vehicle,brand_model,preference_level,sold,result,fipe_value,minimum_bid,max_bid,final_value,extra_data')
+      .in('lot_id',ids)
+      .order('item_order',{ascending:true});
+    if(error) throw error;
+    for(const row of data||[]){
+      items.push({...row,lot_number:lotNumberById.get(row.lot_id)});
+    }
+  }
+
+  return items.sort((a,b)=>Number(a.lot_number)-Number(b.lot_number)||Number(a.item_order)-Number(b.item_order));
 }
 
 async function loadAuction(){
@@ -189,13 +229,13 @@ async function loadAuction(){
   }
   setStatus('Carregando dados relacionais protegidos pela sua conta…','info');
   try{
-    const lots=await fetchLots(auction.id);
-    renderMetrics(lots);
-    setStatus(lots.length ? lots.length+' lote(s) analisado(s) a partir do banco canônico.' : 'Este leilão ainda não possui lotes relacionais.','ok');
+    const items=await fetchItems(auction.id);
+    renderMetrics(items);
+    setStatus(items.length ? items.length+' item(ns) analisado(s) a partir do banco canônico.' : 'Este leilão ainda não possui itens relacionais.','ok');
   }catch(error){
     console.error(error);
     renderMetrics([]);
-    setStatus('Não foi possível carregar os lotes para análise: '+(error?.message||error),'error');
+    setStatus('Não foi possível carregar os itens para análise: '+(error?.message||error),'error');
   }
 }
 
