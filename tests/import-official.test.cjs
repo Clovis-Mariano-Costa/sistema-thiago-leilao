@@ -169,3 +169,16 @@ test('painel distingue snapshot de banco relacional após importação oficial',
   assert.match(app,/Banco canônico:<\/strong>/);
   assert.match(app,/reconciliação pendente/);
 });
+
+
+test('ST-MNM-23A migration registra todas as fontes oficiais do catálogo',()=>{
+  const fs=require('node:fs');
+  const source=fs.readFileSync('official-sources.js','utf8');
+  const migration=fs.readFileSync('supabase/migrations/20261005030000_seed_official_sources.sql','utf8');
+  for(const id of ['detran-sc','compras-sc','pncp','prf-sc','receita-federal','florianopolis','sao-jose','palhoca','biguacu']){
+    assert.match(source,new RegExp("id:'"+id+"'"));
+    assert.match(migration,new RegExp("'"+id+"'"));
+  }
+  assert.match(migration,/on conflict \(id\) do update/i);
+  assert.match(migration,/public\.official_sources/);
+});
