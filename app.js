@@ -343,6 +343,24 @@ function sourceLabel(item) {
   return item?.sourceType === 'official' ? 'Fonte oficial' : 'Dados inseridos pelo usuário';
 }
 
+function fipeCandidatePairLabel(candidate = {}) {
+  const code = String(candidate.code || candidate.fipe_code || '').trim();
+  const rawValue = String(candidate.value ?? candidate.value_brl ?? candidate.fipe_value ?? '').trim();
+  const value = rawValue.replace(/,00$/, '');
+  if (code && value) return `${code} → R$ ${value}`;
+  if (code) return `${code} → valor não informado`;
+  if (value) return `R$ ${value}`;
+  return 'Referência FIPE sem código/valor';
+}
+
+function lotFipeCandidates(lot) {
+  const items = Array.isArray(lot?.items) ? lot.items : [];
+  return items.flatMap(item => {
+    const candidates = Array.isArray(item?.fipeCandidates) ? item.fipeCandidates : [];
+    return candidates.map(candidate => ({ item, candidate }));
+  });
+}
+
 function formatDate(date, time = '') {
   if (!date) return 'Data não informada';
   const d = new Date(date + 'T12:00:00');
@@ -553,9 +571,18 @@ function renderActiveAuctionHeader() {
 }
 
 function matches(lot) {
+  const itemSearch = (Array.isArray(lot.items) ? lot.items : []).flatMap(item => [
+    item.itemIdentifier, item.description, item.vehicle, item.plate, item.brandModel, item.chassis,
+    item.year, item.color, item.fuel, item.fipeValue
+  ]);
+  const fipeSearch = lotFipeCandidates(lot).flatMap(({candidate}) => [
+    candidate.code, candidate.fipe_code, candidate.value, candidate.value_brl, candidate.fipe_value,
+    candidate.model, candidate.description, candidate.year, candidate.model_year, candidate.fuel, candidate.brand
+  ]);
   const text = [
     lot.n, padLot(lot.n), lot.vehicle, lot.type, lot.plate, lot.brandModel, lot.chassis, lot.engine,
-    lot.year, lot.color, lot.fuel, lot.fipeValue, lot.minimumBid, lot.maxBid, lot.finalValue, lot.result, lot.note
+    lot.year, lot.color, lot.fuel, lot.fipeValue, lot.minimumBid, lot.maxBid, lot.finalValue, lot.result, lot.note,
+    ...itemSearch, ...fipeSearch
   ].join(' ').toLowerCase();
   if (query && !text.includes(query)) return false;
   if (filter === 'waiting' && lot.sold) return false;
@@ -612,6 +639,17 @@ function renderLots() {
     const reviewFlag = card.querySelector('.lot-review');
     if (reviewFlag) reviewFlag.hidden = !(lot.needsReview || lot.extraFields?.needsReview);
 
+    const importedFipe = lotFipeCandidates(lot);
+    if (importedFipe.length) {
+      const visibleFipe = document.createElement('div');
+      visibleFipe.className = 'lot-fipe-candidates lot-fipe-visible';
+      visibleFipe.innerHTML = '<span>FIPE importada da captura • revisar</span>' +
+        importedFipe.map(({candidate}) =>
+          '<div><strong>' + escapeHtml(fipeCandidatePairLabel(candidate)) + '</strong></div>'
+        ).join('');
+      card.querySelector('.lot-meta-row')?.insertAdjacentElement('afterend',visibleFipe);
+    }
+
     const itemsSummary = card.querySelector('.lot-items-summary');
     if (itemsSummary) {
       const items = Array.isArray(lot.items) ? lot.items : [];
@@ -629,9 +667,8 @@ function renderLots() {
             const candidateHtml=candidates.length
               ? '<div class="lot-fipe-candidates"><span>Referências FIPE da captura • revisar</span>' +
                 candidates.map(candidate=>{
-                  const desc=[candidate.model||candidate.description||'',candidate.code||'',candidate.year||candidate.model_year||'',candidate.fuel||''].filter(Boolean).join(' • ');
-                  const value=candidate.value||candidate.value_brl||'';
-                  return '<div><strong>'+escapeHtml(value ? 'R$ '+String(value) : 'Valor não informado')+'</strong>' +
+                  const desc=[candidate.model||candidate.description||'',candidate.year||candidate.model_year||'',candidate.fuel||''].filter(Boolean).join(' • ');
+                  return '<div><strong>'+escapeHtml(fipeCandidatePairLabel(candidate))+'</strong>' +
                     (desc ? '<small>'+escapeHtml(desc)+'</small>' : '') + '</div>';
                 }).join('') + '</div>'
               : '';
