@@ -26,3 +26,24 @@ test('interface não oferece owner como papel convidável',()=>{
   assert.doesNotMatch(js,/owner:\[[^\]]*'owner'/);
   assert.doesNotMatch(js,/admin:\[[^\]]*'admin'/);
 });
+
+
+test('convites expirados não oferecem aceite e pendentes podem ser revogados',()=>{
+  const js=fs.readFileSync('convites.js','utf8');
+  assert.match(js,/function invitationExpired/);
+  assert.match(js,/invitationDisplayStatus/);
+  assert.match(js,/Convite expirado/);
+  assert.match(js,/Revogar convite/);
+  assert.match(js,/async function revokeInvitation/);
+  assert.match(js,/update\(\{status:'revoked'\}\)/);
+});
+
+test('migration audita criação e revogação sem duplicar auditoria de aceite',()=>{
+  const sql=fs.readFileSync('supabase/migrations/20261005033000_audit_invitation_lifecycle.sql','utf8');
+  assert.match(sql,/invitation\.created/);
+  assert.match(sql,/invitation\.revoked/);
+  assert.match(sql,/invitation\.expired/);
+  assert.match(sql,/new\.status in \('revoked','expired'\)/);
+  assert.doesNotMatch(sql,/new\.status in \([^\)]*accepted/);
+  assert.match(sql,/trg_audit_invitation_lifecycle/);
+});
