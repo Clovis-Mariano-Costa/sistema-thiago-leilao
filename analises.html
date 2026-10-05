@@ -90,12 +90,15 @@
         <div id="coverageBars" class="analytics-bars"></div>
       </article>
 
-      <article class="dashboard-card analytics-panel">
+      <article class="dashboard-card analytics-panel analytics-map-panel">
         <div>
           <p class="eyebrow dark">Mapa</p>
-          <h2>Localização</h2>
-          <p class="muted">A localização do leilão é exibida no painel principal. Quando houver local físico informado, use o botão “Ver local no mapa”. Leilões exclusivamente on-line não precisam de mapa.</p>
+          <h2>Localização dos itens</h2>
+          <p class="muted">Mostramos somente cidade/UF ou local físico que já esteja registrado nos dados do leilão.</p>
         </div>
+        <div id="analyticsLocations" class="analytics-locations"></div>
+        <iframe id="analyticsMapFrame" class="analytics-map-frame" title="Mapa do leilão" loading="lazy" referrerpolicy="no-referrer-when-downgrade" hidden></iframe>
+        <a id="analyticsMapLink" class="secondary-link compact" href="#" target="_blank" rel="noopener" hidden>Abrir no mapa</a>
       </article>
     </section>
 
