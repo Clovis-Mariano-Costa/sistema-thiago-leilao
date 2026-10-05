@@ -386,8 +386,22 @@ function matchesSearch(item){
   return !searchQuery || fullText(item).includes(searchQuery);
 }
 
+const SUPPORTED_LOT_CONNECTORS=new Set(['pncp','pncp-detran','prf-pdf']);
+
+function sourceConfig(sourceId){
+  return SOURCES.find(source=>source.id===sourceId) || null;
+}
+
+function lotConnectorFor(item){
+  const declared=String(item?.lotsConnector || sourceConfig(item?.sourceId)?.lotsConnector || '').trim();
+  if(!SUPPORTED_LOT_CONNECTORS.has(declared)) return '';
+  if((declared==='pncp' || declared==='pncp-detran') && !item?.pncp) return '';
+  if(declared==='prf-pdf' && item?.sourceId!=='prf-sc') return '';
+  return declared;
+}
+
 function hasOfficialLotConnector(item){
-  return Boolean(item?.pncp || item?.sourceId==='prf-sc');
+  return Boolean(lotConnectorFor(item));
 }
 
 async function enrichOfficialLots(item,button){
@@ -426,20 +440,29 @@ async function enrichOfficialLots(item,button){
         'Authorization':'Bearer '+session.access_token,
         'apikey':SUPABASE_CFG.publishableKey
       },
-      body:JSON.stringify(item?.pncp
-        ? {
+      body:JSON.stringify((()=>{
+        const connector=lotConnectorFor(item);
+        if(connector==='pncp' || connector==='pncp-detran'){
+          return {
             ...item.pncp,
+            connector,
             sourceId:item.sourceId||'pncp',
             resultId:item.id||'',
             reference:item.reference||'',
-            fallbackUrl:item.detranDownloadPage||''
-          }
-        : {
+            fallbackUrl:connector==='pncp-detran' ? (item.detranDownloadPage||'') : ''
+          };
+        }
+        if(connector==='prf-pdf'){
+          return {
+            connector,
             sourceId:item.sourceId,
             resultId:item.id||'',
             reference:item.reference||'',
             fallbackUrl:item.officialUrl||''
-          })
+          };
+        }
+        return {connector:'',sourceId:item.sourceId||'',resultId:item.id||'',reference:item.reference||''};
+      })())
     });
 
     let data=null;

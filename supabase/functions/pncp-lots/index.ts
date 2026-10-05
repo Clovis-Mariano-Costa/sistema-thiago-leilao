@@ -391,6 +391,7 @@ Deno.serve(async (req:Request)=>{
 
     const body=await req.json();
     const sourceId=String(body?.sourceId||"pncp").trim().toLowerCase() || "pncp";
+    const connector=String(body?.connector||"").trim().toLowerCase();
     const resultId=String(body?.resultId||"").trim();
     const reference=String(body?.reference||"").trim();
     const fallbackUrl=String(body?.fallbackUrl||"").trim();
@@ -406,7 +407,11 @@ Deno.serve(async (req:Request)=>{
     );
     activeRun={...run,sourceId,resultId,reference};
 
-    if(sourceId==="prf-sc"){
+    if(connector==="prf-pdf"){
+      if(sourceId!=="prf-sc"){
+        await finishSourceRun(run.admin,run.runId,"error",0,"Conector PRF fora da fonte cadastrada.",{resultId});
+        return json(req,{error:"Conector PRF permitido somente para a fonte PRF/SC cadastrada."},400);
+      }
       if(!fallbackUrl){
         await finishSourceRun(run.admin,run.runId,"error",0,"URL oficial da PRF não informada.",{resultId});
         return json(req,{error:"URL oficial da PRF não informada."},400);
@@ -432,6 +437,11 @@ Deno.serve(async (req:Request)=>{
         );
         throw error;
       }
+    }
+
+    if(connector && connector!=="pncp" && connector!=="pncp-detran"){
+      await finishSourceRun(run.admin,run.runId,"error",0,"Conector oficial não reconhecido.",{resultId,reference});
+      return json(req,{error:"Conector oficial não reconhecido."},400);
     }
 
     const cnpj=digits(body?.cnpj);
