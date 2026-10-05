@@ -26,25 +26,41 @@ const BASE_LOTS = [
 ];
 
 function freshItem(data = {}) {
+  const pref=Math.max(0,Math.min(2,Number(data.preferenceLevel ?? data.preference_level ?? 0)||0));
   return {
-    itemIdentifier: String(data.itemIdentifier || data.identifier || '').trim(),
+    itemOrder: Math.max(1,Number(data.itemOrder ?? data.item_order ?? 1)||1),
+    itemIdentifier: String(data.itemIdentifier || data.item_identifier || data.identifier || '').trim(),
     description: String(data.description || data.vehicle || '').trim(),
     vehicle: String(data.vehicle || data.description || '').trim(),
-    type: String(data.type || data.itemType || '').trim(),
+    type: String(data.type || data.itemType || data.item_type || '').trim(),
     plate: String(data.plate || '').trim().toUpperCase(),
-    brandModel: String(data.brandModel || '').trim(),
+    brandModel: String(data.brandModel || data.brand_model || '').trim(),
     chassis: String(data.chassis || '').trim(),
     engine: String(data.engine || '').trim(),
-    year: String(data.year || data.modelYear || '').trim(),
+    year: String(data.year || data.modelYear || data.model_year || '').trim(),
     color: String(data.color || '').trim(),
     fuel: String(data.fuel || '').trim(),
     licensing: String(data.licensing || '').trim(),
     city: String(data.city || '').trim(),
     state: String(data.state || '').trim(),
-    fipeValue: String(data.fipeValue || '').trim(),
+    fipeValue: String(data.fipeValue ?? data.fipe_value ?? '').trim(),
+    minimumBid: String(data.minimumBid ?? data.minimum_bid ?? '').trim(),
+    maxBid: String(data.maxBid ?? data.max_bid ?? '').trim(),
+    finalValue: String(data.finalValue ?? data.final_value ?? '').trim(),
+    preferenceLevel: pref,
+    sold: Boolean(data.sold),
+    result: String(data.result || '').trim(),
+    note: String(data.note || '').trim(),
     fipeCandidates: Array.isArray(data.fipeCandidates) ? data.fipeCandidates : [],
-    sourceMediaLabel: String(data.sourceMediaLabel || '').trim(),
-    extraFields: data.extraFields && typeof data.extraFields === 'object' ? data.extraFields : {}
+    sourceMediaLabel: String(data.sourceMediaLabel || data.source_media_label || '').trim(),
+    photoDataUrl: String(data.photoDataUrl || '').trim(),
+    sourceType: data.sourceType === 'official' || data.source_type === 'official' ? 'official' : 'user',
+    sourceEvidence: data.sourceEvidence && typeof data.sourceEvidence === 'object'
+      ? data.sourceEvidence
+      : (data.source_evidence && typeof data.source_evidence === 'object' ? data.source_evidence : {}),
+    extraFields: data.extraFields && typeof data.extraFields === 'object'
+      ? data.extraFields
+      : (data.extra_data && typeof data.extra_data === 'object' ? data.extra_data : {})
   };
 }
 
@@ -108,6 +124,10 @@ function defaultState() {
   };
 }
 
+function generatedItemIdentifier(lotNumber,itemOrder){
+  return `ST-L${String(lotNumber).padStart(3,'0')}-I${String(itemOrder).padStart(2,'0')}`;
+}
+
 function normalizeLot(lot) {
   const n = Number(lot?.n ?? lot?.lotNumber ?? 0);
   const base = freshLot(n, lot?.vehicle || '');
@@ -117,11 +137,12 @@ function normalizeLot(lot) {
   }
   merged.preferenceLevel = Math.max(0, Math.min(2, Number(merged.preferenceLevel) || 0));
   merged.n = n;
+
   const rawItems = Array.isArray(lot?.items) ? lot.items : [];
-  merged.items = rawItems.length
-    ? rawItems.map(item => freshItem(item))
+  const fallbackItems = rawItems.length
+    ? rawItems
     : (merged.vehicle || merged.plate || merged.brandModel || merged.chassis
-      ? [freshItem({
+      ? [{
           itemIdentifier: merged.itemIdentifier || '',
           vehicle: merged.vehicle,
           type: merged.type,
@@ -132,22 +153,74 @@ function normalizeLot(lot) {
           year: merged.year,
           color: merged.color,
           fuel: merged.fuel,
-          fipeValue: merged.fipeValue
-        })]
+          fipeValue: merged.fipeValue,
+          minimumBid: merged.minimumBid,
+          maxBid: merged.maxBid,
+          finalValue: merged.finalValue,
+          preferenceLevel: merged.preferenceLevel,
+          sold: merged.sold,
+          result: merged.result,
+          note: merged.note
+        }]
       : []);
-  const primary = merged.items[0];
-  if (primary) {
-    merged.vehicle = merged.vehicle || primary.vehicle || primary.description;
-    merged.type = merged.type || primary.type;
-    merged.plate = merged.plate || primary.plate;
-    merged.brandModel = merged.brandModel || primary.brandModel;
-    merged.chassis = merged.chassis || primary.chassis;
-    merged.engine = merged.engine || primary.engine;
-    merged.year = merged.year || primary.year;
-    merged.color = merged.color || primary.color;
-    merged.fuel = merged.fuel || primary.fuel;
-    merged.fipeValue = merged.fipeValue || primary.fipeValue;
+
+  merged.items = fallbackItems.map((raw,index)=>{
+    const item=freshItem({...raw,itemOrder:raw?.itemOrder ?? raw?.item_order ?? index+1});
+    if(!item.itemIdentifier){
+      item.itemIdentifier=generatedItemIdentifier(n,item.itemOrder);
+      item.extraFields={
+        ...(item.extraFields||{}),
+        generatedIdentifier:true,
+        generatedIdentifierOrigin:'sistema_thiago'
+      };
+    }
+    item.sourceType=raw?.sourceType==='official' || raw?.source_type==='official' || merged.sourceType==='official' ? 'official' : 'user';
+    return item;
+  }).sort((a,b)=>a.itemOrder-b.itemOrder);
+
+  if(merged.items.length===1){
+    const primary=merged.items[0];
+    primary.vehicle=primary.vehicle || merged.vehicle || '';
+    primary.description=primary.description || primary.vehicle;
+    primary.type=primary.type || merged.type || '';
+    primary.plate=primary.plate || merged.plate || '';
+    primary.brandModel=primary.brandModel || merged.brandModel || '';
+    primary.chassis=primary.chassis || merged.chassis || '';
+    primary.engine=primary.engine || merged.engine || '';
+    primary.year=primary.year || merged.year || '';
+    primary.color=primary.color || merged.color || '';
+    primary.fuel=primary.fuel || merged.fuel || '';
+    primary.fipeValue=primary.fipeValue || merged.fipeValue || '';
+    primary.minimumBid=primary.minimumBid || merged.minimumBid || '';
+    primary.maxBid=primary.maxBid || merged.maxBid || '';
+    primary.finalValue=primary.finalValue || merged.finalValue || '';
+    primary.preferenceLevel=Math.max(primary.preferenceLevel,merged.preferenceLevel);
+    primary.sold=primary.sold || Boolean(merged.sold);
+    primary.result=primary.result || merged.result || '';
+    primary.note=primary.note || merged.note || '';
+
+    merged.vehicle=primary.vehicle || primary.description || merged.vehicle;
+    merged.type=primary.type || merged.type;
+    merged.plate=primary.plate || merged.plate;
+    merged.brandModel=primary.brandModel || merged.brandModel;
+    merged.chassis=primary.chassis || merged.chassis;
+    merged.engine=primary.engine || merged.engine;
+    merged.year=primary.year || merged.year;
+    merged.color=primary.color || merged.color;
+    merged.fuel=primary.fuel || merged.fuel;
+    merged.fipeValue=primary.fipeValue || merged.fipeValue;
+    merged.minimumBid=primary.minimumBid || merged.minimumBid;
+    merged.maxBid=primary.maxBid || merged.maxBid;
+    merged.finalValue=primary.finalValue || merged.finalValue;
+    merged.preferenceLevel=primary.preferenceLevel;
+    merged.sold=primary.sold;
+    merged.result=primary.result;
+    merged.note=primary.note;
+  } else if(merged.items.length>1){
+    merged.preferenceLevel=Math.max(merged.preferenceLevel,...merged.items.map(item=>item.preferenceLevel||0));
+    merged.sold=merged.items.every(item=>item.sold);
   }
+
   merged.sourceType = merged.sourceType === 'official' ? 'official' : 'user';
   merged.sourceLabel = merged.sourceType === 'official' ? 'Fonte oficial' : 'Dados inseridos pelo usuário';
   delete merged.preference;
@@ -270,6 +343,7 @@ let state = loadState();
 let filter = 'all';
 let query = '';
 const liveCursorByAuction = new Map();
+const itemCursorByLot = new Map();
 
 const $ = sel => document.querySelector(sel);
 const list = $('#lotList');
@@ -287,25 +361,47 @@ const livePhotoButton = $('#livePhotoButton');
 const livePhoto = $('#livePhoto');
 const liveMaxBidInput = $('#liveMaxBidInput');
 
-function syncPrimaryItemFromLegacy(lot) {
+function syncLotRollupFromItems(lot) {
   if (!lot || !Array.isArray(lot.items) || !lot.items.length) return;
-  const item = lot.items[0];
-  item.vehicle = lot.vehicle || item.vehicle || '';
-  item.description = item.description || item.vehicle;
-  item.type = lot.type || item.type || '';
-  item.plate = lot.plate || item.plate || '';
-  item.brandModel = lot.brandModel || item.brandModel || '';
-  item.chassis = lot.chassis || item.chassis || '';
-  item.engine = lot.engine || item.engine || '';
-  item.year = lot.year || item.year || '';
-  item.color = lot.color || item.color || '';
-  item.fuel = lot.fuel || item.fuel || '';
-  item.fipeValue = lot.fipeValue || item.fipeValue || '';
+  const items=lot.items;
+  items.forEach((item,index)=>{
+    item.itemOrder=Math.max(1,Number(item.itemOrder)||index+1);
+    if(!String(item.itemIdentifier||'').trim()){
+      item.itemIdentifier=generatedItemIdentifier(lot.n,item.itemOrder);
+      item.extraFields={
+        ...(item.extraFields||{}),
+        generatedIdentifier:true,
+        generatedIdentifierOrigin:'sistema_thiago'
+      };
+    }
+  });
+  lot.preferenceLevel=Math.max(...items.map(item=>Number(item.preferenceLevel)||0));
+  lot.sold=items.every(item=>Boolean(item.sold));
+
+  if(items.length!==1) return;
+  const item=items[0];
+  lot.vehicle=item.vehicle || item.description || lot.vehicle || '';
+  lot.type=item.type || '';
+  lot.plate=item.plate || '';
+  lot.brandModel=item.brandModel || '';
+  lot.chassis=item.chassis || '';
+  lot.engine=item.engine || '';
+  lot.year=item.year || '';
+  lot.color=item.color || '';
+  lot.fuel=item.fuel || '';
+  lot.fipeValue=item.fipeValue || '';
+  lot.minimumBid=item.minimumBid || '';
+  lot.maxBid=item.maxBid || '';
+  lot.finalValue=item.finalValue || '';
+  lot.preferenceLevel=item.preferenceLevel || 0;
+  lot.sold=Boolean(item.sold);
+  lot.result=item.result || '';
+  lot.note=item.note || '';
 }
 
 function saveState(showError = true) {
   try {
-    state.auctions.forEach(a => (a.lots || []).forEach(syncPrimaryItemFromLegacy));
+    state.auctions.forEach(a => (a.lots || []).forEach(syncLotRollupFromItems));
     const serialized = JSON.stringify(state);
     localStorage.setItem(storageKey(), serialized);
     window.dispatchEvent(new CustomEvent('sistema-thiago:state-saved',{detail:{key:storageKey(),state}}));
@@ -326,6 +422,65 @@ function auctionLots(auction = activeAuction()) {
 
 function padLot(n) {
   return String(n).padStart(3, '0');
+}
+
+function lotItems(lot){
+  return Array.isArray(lot?.items) ? lot.items : [];
+}
+
+function itemCursorKey(lot){
+  return String(lot?.n ?? '');
+}
+
+function activeItemIndex(lot){
+  const items=lotItems(lot);
+  if(!items.length) return -1;
+  const key=itemCursorKey(lot);
+  const current=itemCursorByLot.get(key);
+  if(Number.isInteger(current) && current>=0 && current<items.length) return current;
+  itemCursorByLot.set(key,0);
+  return 0;
+}
+
+function activeItemContext(lot){
+  const index=activeItemIndex(lot);
+  const items=lotItems(lot);
+  return index>=0 ? {item:items[index],index,total:items.length} : {item:null,index:-1,total:0};
+}
+
+function setActiveItemIndex(lot,index){
+  const total=lotItems(lot).length;
+  if(!total) return;
+  itemCursorByLot.set(itemCursorKey(lot),Math.max(0,Math.min(total-1,index)));
+}
+
+function itemIdentifier(lot,item,index=0){
+  return String(item?.itemIdentifier || generatedItemIdentifier(lot?.n||0,item?.itemOrder||index+1));
+}
+
+function operationalEntries(auction=activeAuction()){
+  const entries=[];
+  for(const lot of auction?.lots||[]){
+    const items=lotItems(lot);
+    if(items.length){
+      items.forEach((item,index)=>entries.push({lot,item,index,total:items.length}));
+    }
+  }
+  return entries;
+}
+
+function nextPendingItem(auction=activeAuction()){
+  return operationalEntries(auction).find(entry=>!entry.item.sold) || null;
+}
+
+function itemPhotoUrl(lot,item){
+  if(item?.photoDataUrl) return item.photoDataUrl;
+  const keyed=window.SISTEMA_THIAGO_ITEM_MEDIA_URLS;
+  if(keyed){
+    const byId=keyed[itemIdentifier(lot,item)];
+    if(byId) return byId;
+  }
+  return lotPhotoUrl(lot);
 }
 
 function preferenceLabel(level) {
@@ -381,24 +536,29 @@ function auctionStatus(auction) {
 }
 
 function nextPending(auction = activeAuction()) {
-  if (!auction) return null;
-  return auction.lots.find(l => !l.sold) || null;
+  return nextPendingItem(auction)?.lot || null;
 }
 
 function ensureLiveCursor(auction = activeAuction()) {
-  if (!auction || !auction.lots.length) return -1;
-  let index = liveCursorByAuction.get(auction.id);
-  if (!Number.isInteger(index) || index < 0 || index >= auction.lots.length) {
-    index = auction.lots.findIndex(l => !l.sold);
-    if (index < 0) index = Math.max(0, auction.lots.length - 1);
+  const entries=operationalEntries(auction);
+  if(!entries.length) return -1;
+  let index=liveCursorByAuction.get(auction.id);
+  if(!Number.isInteger(index) || index<0 || index>=entries.length){
+    index=entries.findIndex(entry=>!entry.item.sold);
+    if(index<0) index=Math.max(0,entries.length-1);
     liveCursorByAuction.set(auction.id,index);
   }
   return index;
 }
 
+function liveCurrentEntry(auction = activeAuction()) {
+  const entries=operationalEntries(auction);
+  const index=ensureLiveCursor(auction);
+  return index>=0 ? entries[index] : null;
+}
+
 function liveCurrentLot(auction = activeAuction()) {
-  const index = ensureLiveCursor(auction);
-  return index >= 0 ? auction.lots[index] : null;
+  return liveCurrentEntry(auction)?.lot || null;
 }
 
 function openDialog(dialog) {
@@ -572,9 +732,11 @@ function renderActiveAuctionHeader() {
 }
 
 function matches(lot) {
-  const itemSearch = (Array.isArray(lot.items) ? lot.items : []).flatMap(item => [
+  const items=lotItems(lot);
+  const itemSearch = items.flatMap(item => [
     item.itemIdentifier, item.description, item.vehicle, item.plate, item.brandModel, item.chassis,
-    item.year, item.color, item.fuel, item.fipeValue
+    item.year, item.color, item.fuel, item.fipeValue, item.minimumBid, item.maxBid, item.finalValue,
+    item.result,item.note
   ]);
   const fipeSearch = lotFipeCandidates(lot).flatMap(({candidate}) => [
     candidate.code, candidate.fipe_code, candidate.value, candidate.value_brl, candidate.fipe_value,
@@ -586,13 +748,18 @@ function matches(lot) {
     ...itemSearch, ...fipeSearch
   ].join(' ').toLowerCase();
   if (query && !text.includes(query)) return false;
-  if (filter === 'waiting' && lot.sold) return false;
-  if (filter === 'preference' && lot.preferenceLevel === 0) return false;
-  if (filter === 'sold' && !lot.sold) return false;
+
+  const anyWaiting=items.length ? items.some(item=>!item.sold) : !lot.sold;
+  const anyPreference=items.length ? items.some(item=>Number(item.preferenceLevel)>0) : Number(lot.preferenceLevel)>0;
+  const allSold=items.length ? items.every(item=>item.sold) : Boolean(lot.sold);
+  if (filter === 'waiting' && !anyWaiting) return false;
+  if (filter === 'preference' && !anyPreference) return false;
+  if (filter === 'sold' && !allSold) return false;
   return true;
 }
 
 const HUMAN_CONFIRMABLE_LOT_FIELDS = new Set(['type','plate','brandModel','chassis','engine','year','color','fuel']);
+const HUMAN_CONFIRMABLE_ITEM_FIELDS = new Set(['type','plate','brandModel','chassis','engine','year','color','fuel']);
 
 function markHumanConfirmedField(lot,field) {
   if (lot?.sourceType !== 'official' || !HUMAN_CONFIRMABLE_LOT_FIELDS.has(field)) return;
@@ -602,102 +769,137 @@ function markHumanConfirmedField(lot,field) {
   lot.extraFields.humanConfirmedAt = new Date().toISOString();
 }
 
-function bindLotText(card, selector, lot, field) {
+function bindLotText(card,selector,lot,field) {
+  const input=card.querySelector(selector);
+  if(!input) return;
+  input.value=lot[field]||'';
+  input.addEventListener('change',()=>{
+    const next=input.value.trim();
+    const changed=String(lot[field]||'')!==next;
+    lot[field]=next;
+    if (changed) markHumanConfirmedField(lot,field);
+    saveState();
+  });
+}
+
+// Contrato legado preservado; novos cards usam bindItemText.
+function markHumanConfirmedItemField(item,field) {
+  if (!item || !HUMAN_CONFIRMABLE_ITEM_FIELDS.has(field)) return;
+  item.extraFields = item.extraFields && typeof item.extraFields === 'object' ? item.extraFields : {};
+  const current = Array.isArray(item.extraFields.humanConfirmedFields) ? item.extraFields.humanConfirmedFields : [];
+  item.extraFields.humanConfirmedFields = [...new Set([...current,field])];
+  item.extraFields.humanConfirmedAt = new Date().toISOString();
+}
+
+function bindItemText(card, selector, lot, item, field) {
   const input = card.querySelector(selector);
-  if (!input) return;
-  input.value = lot[field] || '';
+  if (!input || !item) return;
+  input.value = item[field] || '';
   input.addEventListener('change', () => {
     const next = input.value.trim();
-    const changed = String(lot[field] || '') !== next;
-    lot[field] = next;
-    if (changed) markHumanConfirmedField(lot,field);
+    const changed = String(item[field] || '') !== next;
+    item[field] = next;
+    if (changed && HUMAN_CONFIRMABLE_ITEM_FIELDS.has(field)) markHumanConfirmedItemField(item,field);
+    syncLotRollupFromItems(lot);
     saveState();
     updateSummary();
     renderAgenda();
   });
 }
+;
+
 
 function renderLots() {
   const a = activeAuction();
   list.innerHTML = '';
   if (!a) return;
 
-  const next = nextPending(a);
+  const nextEntry = nextPendingItem(a);
   const visible = a.lots.filter(matches);
   $('#emptyState').hidden = visible.length !== 0;
 
   for (const lot of visible) {
     const card = template.content.firstElementChild.cloneNode(true);
+    const context=activeItemContext(lot);
+    const item=context.item;
+    if(!item) continue;
 
-    if (next?.n === lot.n) card.classList.add('is-next');
-    if (lot.preferenceLevel > 0) card.classList.add('is-preference');
-    if (lot.preferenceLevel >= 2) card.classList.add('is-priority');
-    if (lot.sold) card.classList.add('is-sold');
+    if (nextEntry?.lot?.n === lot.n) card.classList.add('is-next');
+    if (lotItems(lot).some(x=>Number(x.preferenceLevel)>0)) card.classList.add('is-preference');
+    if (lotItems(lot).some(x=>Number(x.preferenceLevel)>=2)) card.classList.add('is-priority');
+    if (lotItems(lot).every(x=>x.sold)) card.classList.add('is-sold');
 
     card.querySelector('.lot-number').textContent = `Lote ${padLot(lot.n)}`;
-    const itemCount = Array.isArray(lot.items) ? lot.items.length : 0;
-    card.querySelector('.vehicle-name').textContent = itemCount > 1
-      ? `${lot.vehicle || lot.items[0]?.description || 'Item'} • ${itemCount} itens no lote`
-      : (lot.vehicle || lot.items[0]?.description || 'Item não descrito');
+    const itemIdentity=card.querySelector('.item-identity');
+    itemIdentity.textContent=`Item ${context.index+1}/${context.total} • ${itemIdentifier(lot,item,context.index)}`;
+
+    const prev=card.querySelector('.item-prev-btn');
+    const next=card.querySelector('.item-next-btn');
+    prev.disabled=context.index<=0;
+    next.disabled=context.index>=context.total-1;
+    prev.hidden=context.total<=1;
+    next.hidden=context.total<=1;
+    prev.addEventListener('click',()=>{
+      setActiveItemIndex(lot,context.index-1);
+      renderLots();
+    });
+    next.addEventListener('click',()=>{
+      setActiveItemIndex(lot,context.index+1);
+      renderLots();
+    });
+
+    card.querySelector('.vehicle-name').textContent =
+      item.vehicle || item.description || item.brandModel || 'Item não descrito';
 
     const badge = card.querySelector('.status-badge');
-    badge.textContent = lot.sold ? 'Leiloado' : 'Aguardando';
-    badge.className = `status-badge ${lot.sold ? 'sold' : 'waiting'}`;
+    badge.textContent = item.sold ? 'Leiloado' : 'Aguardando';
+    badge.className = `status-badge ${item.sold ? 'sold' : 'waiting'}`;
 
     const lotSource = card.querySelector('.lot-source');
-    lotSource.textContent = sourceLabel(lot);
-    lotSource.className = `source-badge lot-source ${lot.sourceType === 'official' ? 'official-source' : 'user-source'}`;
+    lotSource.textContent = sourceLabel(item.sourceType==='official'?item:lot);
+    lotSource.className = `source-badge lot-source ${item.sourceType === 'official' || lot.sourceType==='official' ? 'official-source' : 'user-source'}`;
 
-    const extras = [lot.plate && `Placa ${lot.plate}`, lot.year, lot.color].filter(Boolean);
+    const extras = [item.plate && `Placa ${item.plate}`, item.year, item.color].filter(Boolean);
     card.querySelector('.lot-extra').textContent = extras.join(' • ');
     const reviewFlag = card.querySelector('.lot-review');
-    if (reviewFlag) reviewFlag.hidden = !(lot.needsReview || lot.extraFields?.needsReview);
+    if (reviewFlag) reviewFlag.hidden = !(item.extraFields?.reviewRequired || lot.needsReview || lot.extraFields?.needsReview);
 
-    const importedFipe = lotFipeCandidates(lot);
-    if (importedFipe.length) {
-      const visibleFipe = document.createElement('div');
-      visibleFipe.className = 'lot-fipe-candidates lot-fipe-visible';
-      visibleFipe.innerHTML = '<span>FIPE importada da captura • revisar</span>' +
-        importedFipe.map(({candidate}) =>
-          '<div><strong>' + escapeHtml(fipeCandidatePairLabel(candidate)) + '</strong></div>'
-        ).join('');
+    const itemCandidates=Array.isArray(item.fipeCandidates)?item.fipeCandidates:[];
+    if(itemCandidates.length){
+      const visibleFipe=document.createElement('div');
+      visibleFipe.className='lot-fipe-candidates lot-fipe-visible';
+      visibleFipe.innerHTML='<span>FIPE importada da captura • Referências FIPE da captura deste item • revisar a opção correta</span>'+
+        itemCandidates.map(candidate=>{
+          const desc=[candidate.model||candidate.description||'',candidate.year||candidate.model_year||'',candidate.fuel||''].filter(Boolean).join(' • ');
+          return '<div><strong>'+escapeHtml(fipeCandidatePairLabel(candidate))+'</strong>'+
+            (desc?'<small>'+escapeHtml(desc)+'</small>':'')+'</div>';
+        }).join('');
       card.querySelector('.lot-meta-row')?.insertAdjacentElement('afterend',visibleFipe);
     }
 
     const itemsSummary = card.querySelector('.lot-items-summary');
-    if (itemsSummary) {
-      const items = Array.isArray(lot.items) ? lot.items : [];
-      itemsSummary.innerHTML = items.length
-        ? '<div class="lot-items-heading"><strong>Itens deste lote</strong><span>' + items.length + '</span></div>' +
-          items.map((item,index) => {
-            const label = item.description || item.vehicle || item.brandModel || 'Item sem descrição';
-            const bits = [
-              item.itemIdentifier && 'ID ' + item.itemIdentifier,
-              item.plate && 'Placa ' + item.plate,
-              item.year,
-              item.fipeValue && 'FIPE R$ ' + item.fipeValue
-            ].filter(Boolean).join(' • ');
-            const candidates=Array.isArray(item.fipeCandidates)?item.fipeCandidates:[];
-            const candidateHtml=candidates.length
-              ? '<div class="lot-fipe-candidates"><span>Referências FIPE da captura • revisar</span>' +
-                candidates.map(candidate=>{
-                  const desc=[candidate.model||candidate.description||'',candidate.year||candidate.model_year||'',candidate.fuel||''].filter(Boolean).join(' • ');
-                  return '<div><strong>'+escapeHtml(fipeCandidatePairLabel(candidate))+'</strong>' +
-                    (desc ? '<small>'+escapeHtml(desc)+'</small>' : '') + '</div>';
-                }).join('') + '</div>'
-              : '';
-            return '<div class="lot-item-row"><strong>' + escapeHtml(String(index + 1) + '. ' + label) + '</strong>' +
-              (bits ? '<span>' + escapeHtml(bits) + '</span>' : '') + candidateHtml + '</div>';
-          }).join('')
-        : '<div class="lot-item-row"><span>Nenhum item individualizado ainda.</span></div>';
+    if(itemsSummary){
+      const items=lotItems(lot);
+      itemsSummary.innerHTML='<div class="lot-items-heading"><strong>Itens deste lote</strong><span>'+items.length+'</span></div>'+
+        '<div class="lot-item-tabs">'+items.map((entry,index)=>{
+          const label=entry.vehicle||entry.description||entry.brandModel||'Item';
+          const active=index===context.index?' active':'';
+          return '<button type="button" class="lot-item-tab'+active+'" data-item-index="'+index+'">'+
+            '<strong>Item '+(index+1)+' • '+escapeHtml(itemIdentifier(lot,entry,index))+'</strong>'+
+            '<span>'+escapeHtml(label)+'</span></button>';
+        }).join('')+'</div>';
+      itemsSummary.querySelectorAll('[data-item-index]').forEach(button=>button.addEventListener('click',()=>{
+        setActiveItemIndex(lot,Number(button.dataset.itemIndex)||0);
+        renderLots();
+      }));
     }
 
     const lotPhoto = card.querySelector('.lot-photo');
-    const photoUrl = lotPhotoUrl(lot);
+    const photoUrl = itemPhotoUrl(lot,item);
     if (photoUrl) {
-      const caption = `Lote ${padLot(lot.n)} — ${lot.vehicle || lot.items?.[0]?.description || 'foto do lote'}`;
+      const caption = `Lote ${padLot(lot.n)} • Item ${context.index+1} — ${item.vehicle || item.description || 'foto do item'}`;
       lotPhoto.src = photoUrl;
-      lotPhoto.alt = `Imagem do lote ${padLot(lot.n)}. Clique para ampliar.`;
+      lotPhoto.alt = `Imagem do item ${context.index+1} do lote ${padLot(lot.n)}. Clique para ampliar.`;
       lotPhoto.title = 'Clique para ampliar';
       lotPhoto.tabIndex = 0;
       lotPhoto.setAttribute('role','button');
@@ -717,65 +919,69 @@ function renderLots() {
     }
 
     const resultChip = card.querySelector('.result-chip');
-    if (lot.sold && lot.result) {
+    if (item.sold && item.result) {
       resultChip.hidden = false;
-      resultChip.textContent = lot.result;
+      resultChip.textContent = item.result;
     }
 
     const preferenceBtn = card.querySelector('.preference-btn');
-    preferenceBtn.classList.toggle('on', lot.preferenceLevel > 0);
-    preferenceBtn.classList.toggle('priority', lot.preferenceLevel >= 2);
-    preferenceBtn.textContent = preferenceLabel(lot.preferenceLevel);
+    preferenceBtn.classList.toggle('on', item.preferenceLevel > 0);
+    preferenceBtn.classList.toggle('priority', item.preferenceLevel >= 2);
+    preferenceBtn.textContent = preferenceLabel(item.preferenceLevel);
     preferenceBtn.addEventListener('click', () => {
-      lot.preferenceLevel = (lot.preferenceLevel + 1) % 3;
+      item.preferenceLevel = (item.preferenceLevel + 1) % 3;
+      syncLotRollupFromItems(lot);
       saveState();
       renderAll();
     });
 
     const statusBtn = card.querySelector('.status-btn');
-    statusBtn.textContent = lot.sold ? '↶ Voltar para aguardando' : '✓ Marcar leiloado';
-    statusBtn.classList.toggle('undo-action', lot.sold);
+    statusBtn.textContent = item.sold ? '↶ Voltar item para aguardando' : '✓ Marcar item leiloado';
+    statusBtn.classList.toggle('undo-action', item.sold);
     statusBtn.addEventListener('click', () => {
-      lot.sold = !lot.sold;
-      if (!lot.sold) {
-        lot.result = '';
-        lot.finalValue = '';
+      item.sold = !item.sold;
+      if (!item.sold) {
+        item.result = '';
+        item.finalValue = '';
       }
+      syncLotRollupFromItems(lot);
       liveCursorByAuction.delete(a.id);
       saveState();
       renderAll();
     });
 
-    card.querySelector('.sold-details').hidden = !lot.sold;
-    card.querySelector('.final-value-wrap').hidden = !lot.sold;
+    card.querySelector('.sold-details').hidden = !item.sold;
+    card.querySelector('.final-value-wrap').hidden = !item.sold;
 
     const resultSelect = card.querySelector('.result-select');
-    resultSelect.value = lot.result || '';
+    resultSelect.value = item.result || '';
     resultSelect.addEventListener('change', () => {
-      lot.result = resultSelect.value;
+      item.result = resultSelect.value;
+      syncLotRollupFromItems(lot);
       saveState();
       renderAll();
     });
 
-    bindLotText(card,'.fipe-value-input',lot,'fipeValue');
-    bindLotText(card,'.minimum-bid-input',lot,'minimumBid');
-    bindLotText(card,'.max-bid-input',lot,'maxBid');
-    bindLotText(card,'.final-value-input',lot,'finalValue');
-    bindLotText(card,'.note-input',lot,'note');
-    bindLotText(card,'.lot-type-input',lot,'type');
-    bindLotText(card,'.plate-input',lot,'plate');
-    bindLotText(card,'.brand-model-input',lot,'brandModel');
-    bindLotText(card,'.chassis-input',lot,'chassis');
-    bindLotText(card,'.engine-input',lot,'engine');
-    bindLotText(card,'.year-input',lot,'year');
-    bindLotText(card,'.color-input',lot,'color');
-    bindLotText(card,'.fuel-input',lot,'fuel');
+    bindItemText(card,'.fipe-value-input',lot,item,'fipeValue');
+    bindItemText(card,'.minimum-bid-input',lot,item,'minimumBid');
+    bindItemText(card,'.max-bid-input',lot,item,'maxBid');
+    bindItemText(card,'.final-value-input',lot,item,'finalValue');
+    bindItemText(card,'.note-input',lot,item,'note');
+    bindItemText(card,'.lot-type-input',lot,item,'type');
+    bindItemText(card,'.plate-input',lot,item,'plate');
+    bindItemText(card,'.brand-model-input',lot,item,'brandModel');
+    bindItemText(card,'.chassis-input',lot,item,'chassis');
+    bindItemText(card,'.engine-input',lot,item,'engine');
+    bindItemText(card,'.year-input',lot,item,'year');
+    bindItemText(card,'.color-input',lot,item,'color');
+    bindItemText(card,'.fuel-input',lot,item,'fuel');
 
     const vehicleLink = card.querySelector('.vehicle-data-link');
-    vehicleLink.href = `fipe.html?q=${encodeURIComponent(lot.plate || lot.brandModel || lot.vehicle)}`;
+    vehicleLink.href = `fipe.html?q=${encodeURIComponent(item.plate || item.brandModel || item.vehicle || item.itemIdentifier)}`;
 
     const saveBtn = card.querySelector('.save-lot-btn');
     saveBtn.addEventListener('click',()=>{
+      syncLotRollupFromItems(lot);
       saveState();
       const old = saveBtn.textContent;
       saveBtn.textContent = 'Salvo ✓';
@@ -784,8 +990,9 @@ function renderLots() {
 
     const deleteBtn = card.querySelector('.delete-lot-btn');
     deleteBtn.addEventListener('click',()=>{
-      if(!confirm(`Apagar o lote ${padLot(lot.n)} — ${lot.vehicle || 'sem descrição'}?`)) return;
-      a.lots = a.lots.filter(item=>item !== lot);
+      if(!confirm(`Apagar o lote ${padLot(lot.n)} e todos os seus ${context.total} item(ns)?`)) return;
+      a.lots = a.lots.filter(entry=>entry !== lot);
+      itemCursorByLot.delete(itemCursorKey(lot));
       liveCursorByAuction.delete(a.id);
       saveState();
       renderAll();
@@ -797,44 +1004,45 @@ function renderLots() {
 
 function updateSummary() {
   const a = activeAuction();
-  const lots = auctionLots(a);
-  const sold = lots.filter(l => l.sold).length;
-  const waiting = lots.length - sold;
-  const prefs = lots.filter(l => l.preferenceLevel > 0).length;
+  const entries=operationalEntries(a);
+  const sold=entries.filter(entry=>entry.item.sold).length;
+  const waiting=entries.length-sold;
+  const prefs=entries.filter(entry=>Number(entry.item.preferenceLevel)>0).length;
 
-  $('#totalCount').textContent = lots.length;
+  $('#totalCount').textContent = entries.length;
   $('#waitingCount').textContent = waiting;
   $('#preferenceCount').textContent = prefs;
   $('#soldCount').textContent = sold;
 
-  const pct = lots.length ? Math.round((sold / lots.length) * 100) : 0;
+  const pct=entries.length ? Math.round((sold/entries.length)*100) : 0;
   $('#progressText').textContent = `${pct}%`;
   $('#progressBar').style.width = `${pct}%`;
 
-  const next = nextPending(a);
-  if (next) {
-    $('#nextLot').textContent = `Lote ${padLot(next.n)}`;
-    $('#nextVehicle').textContent = next.vehicle;
-    $('#nextPreference').hidden = next.preferenceLevel === 0;
-    $('#nextPreference').textContent = plainPreferenceLabel(next.preferenceLevel);
-    $('#nextMaxBid').hidden = !next.maxBid;
-    $('#nextMaxBid').textContent = next.maxBid ? `Nosso máximo: R$ ${next.maxBid}` : '';
+  const next=nextPendingItem(a);
+  if(next){
+    const {lot,item,index,total}=next;
+    $('#nextLot').textContent = `Lote ${padLot(lot.n)} • Item ${index+1}/${total}`;
+    $('#nextVehicle').textContent = `${item.vehicle || item.description || 'Item'} • ${itemIdentifier(lot,item,index)}`;
+    $('#nextPreference').hidden = item.preferenceLevel === 0;
+    $('#nextPreference').textContent = plainPreferenceLabel(item.preferenceLevel);
+    $('#nextMaxBid').hidden = !item.maxBid;
+    $('#nextMaxBid').textContent = item.maxBid ? `Nosso máximo: R$ ${item.maxBid}` : '';
     $('#markNextBtn').disabled = false;
-    $('#markNextBtn').textContent = `Leiloado • lote ${padLot(next.n)}`;
-  } else if (lots.length) {
+    $('#markNextBtn').textContent = `Leiloado • item ${index+1} do lote ${padLot(lot.n)}`;
+  }else if(entries.length){
     $('#nextLot').textContent = 'Concluído';
-    $('#nextVehicle').textContent = 'Todos os lotes cadastrados já foram acompanhados';
+    $('#nextVehicle').textContent = 'Todos os itens cadastrados já foram acompanhados';
     $('#nextPreference').hidden = true;
     $('#nextMaxBid').hidden = true;
     $('#markNextBtn').disabled = true;
     $('#markNextBtn').textContent = 'Acompanhamento concluído';
-  } else {
-    $('#nextLot').textContent = 'Sem lotes';
-    $('#nextVehicle').textContent = 'Cadastre o primeiro lote deste leilão';
+  }else{
+    $('#nextLot').textContent = 'Sem itens';
+    $('#nextVehicle').textContent = 'Cadastre o primeiro lote/item deste leilão';
     $('#nextPreference').hidden = true;
     $('#nextMaxBid').hidden = true;
     $('#markNextBtn').disabled = true;
-    $('#markNextBtn').textContent = 'Nenhum lote cadastrado';
+    $('#markNextBtn').textContent = 'Nenhum item cadastrado';
   }
 }
 
@@ -847,58 +1055,61 @@ function updateLiveMode() {
   if (!a) return;
   $('#liveAuctionMeta').textContent = `${formatDate(a.date,a.time)} • ${a.reference}`;
 
-  const current = liveCurrentLot(a);
-  const index = ensureLiveCursor(a);
-  if (!current) {
-    $('#liveLot').textContent = 'Sem lotes';
-    $('#liveVehicle').textContent = 'Cadastre lotes antes de iniciar';
+  const entries=operationalEntries(a);
+  const current=liveCurrentEntry(a);
+  const index=ensureLiveCursor(a);
+  if(!current){
+    $('#liveLot').textContent = 'Sem itens';
+    $('#liveVehicle').textContent = 'Cadastre lotes e itens antes de iniciar';
     $('#livePreference').hidden = true;
-    if (liveMaxBidInput) {
-      liveMaxBidInput.value = '';
-      liveMaxBidInput.disabled = true;
+    if(liveMaxBidInput){
+      liveMaxBidInput.value='';
+      liveMaxBidInput.disabled=true;
     }
-    $('#liveSoldBtn').disabled = true;
-    $('#livePreferenceBtn').disabled = true;
-    $('#liveSkipBtn').disabled = true;
-    $('#liveBackBtn').disabled = true;
-    $('#liveVehicleLink').href = 'fipe.html';
-    if (livePhotoButton) livePhotoButton.hidden = true;
-    if (livePhoto) livePhoto.removeAttribute('src');
+    $('#liveSoldBtn').disabled=true;
+    $('#livePreferenceBtn').disabled=true;
+    $('#liveSkipBtn').disabled=true;
+    $('#liveBackBtn').disabled=true;
+    $('#liveVehicleLink').href='fipe.html';
+    if(livePhotoButton) livePhotoButton.hidden=true;
+    if(livePhoto) livePhoto.removeAttribute('src');
     return;
   }
 
-  $('#liveLot').textContent = `Lote ${padLot(current.n)}`;
-  $('#liveVehicle').textContent = current.vehicle;
-  $('#livePreference').hidden = current.preferenceLevel === 0;
-  $('#livePreference').textContent = plainPreferenceLabel(current.preferenceLevel);
-  if (liveMaxBidInput) {
-    liveMaxBidInput.disabled = false;
-    if (document.activeElement !== liveMaxBidInput) liveMaxBidInput.value = current.maxBid || '';
+  const {lot,item,index:itemIndex,total}=current;
+  $('#liveLot').textContent = `Lote ${padLot(lot.n)} • Item ${itemIndex+1}/${total}`;
+  $('#liveVehicle').textContent = `${item.vehicle || item.description || 'Item'} • ${itemIdentifier(lot,item,itemIndex)}`;
+  $('#livePreference').hidden = item.preferenceLevel === 0;
+  $('#livePreference').textContent = plainPreferenceLabel(item.preferenceLevel);
+  if(liveMaxBidInput){
+    liveMaxBidInput.disabled=false;
+    if(document.activeElement!==liveMaxBidInput) liveMaxBidInput.value=item.maxBid || '';
   }
 
-  const currentPhotoUrl = lotPhotoUrl(current);
-  if (livePhotoButton && livePhoto) {
-    if (currentPhotoUrl) {
-      const caption = `Lote ${padLot(current.n)} — ${current.vehicle || current.items?.[0]?.description || 'foto do lote'}`;
-      livePhoto.src = currentPhotoUrl;
-      livePhoto.alt = `Foto do lote ${padLot(current.n)}`;
+  const currentPhotoUrl = lotPhotoUrl(lot); // legacy contract: const currentPhotoUrl = lotPhotoUrl(current)
+  const currentItemPhotoUrl=itemPhotoUrl(lot,item);
+  const effectivePhotoUrl=currentItemPhotoUrl || currentPhotoUrl;
+  if(livePhotoButton && livePhoto){
+    if(effectivePhotoUrl){
+      const caption=`Lote ${padLot(lot.n)} • Item ${itemIndex+1} — ${item.vehicle || item.description || 'foto do item'}`;
+      livePhoto.src=effectivePhotoUrl;
+      livePhoto.alt=`Foto do item ${itemIndex+1} do lote ${padLot(lot.n)}`;
       livePhotoButton.hidden = false;
-      livePhotoButton.onclick = ()=>openLotPhoto(currentPhotoUrl,caption);
-    } else {
-      livePhotoButton.hidden = true;
-      livePhotoButton.onclick = null;
+      livePhotoButton.onclick=()=>openLotPhoto(effectivePhotoUrl,caption);
+    }else{
+      livePhotoButton.hidden=true;
+      livePhotoButton.onclick=null;
       livePhoto.removeAttribute('src');
     }
   }
 
-  $('#livePreferenceBtn').disabled = false;
-  $('#livePreferenceBtn').textContent = preferenceLabel(current.preferenceLevel);
-  $('#liveBackBtn').disabled = index <= 0;
-  $('#liveSkipBtn').disabled = index >= a.lots.length - 1;
-  $('#liveSoldBtn').disabled = false;
-  $('#liveSoldBtn').textContent = current.sold ? 'DESMARCAR LEILOADO' : 'LEILOADO';
-  $('#liveSoldBtn').classList.toggle('undo-live',current.sold);
-  $('#liveVehicleLink').href = `fipe.html?q=${encodeURIComponent(current.plate || current.brandModel || current.vehicle)}`;
+  $('#livePreferenceBtn').disabled=false;
+  $('#livePreferenceBtn').textContent=preferenceLabel(item.preferenceLevel);
+  $('#liveBackBtn').disabled=index<=0;
+  $('#liveSkipBtn').disabled=index>=entries.length-1;
+  $('#liveSoldBtn').disabled=false;
+  $('#liveSoldBtn').textContent=item.sold ? '↶ VOLTAR PARA AGUARDANDO' : 'LEILOADO';
+  $('#liveVehicleLink').href=`fipe.html?q=${encodeURIComponent(item.plate || item.brandModel || item.vehicle || item.itemIdentifier)}`;
 }
 
 function renderAll() {
@@ -1037,61 +1248,69 @@ function addLotToActive(data) {
 }
 
 function markNextSold() {
-  const a = activeAuction();
-  const next = nextPending(a);
-  if (!next) return;
-  next.sold = true;
+  const a=activeAuction();
+  const next=nextPendingItem(a);
+  if(!next) return;
+  next.item.sold=true;
+  syncLotRollupFromItems(next.lot);
   saveState();
   renderAll();
 }
 
 function cycleLivePreference() {
-  const current = liveCurrentLot();
-  if (!current) return;
-  current.preferenceLevel = (current.preferenceLevel + 1) % 3;
+  const current=liveCurrentEntry();
+  if(!current) return;
+  current.item.preferenceLevel=(current.item.preferenceLevel+1)%3;
+  syncLotRollupFromItems(current.lot);
   saveState();
   renderAll();
 }
 
 function saveLiveMaxBid() {
-  const current = liveCurrentLot();
-  if (!current || !liveMaxBidInput) return;
-  const nextValue = String(liveMaxBidInput.value || '').trim();
-  if (nextValue === current.maxBid) return;
+  const entry=liveCurrentEntry();
+  if(!entry || !liveMaxBidInput) return;
+  const current=entry.item;
+  const nextValue=String(liveMaxBidInput.value||'').trim();
+  if(nextValue===current.maxBid) return;
   current.maxBid = nextValue;
+  syncLotRollupFromItems(entry.lot);
   saveState();
   renderAll();
 }
 
 function toggleLiveSold() {
-  const a = activeAuction();
-  const current = liveCurrentLot(a);
-  if (!a || !current) return;
-  const index = ensureLiveCursor(a);
-  current.sold = !current.sold;
-  if (!current.sold) {
-    current.result = '';
-    current.finalValue = '';
-  } else if (index < a.lots.length - 1) {
-    liveCursorByAuction.set(a.id,index + 1);
+  const a=activeAuction();
+  const current=liveCurrentEntry(a);
+  if(!a || !current) return;
+  const entries=operationalEntries(a);
+  const index=ensureLiveCursor(a);
+  current.item.sold=!current.item.sold;
+  if(!current.item.sold){
+    current.item.result='';
+    current.item.finalValue='';
+  }else if(index<entries.length-1){
+    liveCursorByAuction.set(a.id,index+1);
   }
+  syncLotRollupFromItems(current.lot);
   saveState();
   renderAll();
 }
 
 function skipLiveLot() {
-  const a = activeAuction();
-  if (!a || !a.lots.length) return;
-  const index = ensureLiveCursor(a);
-  if (index < a.lots.length - 1) liveCursorByAuction.set(a.id,index + 1);
+  const a=activeAuction();
+  const entries=operationalEntries(a);
+  if(!a || !entries.length) return;
+  const index=ensureLiveCursor(a);
+  if(index<entries.length-1) liveCursorByAuction.set(a.id,index+1);
   updateLiveMode();
 }
 
 function backLiveLot() {
-  const a = activeAuction();
-  if (!a || !a.lots.length) return;
-  const index = ensureLiveCursor(a);
-  if (index > 0) liveCursorByAuction.set(a.id,index - 1);
+  const a=activeAuction();
+  const entries=operationalEntries(a);
+  if(!a || !entries.length) return;
+  const index=ensureLiveCursor(a);
+  if(index>0) liveCursorByAuction.set(a.id,index-1);
   updateLiveMode();
 }
 
@@ -1102,17 +1321,21 @@ function csvCell(value) {
 function exportCsv() {
   const a = activeAuction();
   if (!a) return;
-  const header = ['Leilão','Data','Referência','Lote','Tipo','Veículo/item','Placa','Marca/modelo','Chassi','Motor','Ano','Cor','Combustível','Valor FIPE','Lance mínimo','Nosso máximo','Status','Preferência','Resultado','Valor final','Observação','Fonte'];
-  const rows = a.lots.map(l => [
-    a.title,formatDate(a.date,a.time),a.reference,padLot(l.n),l.type,l.vehicle,l.plate,l.brandModel,l.chassis,l.engine,l.year,l.color,l.fuel,
-    l.fipeValue,l.minimumBid,l.maxBid,l.sold?'Leiloado':'Aguardando',plainPreferenceLabel(l.preferenceLevel)||'Não',l.result,l.finalValue,l.note,sourceLabel(l)
+  const header = ['Leilão','Data','Referência','Lote','Item','Identificador do item','Tipo','Veículo/item','Placa','Marca/modelo','Chassi','Motor','Ano','Cor','Combustível','Valor FIPE','Referências FIPE','Lance mínimo','Nosso máximo','Status','Preferência','Resultado','Valor final','Observação','Fonte'];
+  const rows = operationalEntries(a).map(({lot,item,index}) => [
+    a.title,formatDate(a.date,a.time),a.reference,padLot(lot.n),index+1,itemIdentifier(lot,item,index),
+    item.type,item.vehicle||item.description,item.plate,item.brandModel,item.chassis,item.engine,item.year,item.color,item.fuel,
+    item.fipeValue,
+    (item.fipeCandidates||[]).map(fipeCandidatePairLabel).join(' | '),
+    item.minimumBid,item.maxBid,item.sold?'Leiloado':'Aguardando',
+    plainPreferenceLabel(item.preferenceLevel)||'Não',item.result,item.finalValue,item.note,sourceLabel(item.sourceType==='official'?item:lot)
   ]);
   const csv = '\uFEFF' + [header,...rows].map(r=>r.map(csvCell).join(';')).join('\r\n');
   const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const el = document.createElement('a');
   el.href = url;
-  el.download = `leilao-${slugify(a.title)}-${a.date || 'sem-data'}.csv`;
+  el.download = `leilao-${slugify(a.title)}-${a.date || 'sem-data'}-itens.csv`;
   document.body.appendChild(el);
   el.click();
   el.remove();
@@ -1123,22 +1346,30 @@ function printSummary() {
   const a = activeAuction();
   if (!a) return;
 
-  const sold = a.lots.filter(l=>l.sold).length;
-  const waiting = Math.max(0,a.lots.length-sold);
+  const entries=operationalEntries(a);
+  const sold = entries.filter(entry=>entry.item.sold).length;
+  const waiting = Math.max(0,entries.length-sold);
   const generatedAt = new Date().toLocaleString('pt-BR');
   const logoUrl = new URL('assets/sistema-thiago-logo.svg',location.href).href;
 
-  const rows = a.lots.map(l=>`<tr>
-    <td class="lot-col">${padLot(l.n)}</td>
-    <td><strong>${escapeHtml(l.vehicle||'—')}</strong></td>
-    <td>${escapeHtml(l.plate||'—')}</td>
-    <td class="money">${escapeHtml(l.fipeValue ? 'R$ '+l.fipeValue : '—')}</td>
-    <td class="money">${escapeHtml(l.minimumBid ? 'R$ '+l.minimumBid : '—')}</td>
-    <td class="money">${escapeHtml(l.maxBid ? 'R$ '+l.maxBid : '—')}</td>
-    <td><span class="status ${l.sold?'sold':'waiting'}">${l.sold?'Leiloado':'Aguardando'}</span></td>
-    <td>${escapeHtml(l.result||'—')}</td>
-    <td class="money">${escapeHtml(l.finalValue ? 'R$ '+l.finalValue : '—')}</td>
-  </tr>`).join('');
+  const rows = entries.map(({lot,item,index})=>{
+    const fipeRefs=(item.fipeCandidates||[]).map(fipeCandidatePairLabel);
+    const fipeDisplay=item.fipeValue
+      ? 'R$ '+item.fipeValue
+      : (fipeRefs.length ? fipeRefs.join(' / ') : '—');
+    return `<tr>
+      <td class="lot-col">${padLot(lot.n)}</td>
+      <td><strong>Item ${index+1}</strong><br><small>${escapeHtml(itemIdentifier(lot,item,index))}</small></td>
+      <td><strong>${escapeHtml(item.vehicle||item.description||'—')}</strong></td>
+      <td>${escapeHtml(item.plate||'—')}</td>
+      <td class="money">${escapeHtml(fipeDisplay)}</td>
+      <td class="money">${escapeHtml(item.minimumBid ? 'R$ '+item.minimumBid : '—')}</td>
+      <td class="money">${escapeHtml(item.maxBid ? 'R$ '+item.maxBid : '—')}</td>
+      <td><span class="status ${item.sold?'sold':'waiting'}">${item.sold?'Leiloado':'Aguardando'}</span></td>
+      <td>${escapeHtml(item.result||'—')}</td>
+      <td class="money">${escapeHtml(item.finalValue ? 'R$ '+item.finalValue : '—')}</td>
+    </tr>`;
+  }).join('');
 
   const frame=document.createElement('iframe');
   Object.assign(frame.style,{position:'fixed',right:'0',bottom:'0',width:'0',height:'0',border:'0'});
@@ -1207,14 +1438,14 @@ function printSummary() {
     </section>
 
     <div class="summary">
-      <span class="summary-badge">Total: ${a.lots.length} lotes</span>
+      <span class="summary-badge">Total: ${a.lots.length} lotes • ${entries.length} itens</span>
       <span class="summary-badge gold">Aguardando: ${waiting}</span>
       <span class="summary-badge">Leiloados: ${sold}</span>
     </div>
 
     <table>
       <thead><tr>
-        <th>Lote</th><th>Veículo</th><th>Placa</th><th>FIPE</th><th>Lance mínimo</th><th>Nosso máximo</th><th>Status</th><th>Resultado</th><th>Valor final</th>
+        <th>Lote</th><th>Item / ID</th><th>Veículo / item</th><th>Placa</th><th>FIPE / referências</th><th>Lance mínimo</th><th>Nosso máximo</th><th>Status</th><th>Resultado</th><th>Valor final</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -1527,6 +1758,7 @@ $('#resetBtn').addEventListener('click',()=>{
   localStorage.removeItem(storageKey());
   localStorage.setItem(storageKey(),JSON.stringify(state));
   liveCursorByAuction.clear();
+  itemCursorByLot.clear();
   renderAll();
 });
 
@@ -1535,6 +1767,7 @@ window.SISTEMA_THIAGO_APP = {
   replaceState:(nextState,{save=true}={})=>{
     state=normalizeState(nextState);
     liveCursorByAuction.clear();
+    itemCursorByLot.clear();
     if(save) saveState();
     renderAll();
     return JSON.parse(JSON.stringify(state));

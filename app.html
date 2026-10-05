@@ -104,7 +104,7 @@
       <section class="next-card" aria-live="polite">
         <div>
           <div class="next-heading-row">
-            <p class="eyebrow">Próximo lote acompanhado</p>
+            <p class="eyebrow">Próximo item acompanhado</p>
             <span id="nextPreference" class="preference-tag" hidden>★ Preferência</span>
           </div>
           <h2 id="nextLot">—</h2>
@@ -117,10 +117,10 @@
       </section>
 
       <section class="stats" aria-label="Resumo do andamento">
-        <div class="stat"><strong id="totalCount">0</strong><span>Lotes</span></div>
-        <div class="stat"><strong id="waitingCount">0</strong><span>Aguardando</span></div>
-        <div class="stat"><strong id="preferenceCount">0</strong><span>Preferências</span></div>
-        <div class="stat"><strong id="soldCount">0</strong><span>Leiloados</span></div>
+        <div class="stat"><strong id="totalCount">0</strong><span>Itens</span></div>
+        <div class="stat"><strong id="waitingCount">0</strong><span>Itens aguardando</span></div>
+        <div class="stat"><strong id="preferenceCount">0</strong><span>Itens preferidos</span></div>
+        <div class="stat"><strong id="soldCount">0</strong><span>Itens leiloados</span></div>
       </section>
 
       <section class="progress-wrap" aria-label="Progresso">
@@ -162,8 +162,13 @@
         <div class="lot-copy">
           <div class="lot-line">
             <h3 class="lot-number"></h3>
-            <span class="status-badge"></span>
+            <div class="item-nav" aria-label="Navegação entre itens do lote">
+              <button class="item-prev-btn" type="button" aria-label="Item anterior">←</button>
+              <strong class="item-identity"></strong>
+              <button class="item-next-btn" type="button" aria-label="Próximo item">→</button>
+            </div>
           </div>
+          <div class="item-status-row"><span class="status-badge"></span></div>
           <p class="vehicle-name"></p>
           <div class="lot-meta-row">
             <span class="source-badge user-source lot-source">Dados inseridos pelo usuário</span>
@@ -194,7 +199,7 @@
       </div>
 
       <details class="lot-details">
-        <summary>Dados completos do lote</summary>
+        <summary>Dados completos do item</summary>
         <div class="lot-items-summary" aria-label="Itens do lote"></div>
         <div class="form-grid lot-data-grid">
           <label class="field-wrap"><span>Tipo</span><input class="lot-type-input" placeholder="Ex.: Conservado" /></label>

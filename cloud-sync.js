@@ -98,6 +98,68 @@ function operationalFingerprint(value){
   ]);
 }
 
+function canonicalItemPayload(item,row){
+  const payload={
+    item_identifier:String(item?.itemIdentifier||row?.item_identifier||'').trim()||null,
+    description:String(item?.description||item?.vehicle||row?.description||'').trim()||null,
+    item_type:String(item?.type||row?.item_type||'').trim()||null,
+    vehicle:String(item?.vehicle||item?.description||row?.vehicle||'').trim()||null,
+    plate:String(item?.plate||'').trim().toUpperCase()||null,
+    brand_model:String(item?.brandModel||'').trim()||null,
+    chassis:String(item?.chassis||'').trim()||null,
+    engine:String(item?.engine||'').trim()||null,
+    model_year:String(item?.year||'').trim()||null,
+    color:String(item?.color||'').trim()||null,
+    fuel:String(item?.fuel||'').trim()||null,
+    licensing:String(item?.licensing||'').trim()||null,
+    city:String(item?.city||'').trim()||null,
+    state:String(item?.state||'').trim()||null,
+    fipe_value:normalizeMoney(item?.fipeValue),
+    minimum_bid:normalizeMoney(item?.minimumBid),
+    max_bid:normalizeMoney(item?.maxBid),
+    final_value:normalizeMoney(item?.finalValue),
+    preference_level:Math.max(0,Math.min(2,Number(item?.preferenceLevel)||0)),
+    sold:Boolean(item?.sold),
+    result:String(item?.result||'').trim()||null,
+    note:String(item?.note||'').trim()||null,
+    extra_data:{
+      ...(row?.extra_data||{}),
+      ...(item?.extraFields||{})
+    },
+    updated_at:new Date().toISOString()
+  };
+  return payload;
+}
+
+function itemOperationalFingerprint(payload){
+  return JSON.stringify([
+    payload.item_identifier??null,
+    payload.description??null,
+    payload.item_type??null,
+    payload.vehicle??null,
+    payload.plate??null,
+    payload.brand_model??null,
+    payload.chassis??null,
+    payload.engine??null,
+    payload.model_year??null,
+    payload.color??null,
+    payload.fuel??null,
+    payload.licensing??null,
+    payload.city??null,
+    payload.state??null,
+    payload.fipe_value==null?null:Number(payload.fipe_value),
+    payload.minimum_bid==null?null:Number(payload.minimum_bid),
+    payload.max_bid==null?null:Number(payload.max_bid),
+    payload.final_value==null?null:Number(payload.final_value),
+    Number(payload.preference_level||0),
+    Boolean(payload.sold),
+    payload.result||null,
+    payload.note||null,
+    payload.extra_data?.humanConfirmedFields||[],
+    Boolean(payload.extra_data?.generatedIdentifier)
+  ]);
+}
+
 function legacyCandidate(){
   for(const key of legacyKeys){
     const parsed=parseJson(localStorage.getItem(key)||'');
@@ -125,7 +187,9 @@ async function start(){
   const legacy=legacyCandidate();
   const relationalAuctionCache=new Map();
   const relationalLotCache=new Map();
+  const relationalItemCache=new Map();
   const operationalFingerprints=new Map();
+  const itemOperationalFingerprints=new Map();
   let unresolvedStateConflict=false;
 
   async function resolveRelationalAuction(localAuction){
@@ -192,21 +256,72 @@ async function start(){
     return byNumber;
   }
 
+  async function loadRelationalItems(auctionId,byNumber){
+    if(relationalItemCache.has(auctionId)) return relationalItemCache.get(auctionId);
+    const byKey=new Map();
+    const lotIds=[...byNumber.values()].map(row=>row.id).filter(Boolean);
+    const chunkSize=250;
+    for(let i=0;i<lotIds.length;i+=chunkSize){
+      const ids=lotIds.slice(i,i+chunkSize);
+      const {data,error}=await supabase.from('lot_items')
+        .select('id,lot_id,item_order,item_identifier,description,item_type,vehicle,plate,brand_model,chassis,engine,model_year,color,fuel,licensing,city,state,fipe_value,minimum_bid,max_bid,final_value,preference_level,sold,result,note,extra_data')
+        .in('lot_id',ids)
+        .order('item_order',{ascending:true});
+      if(error) throw error;
+      for(const row of data||[]){
+        const key=row.lot_id+':'+Number(row.item_order||1);
+        byKey.set(key,row);
+        itemOperationalFingerprints.set(row.id,itemOperationalFingerprint(row));
+      }
+    }
+    relationalItemCache.set(auctionId,byKey);
+    return byKey;
+  }
+
   async function syncOperationalChanges(state){
     const localAuction=(state?.auctions||[]).find(a=>a.id===state.currentAuctionId) || null;
-    if(!localAuction) return {ok:true,changed:0};
+    if(!localAuction) return {ok:true,changed:0,itemChanged:0};
 
     const relationalAuction=await resolveRelationalAuction(localAuction);
-    if(!relationalAuction?.id) return {ok:true,changed:0};
+    if(!relationalAuction?.id) return {ok:true,changed:0,itemChanged:0};
 
     let byNumber;
-    try{ byNumber=await loadRelationalLots(relationalAuction.id); }
-    catch(error){ return {ok:false,changed:0,error:error?.message||String(error)}; }
+    let itemsByKey;
+    try{
+      byNumber=await loadRelationalLots(relationalAuction.id);
+      itemsByKey=await loadRelationalItems(relationalAuction.id,byNumber);
+    }catch(error){
+      return {ok:false,changed:0,itemChanged:0,error:error?.message||String(error)};
+    }
 
     let changed=0;
+    let itemChanged=0;
     for(const lot of localAuction.lots||[]){
       const row=byNumber.get(Number(lot.n));
       if(!row?.id) continue;
+
+      const localItems=Array.isArray(lot.items)?lot.items:[];
+      for(let index=0;index<localItems.length;index++){
+        const item=localItems[index];
+        const order=Math.max(1,Number(item?.itemOrder)||index+1);
+        const itemRow=itemsByKey.get(row.id+':'+order);
+        if(!itemRow?.id) continue;
+        const itemPayload=canonicalItemPayload(item,itemRow);
+        const itemFingerprint=itemOperationalFingerprint(itemPayload);
+        const previousItemFingerprint=itemOperationalFingerprints.get(itemRow.id);
+        if(itemFingerprint===previousItemFingerprint) continue;
+
+        const {data,error}=await supabase
+          .from('lot_items')
+          .update(itemPayload)
+          .eq('id',itemRow.id)
+          .select('id')
+          .maybeSingle();
+        if(error) return {ok:false,changed,itemChanged,error:error.message||String(error)};
+        if(!data?.id) return {ok:false,changed,itemChanged,error:'A política de acesso não confirmou edição deste item.'};
+        itemOperationalFingerprints.set(itemRow.id,itemFingerprint);
+        itemChanged++;
+      }
 
       const payload=canonicalPayload(lot,row);
       const nextFingerprint=operationalFingerprint(payload);
@@ -219,15 +334,13 @@ async function start(){
         .eq('id',row.id)
         .select('id')
         .maybeSingle();
-      if(error) return {ok:false,changed,error:error.message||String(error)};
-      if(!data?.id){
-        return {ok:false,changed,error:'A política de acesso não confirmou edição deste lote.'};
-      }
+      if(error) return {ok:false,changed,itemChanged,error:error.message||String(error)};
+      if(!data?.id) return {ok:false,changed,itemChanged,error:'A política de acesso não confirmou edição deste lote.'};
       operationalFingerprints.set(row.id,nextFingerprint);
       changed++;
     }
 
-    return {ok:true,changed};
+    return {ok:true,changed,itemChanged};
   }
 
   const {data:cloud,error}=await supabase.from('user_state_snapshots').select('state,state_version,updated_at,source_origin').eq('user_id',uid).maybeSingle();
@@ -332,10 +445,11 @@ async function start(){
           'Os dados continuam protegidos no snapshot. '+String(relational.error||''),
           'warn'
         );
-      }else if(relational.changed>0){
+      }else if(relational.changed>0 || relational.itemChanged>0){
         setStatus(
           '<strong>Alterações salvas online.</strong> '+auctionCount(current)+' leilão(ões), '+
-          lotCount(current)+' lote(s) no snapshot e '+relational.changed+' lote(s) operacional(is) reconciliado(s) no banco canônico.',
+          lotCount(current)+' lote(s) no snapshot; '+relational.changed+' lote(s) e '+
+          relational.itemChanged+' item(ns) operacional(is) reconciliado(s) no banco canônico.',
           'ok'
         );
       }

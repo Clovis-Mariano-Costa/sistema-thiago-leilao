@@ -328,7 +328,8 @@ async function upsertItems(supabase,lotIds,manifest,uid){
     rows.push({
       lot_id:lotId,
       item_order:Math.max(1,Number(entry.item_order)||1),
-      item_identifier:imageData?.plate || null,
+      item_identifier:imageData?.plate ||
+        ('ST-L'+String(Number(entry.lot)||0).padStart(3,'0')+'-I'+String(Math.max(1,Number(entry.item_order)||1)).padStart(2,'0')),
       description:imageData?.vehicle_source || entry.label || null,
       vehicle:imageData?.vehicle_source || entry.label || null,
       plate:imageData?.plate || null,
@@ -347,6 +348,7 @@ async function upsertItems(supabase,lotIds,manifest,uid){
         review_required:true
       },
       extra_data:{
+        ...(!imageData?.plate ? {generatedIdentifier:true,generatedIdentifierOrigin:'sistema_thiago'} : {}),
         reference_month:imageData?.reference || null,
         fipe_candidates:imageData?.fipe_candidates || [],
         whatsapp_label:entry.label || null

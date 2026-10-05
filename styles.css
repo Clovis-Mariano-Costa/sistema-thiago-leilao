@@ -265,3 +265,21 @@ body{background:
   .live-vehicle{font-size:clamp(1.15rem,6vw,1.7rem)}
   .live-actions-grid,.live-max-bid-editor,.live-sold-btn{width:100%}
 }
+
+/* ST-MNM-44B — lote como contêiner, item como unidade operacional */
+.item-nav{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0}
+.item-nav button{width:28px;height:28px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--navy);font-weight:900;cursor:pointer}
+.item-nav button:disabled{opacity:.32;cursor:default}
+.item-identity{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:5px 8px;border-radius:9px;background:#eef4f7;color:#17384d;font-size:.7rem;text-align:right}
+.item-status-row{display:flex;justify-content:flex-end;margin-top:5px}
+.lot-item-tabs{display:grid;gap:6px;margin-top:7px}
+.lot-item-tab{display:grid;gap:2px;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);text-align:left;cursor:pointer}
+.lot-item-tab strong{font-size:.72rem;color:var(--navy)}
+.lot-item-tab span{font-size:.7rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lot-item-tab.active{border-color:#8db4c7;background:#eef7fa;box-shadow:inset 3px 0 0 var(--gold)}
+.lot-fipe-candidates small{display:block;margin-top:2px;color:var(--muted);font-weight:500}
+@media(max-width:520px){
+  .lot-line{align-items:flex-start}
+  .item-nav{max-width:58%}
+  .item-identity{max-width:140px}
+}
