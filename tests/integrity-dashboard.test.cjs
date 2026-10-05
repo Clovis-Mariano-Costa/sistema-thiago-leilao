@@ -152,3 +152,23 @@ test('ST-MNM-40G Integridade oferece suporte real sem mutação automática',()=
   assert.match(html,/não apague nem edite linhas manualmente/);
   assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 });
+
+
+test('ST-MNM-41A reconcilia proveniência por resultId sem somar resultados da mesma fonte',()=>{
+  const html=fs.readFileSync('integridade.html','utf8');
+  const js=fs.readFileSync('integridade.js','utf8');
+  assert.match(html,/Evidência por resultado oficial/);
+  assert.match(html,/integrityResultRows/);
+  assert.match(js,/function renderResultObservability/);
+  assert.match(js,/run\?\.metadata\?\.resultId/);
+  assert.match(js,/latestSuccess/);
+  assert.match(js,/metadata\?\.documentId/);
+  assert.match(js,/source_evidence\?\.officialResultId/);
+  assert.match(js,/Success sem documento vinculado/);
+  assert.match(js,/Prova sem leilão relacional/);
+  assert.match(js,/Divergente: prova/);
+  assert.match(js,/Prova alinhada • último run/);
+  assert.match(js,/fetchVisibleRows\('source_search_runs','source_id,status,found_count,started_at,finished_at,metadata'/);
+  assert.match(js,/fetchVisibleRows\('source_documents','id,source_id,reference,created_at,document_url'/);
+  assert.doesNotMatch(js,/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+});
