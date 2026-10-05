@@ -11,7 +11,7 @@ function counts(state){
 }
 function auctionPreview(state){
   const auctions=Array.isArray(state?.auctions)?state.auctions:[];
-  return auctions.slice(0,8).map((auction,index)=>{
+  const visible=auctions.slice(0,8).map((auction,index)=>{
     const lots=Array.isArray(auction?.lots)?auction.lots:[];
     const lotSample=lots.slice(0,6).map(lot=>String(lot?.n??lot?.lotNumber??'')).filter(Boolean);
     return {
@@ -20,6 +20,7 @@ function auctionPreview(state){
       lotSample
     };
   });
+  return {visible,omitted:Math.max(0,auctions.length-visible.length)};
 }
 function labelFor(key){
   if(key==='sistema-thiago-v3') return 'Cópia antiga v3';
@@ -81,15 +82,21 @@ function render(){
 
     const preview=document.createElement('div');
     preview.className='legacy-preview';
-    for(const auction of item.preview||[]){
+    for(const auction of item.preview?.visible||[]){
       const row=document.createElement('div');
       row.className='legacy-preview-row';
       const strong=document.createElement('strong');
       strong.textContent=auction.title;
       const meta=document.createElement('span');
-      meta.textContent=auction.lots+' lote(s)' + (auction.lotSample.length ? ' • amostra: '+auction.lotSample.join(', ') : '');
+      meta.textContent=' — '+auction.lots+' lote(s)' + (auction.lotSample.length ? ' • amostra: '+auction.lotSample.join(', ') : '');
       row.append(strong,meta);
       preview.appendChild(row);
+    }
+    if(item.preview?.omitted){
+      const omitted=document.createElement('p');
+      omitted.className='form-help';
+      omitted.textContent=item.preview.omitted+' leilão(ões) adicional(is) não exibido(s) nesta prévia. A lista acima mostra apenas os 8 primeiros; use também as quantidades totais antes de exportar.';
+      preview.appendChild(omitted);
     }
 
     const sourceKey=document.createElement('p');
