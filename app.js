@@ -306,6 +306,7 @@ function normalizeState(raw) {
       sourceType: original.sourceType === 'official' ? 'official' : 'user',
       sourceLabel: original.sourceType === 'official' ? 'Fonte oficial' : 'Dados inseridos pelo usuário',
       officialUrl: original.officialUrl || official?.officialUrl || '',
+      auctioneerUrl: original.auctioneerUrl || official?.auctioneerUrl || original?.extraFields?.auctioneerUrl || '',
       officialPayload: original.officialPayload || official || null,
       sourceEvidence: evidence,
       extraFields: {
@@ -344,6 +345,8 @@ let filter = 'all';
 let query = '';
 const liveCursorByAuction = new Map();
 const itemCursorByLot = new Map();
+const LOT_RENDER_STEP = 120;
+let lotRenderLimit = LOT_RENDER_STEP;
 
 const $ = sel => document.querySelector(sel);
 const list = $('#lotList');
@@ -729,6 +732,25 @@ function renderActiveAuctionHeader() {
   } else {
     officialLink.hidden = true;
   }
+
+  const auctioneerLink = $('#auctioneerLink');
+  const auctioneerUrl = String(a.auctioneerUrl || a.officialPayload?.auctioneerUrl || a.extraFields?.auctioneerUrl || '').trim();
+  if (auctioneerUrl) {
+    auctioneerLink.href = auctioneerUrl;
+    auctioneerLink.hidden = false;
+  } else {
+    auctioneerLink.hidden = true;
+  }
+
+  const mapLink = $('#auctionMapLink');
+  const locationText = String(a.location || '').trim();
+  const mapEligible = locationText && !/^(on-?line|online|virtual)$/i.test(locationText);
+  if (mapEligible) {
+    mapLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(locationText);
+    mapLink.hidden = false;
+  } else {
+    mapLink.hidden = true;
+  }
 }
 
 function matches(lot) {
@@ -815,8 +837,20 @@ function renderLots() {
   if (!a) return;
 
   const nextEntry = nextPendingItem(a);
-  const visible = a.lots.filter(matches);
-  $('#emptyState').hidden = visible.length !== 0;
+  const filtered = a.lots.filter(matches);
+  const visible = filtered.slice(0,lotRenderLimit);
+  $('#emptyState').hidden = filtered.length !== 0;
+
+  const footer=$('#lotRenderFooter');
+  const status=$('#renderedLotsStatus');
+  const loadMore=$('#loadMoreLotsBtn');
+  if(footer && status && loadMore){
+    footer.hidden=filtered.length<=LOT_RENDER_STEP;
+    status.textContent=filtered.length
+      ? `Mostrando ${visible.length} de ${filtered.length} lote(s).`
+      : '';
+    loadMore.hidden=visible.length>=filtered.length;
+  }
 
   for (const lot of visible) {
     const card = template.content.firstElementChild.cloneNode(true);
@@ -1138,6 +1172,7 @@ function switchAuction(id) {
   state.currentAuctionId = id;
   query = '';
   filter = 'all';
+  lotRenderLimit = LOT_RENDER_STEP;
   searchInput.value = '';
   document.querySelectorAll('.chip').forEach(b => b.classList.toggle('active', b.dataset.filter === 'all'));
   saveState();
@@ -1185,6 +1220,7 @@ function addAuction(data) {
     sourceType: data.sourceType === 'official' ? 'official' : 'user',
     sourceLabel: data.sourceType === 'official' ? 'Fonte oficial' : 'Dados inseridos pelo usuário',
     officialUrl: data.officialUrl || '',
+    auctioneerUrl: data.auctioneerUrl || '',
     photoDataUrl: data.photoDataUrl || '',
     notes: data.notes || '',
     officialPayload: data.officialPayload || null,
@@ -1634,6 +1670,7 @@ function slugify(value) {
 
 searchInput.addEventListener('input',e=>{
   query=e.target.value.trim().toLowerCase();
+  lotRenderLimit=LOT_RENDER_STEP;
   renderLots();
 });
 
@@ -1641,9 +1678,14 @@ document.querySelectorAll('.chip').forEach(btn=>btn.addEventListener('click',()=
   document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   filter=btn.dataset.filter;
+  lotRenderLimit=LOT_RENDER_STEP;
   renderLots();
 }));
 
+$('#loadMoreLotsBtn')?.addEventListener('click',()=>{
+  lotRenderLimit+=LOT_RENDER_STEP;
+  renderLots();
+});
 $('#chooseAuctionBtn').addEventListener('click',()=>{renderChooseAuctions();openDialog(chooseAuctionDialog)});
 $('#switchAuctionBtn').addEventListener('click',()=>{renderChooseAuctions();openDialog(chooseAuctionDialog)});
 $('#newAuctionBtn').addEventListener('click',()=>openDialog(newAuctionDialog));
