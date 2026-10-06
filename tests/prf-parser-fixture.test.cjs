@@ -75,11 +75,13 @@ test('renderizador PRF recompõe células pela coordenada Y',async()=>{
 });
 
 
-test('Edge Function não contém escapes literais entre declarações PRF',()=>{
+test('Edge Function preserva declaração PRF sem escapes literais e com allowlist ativa',()=>{
   const fs=require('node:fs');
   const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
-  assert.doesNotMatch(edge,/PRF_HOSTS=.*;\\\\n\\\\nasync function fetchPrfLots/);
-  assert.match(edge,/PRF_HOSTS=.*;\n\nasync function fetchPrfLots/);
+  assert.doesNotMatch(edge,/PRF_HOSTS=.*;\\\\n/);
+  assert.match(edge,/const PRF_HOSTS=new Set\(\["www\.gov\.br","gov\.br"\]\);/);
+  assert.match(edge,/fetchOfficialWithRedirects\(page,PRF_HOSTS/);
+  assert.match(edge,/fetchOfficialWithRedirects\(candidate\.url,PRF_HOSTS/);
 });
 
 
