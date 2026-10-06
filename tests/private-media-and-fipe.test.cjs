@@ -12,13 +12,14 @@ test('Painel usa URL assinada de foto privada quando disponível',()=>{
   assert.match(app,/function lotPhotoUrl/);
   assert.match(app,/SISTEMA_THIAGO_MEDIA_URLS/);
   assert.match(app,/lot\.photoDataUrl \|\| ''/);
-  assert.match(html,/private-media\.js\?v=20261005-item45b1/);
+  assert.match(html,/private-media\.js\?v=20261005-item45c1/);
 });
 
-test('hidratação consulta apenas leilão do usuário autenticado e assina URLs privadas',()=>{
+test('hidratação usa RLS para leilões acessíveis, inclusive compartilhados, e assina URLs privadas',()=>{
   assert.match(media,/auth\.getUser\(\)/);
-  assert.match(media,/eq\('owner_id',user\.id\)/);
+  assert.doesNotMatch(media,/eq\('owner_id',user\.id\)/);
   assert.match(media,/eq\('title',TARGET_AUCTION_TITLE\)/);
+  assert.match(media,/extra_data\?\.canonical===true/);
   assert.match(media,/createSignedUrls\(paths,60\*60\)/);
   assert.doesNotMatch(media,/getPublicUrl/);
 });
@@ -100,4 +101,15 @@ test('ST-MNM-45B FIPE recebe contexto lote/item e hidrata sem depender de app-re
   assert.match(fipe,/fipe-reference-context/);
   assert.match(fipe,/Lote \$\{esc\(String\(itemContext\.lotNumber/);
   assert.match(fipe,/media-refresh-request/);
+});
+
+
+test('ST-MNM-45C resolvedor prefere leilão canônico compartilhado e segue canonicalOf',()=>{
+  const cloud=fs.readFileSync('cloud-sync.js','utf8');
+  assert.match(cloud,/function pickCanonicalAuction/);
+  assert.match(cloud,/extra_data\?\.canonical===true/);
+  assert.match(cloud,/canonicalOf/);
+  assert.match(cloud,/function rememberResolvedAuction/);
+  assert.match(cloud,/canonicalRelational/);
+  assert.match(cloud,/limit\(20\)/);
 });
