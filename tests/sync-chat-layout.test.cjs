@@ -29,7 +29,7 @@ test('painel contém sync online, Charlie Echo e aviso de cookies',()=>{
   const landing=fs.readFileSync('index.html','utf8');
   assert.match(app,/id="cloudSyncStatus"/);
   assert.match(app,/charlie-chat\.js/);
-  assert.match(app,/cloud-sync\.js/);
+  assert.match(app,/cloud-sync-45c\.js/);
   assert.match(app,/cookie-notice\.js/);
   assert.match(landing,/cookie-notice\.js/);
   assert.doesNotMatch(app,/<main>\\n/);
