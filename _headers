@@ -3,3 +3,10 @@
 
 /whatsapp-import.js
   Cache-Control: no-cache, must-revalidate
+
+
+/private-media*.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/cloud-sync*.js
+  Cache-Control: no-cache, no-store, must-revalidate
