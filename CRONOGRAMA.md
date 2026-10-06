@@ -225,3 +225,61 @@ Pendência humana ou externa bloqueia somente sua própria trilha. O trabalho t�
 - Não fazer write-through DETRAN 0013 por SQL ad hoc.
 - Não mover dados/mídia entre contas até confirmação explícita de propriedade e conta canônica.
 - Ao receber a presença humana necessária, executar cada gate e fechar o respectivo issue imediatamente após evidência.
+
+## ST-MNM-46 — cronograma reconciliado e ordem vigente — 05/10/2026
+
+> **Esta seção é o quadro operacional vigente e supersede listas de pendências anteriores preservadas acima como histórico.**
+
+### Varredura de pendências
+
+- PRs técnicos abertos: **0** no início desta espira.
+- Issues **#5, #7, #71, #101, #102 e #103**: encerradas/reconciliadas.
+- Main de referência: `70d757e9360a039e4808e9691c75aaf9c6767bcf` (merge do PR #120).
+- PRs **#117–#120** consolidam item-a-item, mídia privada por item, contexto FIPE, escolha da Base inicial canônica compartilhada e assets cache-safe.
+- CI, publicação e validação do Worker passaram no commit de referência.
+- O domínio próprio já serve `private-media-45c.js` e `cloud-sync-45c.js`.
+- Supabase Security Advisor: único WARN remanescente é **Leaked Password Protection Disabled**, limitação já documentada de plano; não cria autorização de custo.
+- Performance Advisor: apenas INFO de índices sem uso; não remover índices por esse aviso isolado.
+
+### Base inicial canônica
+
+- conta empresarial canônica: **Royal Comercial**;
+- **37 lotes / 38 itens**;
+- lote **170 = 2 itens reais**: `MLL8E38` e `QIF0C79`;
+- mídia privada vinculada por item;
+- lote homônimo de outro leilão não deve herdar foto;
+- múltiplas referências FIPE podem pertencer ao mesmo item;
+- candidato FIPE != item;
+- nenhuma FIPE ambígua é escolhida automaticamente.
+
+### Pendências canônicas abertas
+
+1. **#2 — P0 / PHYSICAL_MOBILE_GATE**  
+   Smoke físico no aparelho real: Base inicial 37/38, lote 170 Item 1/2 e 2/2, Anterior/Próximo, fotos corretas, PRF lote 15 sem foto cruzada, Modo ao Vivo, refresh sem perda e persistência.
+
+2. **#20 — P0 / HUMAN_GATE LEGADO**  
+   Recuperar e conferir no navegador/aparelho de origem quaisquer dados legados ainda exclusivos. A decisão de conta canônica já foi resolvida; o gate agora é apenas prova física da origem e fechamento seguro de redundância.
+
+3. **#1 — P1 / AUTH_SESSION_GATE**  
+   DETRAN/SC 0013/2026: 489 lotes já comprovados no backend. Falta executar o write-through governado com sessão autenticada real e repetir para provar idempotência. **Não usar SQL ad hoc nem fabricar JWT/sessão.**
+
+4. **#4 — P1 / HUMAN_BROWSER_GATE**  
+   Repetir pela interface, com sessões reais separadas, a matriz owner/admin/participant/observer/outsider. O backend/RLS já passou 12/12.
+
+### Trabalho técnico que continua sem esperar os gates humanos
+
+- **46D — regressão item-a-item:** manter cobertura de lote 1:N, cursor por leilão+lote, contagens lote/item, mídia por item, contexto FIPE e cache versionado.
+- **46E — reclassificação ST-MNM-10 a 14:**
+  - ST-MNM-10 = **PARTIAL / LEGAL_REVIEW_REQUIRED**: Termos beta já tratam software livre/autoria; licença definitiva e exploração comercial exigem revisão jurídica.
+  - ST-MNM-11 = **PARTIAL / LEGAL_INSTRUMENT_PENDING**: landing da parceria já existe; instrumento jurídico/contábil definitivo continua pendente.
+  - ST-MNM-12 = **PARTIAL_IMPLEMENTED**: Charlie Echo e chat contextual já existem; ampliar capabilities somente com custo, limites e governança definidos.
+  - ST-MNM-13 = **DISCOVERY / COST_MEASUREMENT_REQUIRED**: princípios de gratuidade e limites já estão documentados; números de planos/quotas dependem de telemetria real.
+  - ST-MNM-14 = **HOLD_COMMERCIAL**: cobrança e lançamento comercial permanecem bloqueados até jurídico, contador, termos finais, segurança, beta e autorização humana expressa.
+- **46F — continuidade:** atualizar Drive, GitHub e issues após cada mudança material.
+
+### Ordem vigente
+
+`VERIFY -> PRE -> EXECUTE -> TEST -> POST -> SAVE_CONTINUITY -> VERIFY_CONTINUITY -> NEXT`
+
+Dependência humana ou externa bloqueia somente sua trilha. Enquanto houver pacote técnico independente e seguro, o Mão na Massa continua.
+
