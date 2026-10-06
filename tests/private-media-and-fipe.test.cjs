@@ -12,7 +12,7 @@ test('Painel usa URL assinada de foto privada quando disponível',()=>{
   assert.match(app,/function lotPhotoUrl/);
   assert.match(app,/SISTEMA_THIAGO_MEDIA_URLS/);
   assert.match(app,/lot\.photoDataUrl \|\| ''/);
-  assert.match(html,/private-media\.js\?v=20261005-item45c1/);
+  assert.match(html,/private-media-45c\.js/);
 });
 
 test('hidratação usa RLS para leilões acessíveis, inclusive compartilhados, e assina URLs privadas',()=>{
@@ -112,4 +112,12 @@ test('ST-MNM-45C resolvedor prefere leilão canônico compartilhado e segue cano
   assert.match(cloud,/function rememberResolvedAuction/);
   assert.match(cloud,/canonicalRelational/);
   assert.match(cloud,/limit\(20\)/);
+});
+
+
+test('ST-MNM-45D build publica assets versionados para contornar cache do dominio',()=>{
+  assert.match(build,/cloud-sync-45c\.js/);
+  assert.match(build,/private-media-45c\.js/);
+  assert.match(html,/cloud-sync-45c\.js/);
+  assert.match(html,/private-media-45c\.js/);
 });
