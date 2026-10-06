@@ -51,3 +51,13 @@ test('ST-MNM-45B separa contagem de lotes da contagem de itens e oferece seletor
   assert.match(js,/lotIndex\+1/);
   assert.match(js,/lotTotal/);
 });
+
+
+test('ST-MNM-45C Base inicial usa estrutura da fonte canônica compartilhada',()=>{
+  const cloud=fs.readFileSync('cloud-sync.js','utf8');
+  assert.match(cloud,/pickCanonicalAuction/);
+  assert.match(cloud,/rememberResolvedAuction/);
+  assert.match(cloud,/reconcileImportedItemStructure/);
+  assert.match(cloud,/Leilão Thiago — Base inicial/);
+  assert.match(cloud,/canonicalRelational/);
+});
