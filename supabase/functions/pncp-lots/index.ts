@@ -9,6 +9,36 @@ const allowedOrigins = new Set([
   "https://sistema.thiago.jus9verde.jus9tecnologia.com.br"
 ]);
 
+const PRF_HOSTS=new Set(["www.gov.br","gov.br"]);
+const DETRAN_HOSTS=new Set(["www.detran.sc.gov.br","detran.sc.gov.br"]);
+
+function validateOfficialHttpsUrl(value:string|URL,hosts:Set<string>,pathPrefix=""){
+  const url=value instanceof URL ? value : new URL(value);
+  if(url.protocol!=="https:" || !hosts.has(url.hostname) || (pathPrefix && !url.pathname.startsWith(pathPrefix))){
+    throw new Error("destino oficial fora da allowlist");
+  }
+  return url;
+}
+
+async function fetchOfficialWithRedirects(
+  value:string|URL,
+  hosts:Set<string>,
+  init:RequestInit={},
+  pathPrefix="",
+  maxRedirects=3
+){
+  let current=validateOfficialHttpsUrl(value,hosts,pathPrefix);
+  for(let redirectCount=0; redirectCount<=maxRedirects; redirectCount++){
+    const response=await fetch(current.toString(),{...init,redirect:"manual"});
+    if(![301,302,303,307,308].includes(response.status)) return response;
+    if(redirectCount===maxRedirects) throw new Error("redirecionamentos oficiais excederam o limite");
+    const location=response.headers.get("location");
+    if(!location) throw new Error("redirecionamento oficial sem Location");
+    current=validateOfficialHttpsUrl(new URL(location,current),hosts,pathPrefix);
+  }
+  throw new Error("redirecionamento oficial inválido");
+}
+
 function cors(req: Request) {
   const origin = req.headers.get("origin") || "";
   return {
@@ -374,17 +404,15 @@ function parseLots(text:string) {
 }
 
 
-const PRF_HOSTS=new Set(["www.gov.br","gov.br"]);
-
 async function fetchPrfLots(pageUrl:string){
   const page=new URL(pageUrl);
   if(page.protocol!=="https:" || !PRF_HOSTS.has(page.hostname) || !page.pathname.startsWith("/prf/")){
     throw new Error("fonte PRF fora do domínio oficial gov.br/prf");
   }
 
-  const pageResponse=await fetch(page.toString(),{
+  const pageResponse=await fetchOfficialWithRedirects(page,PRF_HOSTS,{
     headers:{"Accept":"text/html","User-Agent":"SistemaThiago/1.0"}
-  });
+  },"/prf/");
   if(!pageResponse.ok) throw new Error(`PRF respondeu ${pageResponse.status} ao abrir a página oficial`);
   const html=await pageResponse.text();
 
@@ -405,10 +433,9 @@ async function fetchPrfLots(pageUrl:string){
   const candidate=links.find(x=>x.score>=100) || links[0];
   if(!candidate) throw new Error("Anexo PDF oficial da PRF não encontrado na página.");
 
-  const pdfResponse=await fetch(candidate.url,{
-    redirect:"follow",
+  const pdfResponse=await fetchOfficialWithRedirects(candidate.url,PRF_HOSTS,{
     headers:{"Accept":"application/pdf,*/*","User-Agent":"SistemaThiago/1.0"}
-  });
+  },"/prf/");
   if(!pdfResponse.ok) throw new Error(`PRF respondeu ${pdfResponse.status} ao baixar o Anexo I`);
   const bytes=new Uint8Array(await pdfResponse.arrayBuffer());
   if(bytes.byteLength>20*1024*1024) throw new Error("Anexo I da PRF maior que 20 MB");
@@ -428,8 +455,7 @@ async function fetchPrfLots(pageUrl:string){
     lots:parsed.lots.length,
     warnings:parsed.failures.length,
     firstLot:parsed.lots[0]?.n||null,
-    lastLot:parsed.lots.at(-1)?.n||null,
-    sampleText:String(parsedPdf.text||"").slice(0,500)
+    lastLot:parsed.lots.at(-1)?.n||null
   }));
   if(!parsed.sourceRows){
     throw new Error("Nenhuma linha de lote foi localizada no Anexo I da PRF após reconstrução por linhas.");
@@ -603,15 +629,17 @@ Deno.serve(async (req:Request)=>{
         const allowed=page.protocol==="https:" && (page.hostname==="www.detran.sc.gov.br" || page.hostname==="detran.sc.gov.br");
         if(!allowed) throw new Error("fallback fora do domínio oficial DETRAN/SC");
 
-        const pageResponse=await fetch(page.toString(),{headers:{"Accept":"text/html","User-Agent":"SistemaThiago/1.0"}});
+        const pageResponse=await fetchOfficialWithRedirects(page,DETRAN_HOSTS,{headers:{"Accept":"text/html","User-Agent":"SistemaThiago/1.0"}});
         if(!pageResponse.ok) throw new Error(`DETRAN respondeu ${pageResponse.status} ao abrir a página do edital`);
         const html=await pageResponse.text();
         const match=html.match(/data-downloadurl=["']([^"']+)["']/i);
         if(!match) throw new Error("link oficial de download não encontrado na página DETRAN");
 
-        const downloadUrl=match[1].replaceAll("&amp;","&");
-        const pdfResponse=await fetch(downloadUrl,{
-          redirect:"follow",
+        const downloadUrl=validateOfficialHttpsUrl(
+          new URL(match[1].replaceAll("&amp;","&"),page),
+          DETRAN_HOSTS
+        );
+        const pdfResponse=await fetchOfficialWithRedirects(downloadUrl,DETRAN_HOSTS,{
           headers:{"Accept":"application/pdf,*/*","User-Agent":"SistemaThiago/1.0"}
         });
         if(!pdfResponse.ok) throw new Error(`DETRAN respondeu ${pdfResponse.status} ao baixar o edital`);
