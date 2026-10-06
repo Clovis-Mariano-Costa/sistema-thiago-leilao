@@ -37,22 +37,27 @@ async function hydratePrivateLotMedia(){
     if(userError || !user?.id) return;
 
     const {data:auctions,error:auctionError}=await supabase.from('auctions')
-      .select('id,title')
-      .eq('owner_id',user.id)
+      .select('id,title,extra_data')
       .eq('title',TARGET_AUCTION_TITLE)
       .order('updated_at',{ascending:false})
-      .limit(5);
+      .limit(10);
     if(auctionError) throw auctionError;
     if(!auctions?.length) return;
 
-    // Se houver mais de uma Base inicial, não misturamos contas nem escolhemos
-    // arbitrariamente uma cópia. Preferimos a primeira que tenha mídia.
+    // RLS devolve somente leilões que o usuário pode ver (proprietário ou membro).
+    // Quando existem cópias com o mesmo título, a canônica vem primeiro.
+    const accessibleAuctions=[...auctions].sort((a,b)=>{
+      const ca=a?.extra_data?.canonical===true ? 1 : 0;
+      const cb=b?.extra_data?.canonical===true ? 1 : 0;
+      return cb-ca;
+    });
+
     let chosen=null;
     let lots=[];
     let media=[];
     let items=[];
 
-    for(const auction of auctions){
+    for(const auction of accessibleAuctions){
       const {data:auctionLots,error:lotsError}=await supabase.from('lots')
         .select('id,lot_number,photo_path')
         .eq('auction_id',auction.id)
