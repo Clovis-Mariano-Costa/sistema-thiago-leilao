@@ -260,8 +260,8 @@ Pendência humana ou externa bloqueia somente sua própria trilha. O trabalho t�
 2. **#20 — P0 / HUMAN_GATE LEGADO**  
    Recuperar e conferir no navegador/aparelho de origem quaisquer dados legados ainda exclusivos. A decisão de conta canônica já foi resolvida; o gate agora é apenas prova física da origem e fechamento seguro de redundância.
 
-3. **#1 — P1 / AUTH_SESSION_GATE**  
-   DETRAN/SC 0013/2026: 489 lotes já comprovados no backend. Falta executar o write-through governado com sessão autenticada real e repetir para provar idempotência. **Não usar SQL ad hoc nem fabricar JWT/sessão.**
+3. **#1 — P1 / AUTH_SESSION_GATE — somente idempotência**  
+   DETRAN/SC 0013/2026 já possui o primeiro write-through relacional comprovado: exatamente 1 auction para o resultId, 489 lotes únicos e 489 lot_items, com run success e documento oficial vinculados. Falta apenas repetir o fluxo normal com sessão autenticada real e comprovar que permanece 1 auction / 489 lots / 489 lot_items, sem duplicação. **Não usar SQL ad hoc nem fabricar JWT/sessão.**
 
 4. **#4 — P1 / HUMAN_BROWSER_GATE**  
    Repetir pela interface, com sessões reais separadas, a matriz owner/admin/participant/observer/outsider. O backend/RLS já passou 12/12.
@@ -283,3 +283,10 @@ Pendência humana ou externa bloqueia somente sua própria trilha. O trabalho t�
 
 Dependência humana ou externa bloqueia somente sua trilha. Enquanto houver pacote técnico independente e seguro, o Mão na Massa continua.
 
+
+
+### Delta ST-MNM-46B — DETRAN/SC 0013/2026
+
+A varredura posterior ao merge #121 encontrou evidência superveniente no banco real: o primeiro write-through do DETRAN/SC 0013/2026 já ocorreu. Há exatamente **1 auction**, **489 lotes com 489 números únicos** e **489 lot_items**, sem duplicação de lot_number; a proveniência aponta para run `success` com 489 resultados e documento oficial do DETRAN/SC.
+
+A issue #1 permanece aberta exclusivamente para a **segunda execução autenticada de idempotência**. A pendência anterior “ainda não existe auction relacional” está superseded por esta evidência.
