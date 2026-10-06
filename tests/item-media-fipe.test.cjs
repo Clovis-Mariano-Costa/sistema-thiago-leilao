@@ -18,7 +18,7 @@ test('ST-MNM-44C pagina FIPE exibe imagem privada assinada quando houver imageNa
   const html=fs.readFileSync('fipe.html','utf8');
   const js=fs.readFileSync('fipe.js','utf8');
   const css=fs.readFileSync('styles.css','utf8');
-  assert.match(html,/private-media\.js\?v=20261005-item45b1/);
+  assert.match(html,/private-media\.js\?v=20261005-item45c1/);
   assert.match(js,/SISTEMA_THIAGO_FIPE_MEDIA_URLS/);
   assert.match(js,/class="fipe-reference-media"/);
   assert.match(js,/loading="lazy"/);
