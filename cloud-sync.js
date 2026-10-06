@@ -192,6 +192,24 @@ async function start(){
   const itemOperationalFingerprints=new Map();
   let unresolvedStateConflict=false;
 
+  function pickCanonicalAuction(rows=[]){
+    if(!Array.isArray(rows) || !rows.length) return null;
+    return rows.find(row=>row?.extra_data?.canonical===true) ||
+      rows.find(row=>!row?.extra_data?.canonicalOf && row?.extra_data?.canonical!==false) ||
+      rows[0];
+  }
+
+  function rememberResolvedAuction(localAuction,row){
+    if(!localAuction || !row) return row || null;
+    localAuction.extraFields={
+      ...(localAuction.extraFields||{}),
+      relationalAuctionId:row.id,
+      canonicalRelational:Boolean(row?.extra_data?.canonical===true)
+    };
+    relationalAuctionCache.set(localAuction.id,row);
+    return row;
+  }
+
   async function resolveRelationalAuction(localAuction){
     if(!localAuction) return null;
     if(relationalAuctionCache.has(localAuction.id)) return relationalAuctionCache.get(localAuction.id);
@@ -199,36 +217,43 @@ async function start(){
     const hinted=String(localAuction?.extraFields?.relationalAuctionId||'').trim();
     if(hinted){
       const {data,error}=await supabase.from('auctions')
-        .select('id,title,reference,source_evidence')
+        .select('id,title,reference,source_evidence,extra_data')
         .eq('id',hinted)
         .maybeSingle();
       if(!error && data){
-        relationalAuctionCache.set(localAuction.id,data);
-        return data;
+        const canonicalOf=String(data?.extra_data?.canonicalOf||'').trim();
+        if(data?.extra_data?.canonical===false && canonicalOf){
+          const {data:canonical,error:canonicalError}=await supabase.from('auctions')
+            .select('id,title,reference,source_evidence,extra_data')
+            .eq('id',canonicalOf)
+            .maybeSingle();
+          if(!canonicalError && canonical) return rememberResolvedAuction(localAuction,canonical);
+        }
+        return rememberResolvedAuction(localAuction,data);
       }
     }
 
     const resultId=String(localAuction?.sourceEvidence?.officialResultId||'').trim();
     if(resultId){
       const {data,error}=await supabase.from('auctions')
-        .select('id,title,reference,source_evidence')
+        .select('id,title,reference,source_evidence,extra_data')
         .contains('source_evidence',{officialResultId:resultId})
-        .limit(1);
+        .limit(20);
       if(!error && data?.length){
-        relationalAuctionCache.set(localAuction.id,data[0]);
-        return data[0];
+        const chosen=pickCanonicalAuction(data);
+        if(chosen) return rememberResolvedAuction(localAuction,chosen);
       }
     }
 
     let query=supabase.from('auctions')
-      .select('id,title,reference,source_evidence')
+      .select('id,title,reference,source_evidence,extra_data')
       .eq('title',localAuction.title||'')
-      .limit(1);
+      .limit(20);
     if(localAuction.reference) query=query.eq('reference',localAuction.reference);
     const {data,error}=await query;
     if(error || !data?.length) return null;
-    relationalAuctionCache.set(localAuction.id,data[0]);
-    return data[0];
+    const chosen=pickCanonicalAuction(data);
+    return chosen ? rememberResolvedAuction(localAuction,chosen) : null;
   }
 
   async function loadRelationalLots(auctionId){
