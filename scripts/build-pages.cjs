@@ -6,7 +6,7 @@ const out=path.join(root,'dist');
 const publicFiles=[
   'index.html','app.html','app.js','charlie-echo.html','charlie-page.js','recuperar-legado.html','legacy-recovery.js',
   'auth.html','auth.js','auth-config.js',
-  'charlie-chat.js','cloud-sync.js',
+  'charlie-chat.js','cloud-sync.js','cloud-sync-45c.js',
   'cookie-notice.js','cookies.html',
   'fipe.html','fipe.js',
   'fontes-oficiais.html','fontes.js','official-sources.js',
@@ -14,7 +14,7 @@ const publicFiles=[
   'integridade.html','integridade.js','integridade.css',
   'landing.css','landing.js',
   'parceria.html','privacidade.html','termos.html',
-  'session-ui.js','styles.css','user-references.js','whatsapp-import.js','private-media.js',
+  'session-ui.js','styles.css','user-references.js','whatsapp-import.js','private-media.js','private-media-45c.js',
   'favicon.png','favicon.svg','_headers'
 ];
 
