@@ -98,3 +98,34 @@ test('ST-MNM-42C preserva metadata inicial ao finalizar source_search_run',()=>{
   assert.match(edge,/metadata:mergedMetadata/);
   assert.match(edge,/connector:authority\.connector/);
 });
+
+
+test('SEC-EDGE-01 valida hosts oficiais em cada redirecionamento e limita redirects',()=>{
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(edge,/function validateOfficialHttpsUrl/);
+  assert.match(edge,/async function fetchOfficialWithRedirects/);
+  assert.match(edge,/redirect:"manual"/);
+  assert.match(edge,/maxRedirects=3/);
+  assert.match(edge,/new URL\(location,current\)/);
+  assert.match(edge,/validateOfficialHttpsUrl\(new URL\(location,current\),hosts,pathPrefix\)/);
+});
+
+test('SEC-EDGE-02 DETRAN revalida URL extraida e redirects contra allowlist',()=>{
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(edge,/DETRAN_HOSTS=new Set\(\["www\.detran\.sc\.gov\.br","detran\.sc\.gov\.br"\]\)/);
+  assert.match(edge,/validateOfficialHttpsUrl\([\s\S]*new URL\(match\[1\][\s\S]*DETRAN_HOSTS/);
+  assert.match(edge,/fetchOfficialWithRedirects\(downloadUrl,DETRAN_HOSTS/);
+  assert.doesNotMatch(edge,/fetch\(downloadUrl,[\s\S]{0,120}redirect:"follow"/);
+});
+
+test('SEC-EDGE-03 PRF preserva allowlist durante redirect',()=>{
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.match(edge,/fetchOfficialWithRedirects\(page,PRF_HOSTS/);
+  assert.match(edge,/fetchOfficialWithRedirects\(candidate\.url,PRF_HOSTS/);
+});
+
+test('SEC-EDGE-04 nao registra amostra textual do PDF em log',()=>{
+  const edge=fs.readFileSync('supabase/functions/pncp-lots/index.ts','utf8');
+  assert.doesNotMatch(edge,/sampleText/);
+  assert.match(edge,/PRF_PARSE_DIAG/);
+});
